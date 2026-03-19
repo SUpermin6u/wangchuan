@@ -33,13 +33,14 @@ export async function cmdInit({ repo, force = false, key }: InitOptions): Promis
 
   // ── 密钥 ──────────────────────────────────────────────────
   if (key) {
-    // 从指定路径导入已有密钥
-    if (!fs.existsSync(key)) {
-      throw new Error(`密钥文件不存在: ${key}`);
+    // 直接写入用户传入的密钥字符串
+    const hex = key.trim();
+    if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+      throw new Error('密钥格式无效，需要 64 位十六进制字符串（256-bit）');
     }
     fs.mkdirSync(path.dirname(cfg.keyPath), { recursive: true });
-    fs.copyFileSync(key, cfg.keyPath);
-    logger.ok(`主密钥已导入: ${key} → ${cfg.keyPath}`);
+    fs.writeFileSync(cfg.keyPath, hex, 'utf-8');
+    logger.ok(`主密钥已导入: ${cfg.keyPath}`);
   } else if (!cryptoEngine.hasKey(cfg.keyPath)) {
     spinner = ora('生成 AES-256-GCM 主密钥 …').start();
     cryptoEngine.generateKey(cfg.keyPath);

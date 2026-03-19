@@ -61,8 +61,8 @@ wangchuan push --message "初始化配置"
 ### 3. 在新环境拉取记忆
 
 ```bash
-# 用 --key 导入已有密钥，一步完成初始化
-wangchuan init --repo git@github.com:yourname/your-brain.git --key /path/to/master.key
+# 用 --key 直接粘贴原环境的主密钥
+wangchuan init --repo git@github.com:yourname/your-brain.git --key <你的64位hex密钥>
 wangchuan pull
 ```
 
