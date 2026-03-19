@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────
+#  忘川 Wangchuan — Git 忽略规则
+# ─────────────────────────────────────────
+
+# 依赖
+node_modules/
+
+# TypeScript 编译产物
+dist/
+
+# 密钥文件（绝对不可提交）
+*.key
+master.key
+~/.wangchuan/master.key
+
+# 本地环境配置（含真实路径、token）
+.env
+.env.local
+
+# 运行时缓存
+.wangchuan/cache/
+.wangchuan/tmp/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+logs/
+
+# 加密前的临时文件
+*.plain
+*.tmp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
