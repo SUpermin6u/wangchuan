@@ -38,8 +38,9 @@ program
   .command('init')
   .description('初始化忘川，配置仓库并生成密钥')
   .requiredOption('-r, --repo <url>', 'Git 仓库地址 (SSH 或 HTTPS)')
+  .option('-k, --key <path>', '导入已有的主密钥文件路径')
   .option('--force', '强制重新初始化（覆盖现有配置）', false)
-  .action(async (opts: { repo: string; force: boolean }) => {
+  .action(async (opts: { repo: string; key?: string; force: boolean }) => {
     await run(() => cmdInit(opts));
   });
 

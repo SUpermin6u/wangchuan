@@ -5,22 +5,38 @@
   "bin": {
     "wangchuan": "./dist/bin/wangchuan.js"
   },
+  "files": [
+    "dist/",
+    "skill/",
+    ".wangchuan/config.example.json",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "postbuild": "chmod +x dist/bin/wangchuan.js",
+    "prepublishOnly": "npm run build",
     "dev": "tsx bin/wangchuan.ts",
     "test": "node --import tsx/esm --test test/crypto.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "ai",
-    "config",
+    "memory",
     "sync",
+    "agent",
     "claude",
-    "openclaw"
+    "gemini",
+    "openclaw",
+    "encryption"
   ],
   "author": "SUpermin6u",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SUpermin6u/wangchuan.git"
+  },
+  "homepage": "https://github.com/SUpermin6u/wangchuan",
   "dependencies": {
     "chalk": "^5.3.0",
     "commander": "^12.1.0",

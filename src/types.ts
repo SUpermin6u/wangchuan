@@ -105,6 +105,7 @@ export interface CommitResult {
 export interface InitOptions {
   readonly repo: string;
   readonly force?: boolean;
+  readonly key?: string;
 }
 
 export interface PushOptions extends AgentOptions {

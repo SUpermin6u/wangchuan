@@ -1,7 +1,7 @@
 # 忘川 · Wangchuan
 
 > 忘川是中国神话中冥界的遗忘之河，亡魂渡河饮水即忘前世一切记忆。
-> 而 **Wangchuan** 让你的 AI 配置在环境切换时永不遗失。
+> 而 **Wangchuan** 让你的 agent 记忆在环境切换时永不遗失。
 
 AI 记忆同步系统，支持 OpenClaw / Claude / Gemini 多种智能体记忆的加密备份与跨环境迁移。
 
@@ -58,11 +58,11 @@ wangchuan init --repo git@github.com:yourname/your-brain.git
 wangchuan push --message "初始化配置"
 ```
 
-### 3. 在新环境拉取配置
+### 3. 在新环境拉取记忆
 
 ```bash
-# 先把 master.key 复制到新环境的 ~/.wangchuan/master.key
-wangchuan init --repo git@github.com:yourname/your-brain.git
+# 用 --key 导入已有密钥，一步完成初始化
+wangchuan init --repo git@github.com:yourname/your-brain.git --key /path/to/master.key
 wangchuan pull
 ```
 

@@ -9,8 +9,10 @@ import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
 import type { InitOptions, WangchuanConfig } from '../types.js';
 import ora from 'ora';
+import fs   from 'fs';
+import path from 'path';
 
-export async function cmdInit({ repo, force = false }: InitOptions): Promise<WangchuanConfig> {
+export async function cmdInit({ repo, force = false, key }: InitOptions): Promise<WangchuanConfig> {
   logger.banner('忘川初始化');
 
   if (!validator.isGitUrl(repo)) {
@@ -29,8 +31,16 @@ export async function cmdInit({ repo, force = false }: InitOptions): Promise<Wan
   const cfg = await config.initialize(repo);
   spinner.succeed(`配置已写入: ${config.paths.config}`);
 
-  // ── 生成密钥 ────────────────────────────────────────────────
-  if (!cryptoEngine.hasKey(cfg.keyPath)) {
+  // ── 密钥 ──────────────────────────────────────────────────
+  if (key) {
+    // 从指定路径导入已有密钥
+    if (!fs.existsSync(key)) {
+      throw new Error(`密钥文件不存在: ${key}`);
+    }
+    fs.mkdirSync(path.dirname(cfg.keyPath), { recursive: true });
+    fs.copyFileSync(key, cfg.keyPath);
+    logger.ok(`主密钥已导入: ${key} → ${cfg.keyPath}`);
+  } else if (!cryptoEngine.hasKey(cfg.keyPath)) {
     spinner = ora('生成 AES-256-GCM 主密钥 …').start();
     cryptoEngine.generateKey(cfg.keyPath);
     spinner.succeed(`主密钥已生成: ${cfg.keyPath}`);
@@ -49,8 +59,8 @@ export async function cmdInit({ repo, force = false }: InitOptions): Promise<Wan
   }
 
   logger.ok('\n忘川初始化完成！');
-  logger.step('下一步: wangchuan pull  (同步远端配置到本地)');
-  logger.step('        wangchuan push  (推送本地配置到远端)');
+  logger.step('下一步: wangchuan pull  (同步远端记忆到本地)');
+  logger.step('        wangchuan push  (推送本地记忆到远端)');
 
   return cfg;
 }
