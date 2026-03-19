@@ -35,14 +35,14 @@ const DEFAULT_PROFILES: AgentProfiles = {
     ],
   },
   claude: {
-    enabled: false,
+    enabled: true,
     workspacePath: path.join(os.homedir(), '.claude'),
     syncFiles: [
       { src: '.claude.json', encrypt: true },
     ],
   },
   gemini: {
-    enabled: false,
+    enabled: true,
     workspacePath: path.join(os.homedir(), '.gemini'),
     syncFiles: [
       { src: 'settings.internal.json', encrypt: true  },
