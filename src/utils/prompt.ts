@@ -1,28 +1,27 @@
 /**
- * prompt.ts — 交互式用户确认工具
+ * prompt.ts — Interactive user confirmation / 交互式用户确认工具
  *
- * 提供单文件冲突提示和批量冲突策略选择，
- * 支持 TTY 交互和 CI 非交互模式（环境变量 WANGCHUAN_NONINTERACTIVE=1）。
+ * Provides single-file conflict prompt and batch conflict strategy,
+ * supports TTY interactive and CI non-interactive mode (WANGCHUAN_NONINTERACTIVE=1).
  */
 
 import readline from 'readline';
 
-/** pull 时每个冲突文件的处理决策 */
+/** Conflict resolution decision for each file during pull */
 export type ConflictDecision =
-  | 'overwrite'     // 覆盖本地
-  | 'skip'          // 跳过（保留本地）
-  | 'overwrite_all' // 覆盖全部后续冲突
-  | 'skip_all';     // 跳过全部后续冲突
+  | 'overwrite'     // Overwrite local / 覆盖本地
+  | 'skip'          // Skip (keep local) / 跳过
+  | 'overwrite_all' // Overwrite all subsequent / 覆盖全部
+  | 'skip_all';     // Skip all subsequent / 跳过全部
 
-/** 非交互模式的默认策略（CI 环境） */
+/** Default strategy for non-interactive mode (CI) */
 const NON_INTERACTIVE_DEFAULT: ConflictDecision = 'skip';
 
 /**
- * 询问单个冲突文件的处理方式。
- * 返回 overwrite_all / skip_all 时，调用方应将该策略用于后续所有冲突。
+ * Ask how to handle a single conflicting file.
+ * When overwrite_all / skip_all is returned, caller should apply to all subsequent conflicts.
  */
 export async function askConflict(repoRel: string): Promise<ConflictDecision> {
-  // 非交互模式（CI / pipe）
   if (process.env['WANGCHUAN_NONINTERACTIVE'] === '1' || !process.stdin.isTTY) {
     return NON_INTERACTIVE_DEFAULT;
   }
@@ -31,10 +30,10 @@ export async function askConflict(repoRel: string): Promise<ConflictDecision> {
 
   return new Promise(resolve => {
     process.stdout.write(
-      `\n  ⚡ 冲突: ${repoRel}\n` +
-      `     本地文件已存在且内容不同。\n` +
-      `     [o] 覆盖本地  [s] 跳过(保留本地)  [A] 全部覆盖  [S] 全部跳过\n` +
-      `  请选择 [o/s/A/S]: `
+      `\n  ⚡ Conflict / 冲突: ${repoRel}\n` +
+      `     Local file exists and differs / 本地文件已存在且内容不同。\n` +
+      `     [o] Overwrite/覆盖  [s] Skip/跳过  [A] Overwrite all/全部覆盖  [S] Skip all/全部跳过\n` +
+      `  Choose / 请选择 [o/s/A/S]: `
     );
 
     rl.once('line', (ans: string) => {

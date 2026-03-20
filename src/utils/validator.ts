@@ -1,8 +1,8 @@
 /**
- * validator.ts — 通用校验函数
+ * validator.ts — Common validation functions / 通用校验函数
  *
- * requireInit 使用 TypeScript asserts 类型谓词，调用后编译器收窄 cfg 为非 null。
- * 必须声明显式接口（TS2775：assertion 函数不能通过推断的 const 对象调用）。
+ * requireInit uses TypeScript asserts predicate to narrow cfg to non-null.
+ * Must declare explicit interface (TS2775: assertion functions cannot be called through inferred const objects).
  */
 
 import fs from 'fs';
@@ -16,7 +16,6 @@ const SENSITIVE_PATTERNS: readonly RegExp[] = [
   /secret\s*[:=]\s*["']?\S+/i,
 ];
 
-/** 显式接口确保 asserts 签名可被编译器识别 */
 interface Validator {
   pathExists(p: string): boolean;
   isGitUrl(url: string): boolean;
@@ -40,7 +39,7 @@ export const validator: Validator = {
 
   requireInit(cfg: WangchuanConfig | null): asserts cfg is WangchuanConfig {
     if (cfg === null) {
-      throw new Error('忘川尚未初始化，请先运行: wangchuan init --repo <仓库地址>');
+      throw new Error('Wangchuan not initialized, run: wangchuan init --repo <url> / 忘川尚未初始化');
     }
   },
 };

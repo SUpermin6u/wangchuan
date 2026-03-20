@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# wangchuan-skill.sh — OpenClaw Skill 脚本
+# wangchuan-skill.sh — OpenClaw Skill script / OpenClaw Skill 脚本
 #
-# 用法（由 OpenClaw / Claude 调用）：
+# Usage (invoked by OpenClaw / Claude) / 用法（由 OpenClaw / Claude 调用）：
 #   wangchuan-skill.sh pull   [--agent openclaw|claude|gemini]
 #   wangchuan-skill.sh push   [--agent <name>] [--message "<msg>"]
 #   wangchuan-skill.sh status [--agent <name>]
 #   wangchuan-skill.sh diff   [--agent <name>]
 #   wangchuan-skill.sh list   [--agent <name>]
+#   wangchuan-skill.sh dump   [--agent <name>]
 #   wangchuan-skill.sh init   --repo <url>
 #
-# 环境变量：
-#   WANGCHUAN_DIR        可覆盖 wangchuan 安装路径（默认 ~/wangchuan）
-#   WANGCHUAN_LOG_LEVEL  日志级别 debug|info|warn|error
+# Environment variables / 环境变量：
+#   WANGCHUAN_DIR        Override wangchuan install path (default ~/wangchuan) / 可覆盖安装路径（默认 ~/wangchuan）
+#   WANGCHUAN_LOG_LEVEL  Log level: debug|info|warn|error / 日志级别
 
 set -euo pipefail
 
@@ -20,35 +21,35 @@ WC_DIR="${WANGCHUAN_DIR:-"$(dirname "$SCRIPT_DIR")"}"
 BIN="$WC_DIR/dist/bin/wangchuan.js"
 
 if [[ ! -f "$BIN" ]]; then
-  echo "✖ 找不到 wangchuan 编译产物: $BIN" >&2
-  echo "  请先在 $WC_DIR 目录执行: npm run build" >&2
+  echo "✖ Cannot find wangchuan binary / 找不到编译产物: $BIN" >&2
+  echo "  Run 'npm run build' in $WC_DIR first / 请先执行 npm run build" >&2
   exit 1
 fi
 
 if ! command -v node &>/dev/null; then
-  echo "✖ 未找到 Node.js，请先安装 (https://nodejs.org)" >&2
+  echo "✖ Node.js not found, please install (https://nodejs.org) / 未找到 Node.js" >&2
   exit 1
 fi
 
 NODE_MAJOR="$(node --version | sed 's/v//' | cut -d. -f1)"
 if (( NODE_MAJOR < 18 )); then
-  echo "✖ Node.js 版本过低，需要 >= 18（当前: $(node --version)）" >&2
+  echo "✖ Node.js version too low, requires >= 18 (current: $(node --version)) / 版本过低" >&2
   exit 1
 fi
 
 CMD="${1:-status}"
-shift || true   # 移除第一个参数，剩余参数透传
+shift || true   # Remove first arg, pass remaining / 移除第一个参数，剩余透传
 
 case "$CMD" in
-  pull|push|status|diff|list)
+  pull|push|status|diff|list|dump)
     node "$BIN" "$CMD" "$@"
     ;;
   init)
     node "$BIN" init "$@"
     ;;
   *)
-    echo "✖ 未知命令: $CMD" >&2
-    echo "  可用命令: pull | push | status | diff | list | init" >&2
+    echo "✖ Unknown command / 未知命令: $CMD" >&2
+    echo "  Available / 可用: pull | push | status | diff | list | dump | init" >&2
     exit 1
     ;;
 esac

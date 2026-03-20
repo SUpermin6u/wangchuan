@@ -63,13 +63,13 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
 
   // ── 检测上次中断的迁移 ─────────────────────────────────────
   if (fs.existsSync(lockFile)) {
-    logger.warn('检测到上次迁移未完成，正在从备份回滚 …');
+    logger.warn('Incomplete migration detected, rolling back from backup … / 检测到上次迁移未完成，正在回滚 …');
     if (fs.existsSync(backupDir)) {
       // 回滚：删除当前 repo，从备份恢复
       rmDirRecursive(repoPath);
       copyDirRecursive(backupDir, repoPath);
       fs.unlinkSync(lockFile);
-      logger.ok('已从备份回滚，重新开始迁移');
+      logger.ok('Rolled back from backup, restarting migration / 已从备份回滚，重新开始迁移');
     } else {
       // 没有备份但有 lock，说明备份阶段就中断了，repo 应该还是原样
       fs.unlinkSync(lockFile);
@@ -78,7 +78,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
 
   // ── 1. 完整备份旧 repo ─────────────────────────────────────
   if (!fs.existsSync(backupDir)) {
-    logger.info('备份旧 repo 结构 …');
+    logger.info('Backing up old repo structure … / 备份旧 repo 结构 …');
     copyDirRecursive(repoPath, backupDir);
   }
 
@@ -122,7 +122,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
       const abs = path.join(repoPath, rel);
       if (fs.existsSync(abs)) {
         fs.unlinkSync(abs);
-        logger.debug(`  repo 中移除: ${rel}`);
+        logger.debug(`  repo removed / repo 中移除: ${rel}`);
       }
     }
 
@@ -132,7 +132,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
     ];
     for (const check of checks) {
       if (!fs.existsSync(check)) {
-        throw new Error(`迁移校验失败: ${check} 不存在`);
+        throw new Error(`Migration validation failed / 迁移校验失败: ${check} not found`);
       }
     }
 
@@ -141,16 +141,16 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
 
   } catch (err) {
     // ── 迁移失败，自动回滚 ───────────────────────────────────
-    logger.error(`迁移失败: ${(err as Error).message}`);
-    logger.info('正在从备份回滚 …');
+    logger.error(`Migration failed / 迁移失败: ${(err as Error).message}`);
+    logger.info('Rolling back from backup … / 正在从备份回滚 …');
     try {
       rmDirRecursive(repoPath);
       copyDirRecursive(backupDir, repoPath);
       if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
-      logger.ok('已回滚到迁移前状态');
+      logger.ok('Rolled back to pre-migration state / 已回滚到迁移前状态');
     } catch (rollbackErr) {
-      logger.error(`回滚失败: ${(rollbackErr as Error).message}`);
-      logger.error(`请手动从 ${backupDir} 恢复`);
+      logger.error(`Rollback failed / 回滚失败: ${(rollbackErr as Error).message}`);
+      logger.error(`Please manually restore from ${backupDir} / 请手动从 ${backupDir} 恢复`);
     }
     throw err;
   }
@@ -180,7 +180,7 @@ export function ensureMigrated(cfg: WangchuanConfig): WangchuanConfig {
   const currentVersion = cfg.version ?? 1;
   if (currentVersion >= CONFIG_VERSION) return cfg;
 
-  logger.info(`检测到 v${currentVersion} 配置，正在迁移到 v${CONFIG_VERSION} …`);
+  logger.info(`Detected v${currentVersion} config, migrating to v${CONFIG_VERSION} … / 检测到 v${currentVersion} 配置，正在迁移 …`);
 
   let migrated = cfg;
   if (currentVersion < 2) {
@@ -188,7 +188,7 @@ export function ensureMigrated(cfg: WangchuanConfig): WangchuanConfig {
   }
 
   config.save(migrated);
-  logger.ok('配置迁移完成');
-  logger.info(`旧数据已备份到 ${config.paths.dir}/backup-v1/`);
+  logger.ok('Config migration complete / 配置迁移完成');
+  logger.info(`Old data backed up to ${config.paths.dir}/backup-v1/ / 旧数据已备份`);
   return migrated;
 }

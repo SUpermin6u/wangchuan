@@ -1,8 +1,8 @@
 /**
- * diff.ts — wangchuan diff 命令
+ * diff.ts — wangchuan diff command / diff 命令
  *
- * 对每个有变化的文件展示行级 unified diff。
- * 加密文件先解密后再比较内容，明文文件直接比较。
+ * Shows line-level unified diff for each changed file.
+ * Encrypted files are decrypted before comparison.
  */
 
 import fs from 'fs';
@@ -18,7 +18,7 @@ import type { DiffCommandOptions } from '../types.js';
 import chalk from 'chalk';
 
 export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void> {
-  logger.banner('忘川 · 文件差异');
+  logger.banner('Wangchuan · Diff / 忘川 · 文件差异');
 
   let cfg = config.load();
   validator.requireInit(cfg);
@@ -28,7 +28,7 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
   const keyPath  = syncEngine.expandHome(cfg.keyPath);
   const entries  = syncEngine.buildFileEntries(cfg, undefined, agent);
 
-  if (agent) logger.info(`过滤智能体: ${chalk.cyan(agent)}\n`);
+  if (agent) logger.info(`Filter agent / 过滤智能体: ${chalk.cyan(agent)}\n`);
 
   let totalChanged = 0;
 
@@ -37,9 +37,9 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
     const repoAbs    = path.join(repoPath, entry.repoRel);
     const repoExists = fs.existsSync(repoAbs);
 
-    // ── 仅一侧存在 ──────────────────────────────────────────
+    // ── Only one side exists / 仅一侧存在 ────────────────────────
     if (srcExists && !repoExists) {
-      console.log(chalk.bold.green(`+++ ${entry.repoRel}`) + chalk.gray('  (新增，仓库中不存在)'));
+      console.log(chalk.bold.green(`+++ ${entry.repoRel}`) + chalk.gray('  (new, not in repo / 新增，仓库中不存在)'));
       const lines = fs.readFileSync(entry.srcAbs, 'utf-8').split('\n');
       lines.forEach(l => console.log(chalk.green(`+ ${l}`)));
       console.log();
@@ -47,14 +47,14 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
       continue;
     }
     if (!srcExists && repoExists) {
-      console.log(chalk.bold.red(`--- ${entry.repoRel}`) + chalk.gray('  (本地缺失)'));
+      console.log(chalk.bold.red(`--- ${entry.repoRel}`) + chalk.gray('  (missing locally / 本地缺失)'));
       console.log();
       totalChanged++;
       continue;
     }
     if (!srcExists && !repoExists) continue;
 
-    // ── 两侧均存在，读取内容 ──────────────────────────────────
+    // ── Both sides exist, read content / 两侧均存在 ──────────────
     const localText = fs.readFileSync(entry.srcAbs, 'utf-8');
     let   repoText: string;
 
@@ -65,7 +65,7 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
           keyPath,
         );
       } catch {
-        console.log(chalk.yellow(`~ ${entry.repoRel}`) + chalk.gray('  [加密文件，无法解密比较]'));
+        console.log(chalk.yellow(`~ ${entry.repoRel}`) + chalk.gray('  [encrypted, cannot decrypt / 加密文件，无法解密比较]'));
         console.log();
         totalChanged++;
         continue;
@@ -75,12 +75,12 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
     }
 
     const diffLines = diffText(repoText, localText);
-    if (diffLines.length === 0) continue;  // 内容相同，跳过
+    if (diffLines.length === 0) continue;
 
     const encLabel = entry.encrypt ? chalk.gray(' [enc]') : '';
     console.log(chalk.bold(`~~~ ${entry.repoRel}`) + encLabel);
-    console.log(chalk.gray('    --- 仓库版本'));
-    console.log(chalk.gray('    +++ 本地版本'));
+    console.log(chalk.gray('    --- repo version / 仓库版本'));
+    console.log(chalk.gray('    +++ local version / 本地版本'));
     console.log();
 
     for (const line of diffLines) {
@@ -99,8 +99,8 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
   }
 
   if (totalChanged === 0) {
-    logger.ok('所有文件与仓库一致，无差异');
+    logger.ok('All files match repo, no diff / 所有文件与仓库一致，无差异');
   } else {
-    logger.info(`共 ${totalChanged} 个文件有差异`);
+    logger.info(`${totalChanged} files differ / ${totalChanged} 个文件有差异`);
   }
 }
