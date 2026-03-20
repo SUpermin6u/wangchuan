@@ -1,43 +1,68 @@
 {
-  "_comment": "忘川配置示例 — 复制为 ~/.wangchuan/config.json 并修改",
-  "repo": "git@github.com:SUpermin6u/wangchuan.git",
+  "_comment": "忘川配置示例 v2 — 复制为 ~/.wangchuan/config.json 并修改",
+  "repo": "git@github.com:you/your-brain.git",
   "branch": "main",
   "localRepoPath": "~/.wangchuan/repo",
   "keyPath": "~/.wangchuan/master.key",
   "hostname": "",
+  "version": 2,
   "profiles": {
     "default": {
       "openclaw": {
         "enabled": true,
         "workspacePath": "~/.openclaw/workspace",
         "syncFiles": [
-          { "src": "MEMORY.md",              "encrypt": true  },
-          { "src": "AGENTS.md",              "encrypt": false },
-          { "src": "SOUL.md",                "encrypt": false },
-          { "src": "USER.md",                "encrypt": true  },
-          { "src": "TOOLS.md",               "encrypt": false },
-          { "src": "config/mcporter.json",   "encrypt": true  }
-        ],
-        "syncDirs": [
-          { "src": "skills/", "encrypt": false }
+          { "src": "MEMORY.md", "encrypt": true  },
+          { "src": "AGENTS.md", "encrypt": false },
+          { "src": "SOUL.md",   "encrypt": false }
         ]
       },
       "claude": {
-        "enabled": false,
-        "workspacePath": "~/.claude",
+        "enabled": true,
+        "workspacePath": "~/.claude-internal",
         "syncFiles": [
-          { "src": ".claude.json", "encrypt": true }
+          { "src": "CLAUDE.md",     "encrypt": false },
+          { "src": "settings.json", "encrypt": true  }
+        ],
+        "jsonFields": [
+          {
+            "src": ".claude.json",
+            "fields": ["mcpServers"],
+            "repoName": "mcpServers.json",
+            "encrypt": true
+          }
         ]
       },
       "gemini": {
-        "enabled": false,
+        "enabled": true,
         "workspacePath": "~/.gemini",
-        "syncFiles": [
-          { "src": "settings.internal.json", "encrypt": true  },
-          { "src": "projects.json",          "encrypt": false },
-          { "src": "trustedFolders.json",    "encrypt": false }
+        "syncFiles": [],
+        "jsonFields": [
+          {
+            "src": "settings.internal.json",
+            "fields": ["security", "model"],
+            "repoName": "settings-sync.json",
+            "encrypt": true
+          }
         ]
       }
     }
+  },
+  "shared": {
+    "skills": {
+      "sources": [
+        { "agent": "claude",   "dir": "skills/" },
+        { "agent": "openclaw", "dir": "skills/" }
+      ]
+    },
+    "mcp": {
+      "sources": [
+        { "agent": "claude",   "src": ".claude.json",         "field": "mcpServers" },
+        { "agent": "openclaw", "src": "config/mcporter.json", "field": "mcpServers" }
+      ]
+    },
+    "syncFiles": [
+      { "src": "memory/SHARED.md", "workspacePath": "~/.openclaw/workspace", "encrypt": true }
+    ]
   }
 }

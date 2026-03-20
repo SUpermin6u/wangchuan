@@ -27,18 +27,21 @@
 - `~/.openclaw/workspace/MEMORY.md` - 永久记忆（加密）
 - `~/.openclaw/workspace/AGENTS.md` - Agent 行为准则
 - `~/.openclaw/workspace/SOUL.md` - Agent 人格设定
-- `~/.openclaw/workspace/USER.md` - 用户信息（加密）
-- `~/.openclaw/workspace/TOOLS.md` - 工具配置
-- `~/.openclaw/workspace/skills/` - 自定义技能目录
-- `~/.openclaw/workspace/config/mcporter.json` - MCP 配置（加密）
 
-#### Claude 配置（可选）
-- `~/.claude/.claude.json` - Claude 全局配置
+#### Claude 配置
+- `~/.claude-internal/CLAUDE.md` - 全局指令
+- `~/.claude-internal/settings.json` - 权限/插件/模型（加密）
+- `~/.claude-internal/.claude.json` → `mcpServers` 字段 - JSON 字段级提取（加密）
 
-#### Gemini Internal 配置（可选）
-- `~/.gemini/settings.internal.json` - Gemini 设置
-- `~/.gemini/projects.json` - 项目映射
-- `~/.gemini/trustedFolders.json` - 信任目录
+#### Gemini 配置
+- `~/.gemini/settings.internal.json` → `security`, `model` 字段 - JSON 字段级提取（加密）
+
+#### Shared 共享层
+- `shared/skills/` - 从 Claude 和 OpenClaw 的 skills 目录汇聚，自动分发
+- `shared/mcp/` - 各 agent 的 MCP 配置提取，跨 agent 共享
+- `shared/memory/SHARED.md` - 跨 agent 共享记忆（加密）
+
+> **v1→v2 变更**：移除了不再同步的文件（USER.md、TOOLS.md、config/mcporter.json 整文件、.claude.json 整文件、projects.json、trustedFolders.json）。Claude/Gemini 改为 JSON 字段级提取，只同步有用字段。
 
 ## 技术要求
 
@@ -46,30 +49,43 @@
 
 ```
 wangchuan/
-├── README.md                    # 项目说明
-├── package.json                 # Node.js 项目配置
-├── .gitignore                   # Git 忽略规则
+├── README.md
+├── REQUIREMENTS.md
+├── package.json
+├── .gitignore
 ├── bin/
-│   └── wangchuan.js            # CLI 入口
+│   └── wangchuan.ts            CLI 入口
 ├── src/
 │   ├── core/
-│   │   ├── sync.js             # 同步引擎
-│   │   ├── crypto.js           # 加密模块
-│   │   ├── git.js              # Git 操作
-│   │   └── config.js           # 配置管理
+│   │   ├── sync.ts             同步引擎（分发、清理、三向操作）
+│   │   ├── json-field.ts       JSON 字段级提取与合并
+│   │   ├── crypto.ts           AES-256-GCM 加解密
+│   │   ├── git.ts              simple-git 封装
+│   │   ├── config.ts           配置管理（v2）
+│   │   └── migrate.ts          v1→v2 迁移
 │   ├── commands/
-│   │   ├── init.js             # 初始化命令
-│   │   ├── pull.js             # 拉取命令
-│   │   ├── push.js             # 推送命令
-│   │   └── status.js           # 状态命令
-│   └── utils/
-│       ├── logger.js           # 日志工具
-│       └── validator.js        # 验证工具
+│   │   ├── init.ts             初始化命令
+│   │   ├── pull.ts             拉取命令
+│   │   ├── push.ts             推送命令
+│   │   ├── status.ts           状态命令
+│   │   ├── diff.ts             差异命令
+│   │   ├── list.ts             清单命令
+│   │   └── dump.ts             明文快照命令
+│   ├── utils/
+│   │   ├── logger.ts           日志工具
+│   │   ├── validator.ts        验证工具
+│   │   ├── linediff.ts         行级差异
+│   │   └── prompt.ts           交互式提示
+│   └── types.ts                全局类型定义
 ├── skill/
-│   ├── SKILL.md                # OpenClaw Skill 文档
-│   └── wangchuan-skill.sh      # Skill 脚本
+│   ├── SKILL.md                OpenClaw Skill 文档
+│   └── wangchuan-skill.sh      Skill 脚本
+├── test/
+│   ├── crypto.test.ts          加密测试
+│   ├── json-field.test.ts      JSON 字段测试
+│   └── sync.test.ts            同步引擎测试
 └── .wangchuan/
-    └── config.example.json     # 配置示例
+    └── config.example.json     配置示例（v2）
 ```
 
 ### 加密方案
@@ -144,8 +160,7 @@ wangchuan diff
 
 ## 后续规划（Phase 2）
 
-- 智能冲突解决
-- 版本历史管理
-- 多环境 Profile 切换
-- 定时自动同步
+- 版本历史管理（配置回滚到指定时间点）
+- 多环境 Profile 切换（dev/staging/prod 不同配置集）
+- 定时自动同步（cron / watch 模式）
 - Web UI 管理界面

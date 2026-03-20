@@ -7,11 +7,12 @@
 
 import fs from 'fs';
 import path from 'path';
-import { config }       from '../core/config.js';
-import { syncEngine }   from '../core/sync.js';
-import { cryptoEngine } from '../core/crypto.js';
-import { validator }    from '../utils/validator.js';
-import { logger }       from '../utils/logger.js';
+import { config }          from '../core/config.js';
+import { ensureMigrated }  from '../core/migrate.js';
+import { syncEngine }      from '../core/sync.js';
+import { cryptoEngine }    from '../core/crypto.js';
+import { validator }       from '../utils/validator.js';
+import { logger }          from '../utils/logger.js';
 import { diffText }     from '../utils/linediff.js';
 import type { DiffCommandOptions } from '../types.js';
 import chalk from 'chalk';
@@ -19,8 +20,9 @@ import chalk from 'chalk';
 export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void> {
   logger.banner('忘川 · 文件差异');
 
-  const cfg = config.load();
+  let cfg = config.load();
   validator.requireInit(cfg);
+  cfg = ensureMigrated(cfg);
 
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   const keyPath  = syncEngine.expandHome(cfg.keyPath);

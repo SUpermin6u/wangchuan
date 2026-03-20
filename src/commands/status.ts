@@ -3,19 +3,21 @@
  */
 
 import fs from 'fs';
-import { config }     from '../core/config.js';
-import { gitEngine }  from '../core/git.js';
-import { syncEngine } from '../core/sync.js';
-import { validator }  from '../utils/validator.js';
-import { logger }     from '../utils/logger.js';
+import { config }          from '../core/config.js';
+import { ensureMigrated }  from '../core/migrate.js';
+import { gitEngine }       from '../core/git.js';
+import { syncEngine }      from '../core/sync.js';
+import { validator }       from '../utils/validator.js';
+import { logger }          from '../utils/logger.js';
 import type { StatusOptions } from '../types.js';
 import chalk from 'chalk';
 
 export async function cmdStatus({ agent }: StatusOptions = {}): Promise<void> {
   logger.banner('忘川 · 同步状态');
 
-  const cfg = config.load();
+  let cfg = config.load();
   validator.requireInit(cfg);
+  cfg = ensureMigrated(cfg);
 
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
 
@@ -91,6 +93,7 @@ export async function cmdStatus({ agent }: StatusOptions = {}): Promise<void> {
   for (const e of entries) {
     const mark     = fs.existsSync(e.srcAbs) ? chalk.green('✔') : chalk.red('✖');
     const encLabel = e.encrypt ? chalk.gray('[enc]') : '';
-    console.log(`    ${mark} ${e.repoRel} ${encLabel}`);
+    const jfLabel  = e.jsonExtract ? chalk.blue('[字段]') : '';
+    console.log(`    ${mark} ${e.repoRel} ${encLabel}${jfLabel}`);
   }
 }

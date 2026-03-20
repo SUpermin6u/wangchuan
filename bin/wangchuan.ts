@@ -13,6 +13,7 @@ import { cmdPush }   from '../src/commands/push.js';
 import { cmdStatus } from '../src/commands/status.js';
 import { cmdDiff }   from '../src/commands/diff.js';
 import { cmdList }   from '../src/commands/list.js';
+import { cmdDump }   from '../src/commands/dump.js';
 import { logger }    from '../src/utils/logger.js';
 import type { AgentName } from '../src/types.js';
 
@@ -88,6 +89,15 @@ program
   .option('-a, --agent <name>', '只列出指定智能体 (openclaw|claude|gemini)', parseAgent)
   .action(async (opts: { agent?: AgentName }) => {
     await run(() => cmdList(opts));
+  });
+
+// ── dump ────────────────────────────────────────────────────────
+program
+  .command('dump')
+  .description('生成明文快照到临时目录，方便检查同步内容')
+  .option('-a, --agent <name>', '只导出指定智能体 (openclaw|claude|gemini)', parseAgent)
+  .action(async (opts: { agent?: AgentName }) => {
+    await run(() => cmdDump(opts));
   });
 
 // ── 错误兜底 ────────────────────────────────────────────────────

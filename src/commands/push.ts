@@ -3,11 +3,12 @@
  */
 
 import os from 'os';
-import { config }     from '../core/config.js';
-import { gitEngine }  from '../core/git.js';
-import { syncEngine } from '../core/sync.js';
-import { validator }  from '../utils/validator.js';
-import { logger }     from '../utils/logger.js';
+import { config }          from '../core/config.js';
+import { ensureMigrated }  from '../core/migrate.js';
+import { gitEngine }       from '../core/git.js';
+import { syncEngine }      from '../core/sync.js';
+import { validator }       from '../utils/validator.js';
+import { logger }          from '../utils/logger.js';
 import type { PushOptions, CommitResult, StageResult } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
@@ -19,8 +20,9 @@ export interface PushCommandResult extends CommitResult {
 export async function cmdPush({ message, agent }: PushOptions = {}): Promise<PushCommandResult> {
   logger.banner('忘川 · 推送配置');
 
-  const cfg = config.load();
+  let cfg = config.load();
   validator.requireInit(cfg);
+  cfg = ensureMigrated(cfg);
 
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   const hostname = cfg.hostname || os.hostname();
@@ -42,7 +44,7 @@ export async function cmdPush({ message, agent }: PushOptions = {}): Promise<Pus
     throw new Error(`准备文件失败: ${(err as Error).message}`);
   }
 
-  if (stageResult.synced.length === 0) {
+  if (stageResult.synced.length === 0 && stageResult.deleted.length === 0) {
     logger.info('没有找到任何可同步的文件，请检查工作区路径是否正确');
     return { committed: false, pushed: false };
   }
@@ -72,7 +74,13 @@ export async function cmdPush({ message, agent }: PushOptions = {}): Promise<Pus
       const label = stageResult.encrypted.includes(f) ? chalk.gray('[已加密]') : '';
       logger.ok(`  ${chalk.green(f)} ${label}`);
     }
-    logger.ok(`\n推送完成：${stageResult.synced.length} 个文件，commit: ${pushResult.sha ?? '-'}`);
+    for (const f of stageResult.deleted) {
+      logger.info(`  ${chalk.red('✕ ' + f)} ${chalk.gray('[已清理]')}`);
+    }
+    const delTag = stageResult.deleted.length > 0
+      ? `，清理 ${stageResult.deleted.length} 个过期文件`
+      : '';
+    logger.ok(`\n推送完成：${stageResult.synced.length} 个文件${delTag}，commit: ${pushResult.sha ?? '-'}`);
   }
 
   return { ...pushResult, stageResult };

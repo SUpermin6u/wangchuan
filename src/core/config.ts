@@ -10,46 +10,79 @@ import os   from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
-import type { WangchuanConfig, AgentProfiles } from '../types.js';
+import type { WangchuanConfig, AgentProfiles, SharedConfig } from '../types.js';
 
 const WANGCHUAN_DIR = path.join(os.homedir(), '.wangchuan');
 const CONFIG_PATH   = path.join(WANGCHUAN_DIR, 'config.json');
 const KEY_PATH      = path.join(WANGCHUAN_DIR, 'master.key');
 const EXAMPLE_PATH  = fileURLToPath(new URL('../../.wangchuan/config.example.json', import.meta.url));
 
-/** 默认配置骨架（不含敏感值） */
+export const CONFIG_VERSION = 2;
+
+/** 默认配置骨架 v2 — 细粒度同步 */
 const DEFAULT_PROFILES: AgentProfiles = {
   openclaw: {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.openclaw', 'workspace'),
     syncFiles: [
-      { src: 'MEMORY.md',            encrypt: true  },
-      { src: 'AGENTS.md',            encrypt: false },
-      { src: 'SOUL.md',              encrypt: false },
-      { src: 'USER.md',              encrypt: true  },
-      { src: 'TOOLS.md',             encrypt: false },
-      { src: 'config/mcporter.json', encrypt: true  },
+      { src: 'MEMORY.md', encrypt: true  },
+      { src: 'AGENTS.md', encrypt: false },
+      { src: 'SOUL.md',   encrypt: false },
     ],
-    syncDirs: [
-      { src: 'skills/', encrypt: false },
-    ],
+    // skills/ 移至 shared tier
+    // USER.md（空模板）、TOOLS.md（环境特有）、config/mcporter.json（移至 shared MCP）已移除
   },
   claude: {
     enabled: true,
-    workspacePath: path.join(os.homedir(), '.claude'),
+    workspacePath: path.join(os.homedir(), '.claude-internal'),
     syncFiles: [
-      { src: '.claude.json', encrypt: true },
+      { src: 'CLAUDE.md',     encrypt: false },
+      { src: 'settings.json', encrypt: true  },
+    ],
+    // .claude.json 整文件不再同步，改用 jsonFields 提取 mcpServers
+    jsonFields: [
+      {
+        src:      '.claude.json',
+        fields:   ['mcpServers'],
+        repoName: 'mcpServers.json',
+        encrypt:  true,
+      },
     ],
   },
   gemini: {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.gemini'),
-    syncFiles: [
-      { src: 'settings.internal.json', encrypt: true  },
-      { src: 'projects.json',          encrypt: false },
-      { src: 'trustedFolders.json',    encrypt: false },
+    syncFiles: [],
+    // projects.json 和 trustedFolders.json 是环境特有路径，不再同步
+    // settings.internal.json 改用 jsonFields 仅提取有用字段
+    jsonFields: [
+      {
+        src:      'settings.internal.json',
+        fields:   ['security', 'model'],
+        repoName: 'settings-sync.json',
+        encrypt:  true,
+      },
     ],
   },
+};
+
+/** 共享层默认配置 */
+const DEFAULT_SHARED: SharedConfig = {
+  skills: {
+    sources: [
+      { agent: 'claude',   dir: 'skills/' },
+      { agent: 'openclaw', dir: 'skills/' },
+    ],
+  },
+  mcp: {
+    sources: [
+      { agent: 'claude',   src: '.claude.json',          field: 'mcpServers' },
+      { agent: 'openclaw', src: 'config/mcporter.json',  field: 'mcpServers' },
+    ],
+  },
+  syncFiles: [
+    { src: 'memory/SHARED.md', workspacePath: '~/.openclaw/workspace', encrypt: true },
+  ],
 };
 
 export const config = {
@@ -79,9 +112,9 @@ export const config = {
         encoding: 'utf-8' as BufferEncoding
       });
       const match = result.match(/ref: refs\/heads\/(\S+)\s+HEAD/);
-      return match?.[1] ?? 'main';  // 默认回退到 main
+      return match?.[1] ?? 'main';
     } catch {
-      return 'main';  // 探测失败时用 main
+      return 'main';
     }
   },
 
@@ -95,7 +128,9 @@ export const config = {
       localRepoPath: path.join(WANGCHUAN_DIR, 'repo'),
       keyPath:       KEY_PATH,
       hostname:      os.hostname(),
-      profiles: { default: DEFAULT_PROFILES },
+      version:       CONFIG_VERSION,
+      profiles:      { default: DEFAULT_PROFILES },
+      shared:        DEFAULT_SHARED,
     };
     this.save(cfg);
     return cfg;
@@ -104,6 +139,13 @@ export const config = {
   /** 浅合并两个配置（override 优先） */
   merge(base: WangchuanConfig, override: Partial<WangchuanConfig>): WangchuanConfig {
     return { ...base, ...override };
+  },
+
+  /** 默认配置（迁移时使用） */
+  defaults: {
+    profiles: DEFAULT_PROFILES,
+    shared:   DEFAULT_SHARED,
+    version:  CONFIG_VERSION,
   },
 
   /** 常用路径常量 */

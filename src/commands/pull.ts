@@ -2,11 +2,12 @@
  * pull.ts — wangchuan pull 命令
  */
 
-import { config }     from '../core/config.js';
-import { gitEngine }  from '../core/git.js';
-import { syncEngine } from '../core/sync.js';
-import { validator }  from '../utils/validator.js';
-import { logger }     from '../utils/logger.js';
+import { config }          from '../core/config.js';
+import { ensureMigrated }  from '../core/migrate.js';
+import { gitEngine }       from '../core/git.js';
+import { syncEngine }      from '../core/sync.js';
+import { validator }       from '../utils/validator.js';
+import { logger }          from '../utils/logger.js';
 import type { PullOptions, RestoreResult } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
@@ -14,8 +15,9 @@ import ora   from 'ora';
 export async function cmdPull({ agent }: PullOptions = {}): Promise<RestoreResult> {
   logger.banner('忘川 · 拉取配置');
 
-  const cfg = config.load();
+  let cfg = config.load();
   validator.requireInit(cfg);
+  cfg = ensureMigrated(cfg);
 
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   if (agent) logger.info(`过滤智能体: ${chalk.cyan(agent)}`);
@@ -53,6 +55,15 @@ export async function cmdPull({ agent }: PullOptions = {}): Promise<RestoreResul
 
   if (result.skipped.length > 0) {
     logger.info(`\n跳过（仓库中不存在）: ${result.skipped.length} 个文件`);
+  }
+
+  if (result.localOnly.length > 0) {
+    console.log();
+    logger.warn(`检测到 ${result.localOnly.length} 个本地文件在云端不存在：`);
+    for (const f of result.localOnly) {
+      logger.warn(`  ${chalk.yellow(f)}`);
+    }
+    logger.info('如需同步到云端，请执行 wangchuan push');
   }
 
   logger.ok(`\n共同步 ${result.synced.length} 个文件（含 ${result.decrypted.length} 个加密文件，${result.conflicts.length} 个冲突）`);
