@@ -23,9 +23,11 @@ AI memory sync system — encrypted backup and cross-environment migration for O
 | `diff`   | 逐文件显示本地与仓库的行级差异（自动解密）/ Show line-level diff per file (auto-decrypt) |
 | `list`   | 列出所有托管文件，显示本地/仓库存在状态 / List all managed files with local/repo presence |
 | `dump`   | 生成明文快照到临时目录，方便检查同步内容 / Generate plaintext snapshot to temp dir for inspection |
+| `lang`   | 切换 CLI 显示语言（zh/en）/ Switch CLI display language (zh/en) |
 
 - **AES-256-GCM** 加密：密钥本地存储，永不提交 Git / Encryption: keys stored locally, never committed to Git
 - 全局 `--agent` 过滤：只操作指定智能体 / Global `--agent` filter: operate on a single agent only
+- **多语言 / i18n**：`wangchuan lang zh|en` 切换 CLI 显示语言，支持环境变量 `WANGCHUAN_LANG` 覆盖 / `wangchuan lang zh|en` to switch CLI language, `WANGCHUAN_LANG` env override
 - **细粒度同步 / Fine-grained sync**：JSON 字段级提取（如 `.claude.json` 只同步 `mcpServers`） / JSON field-level extraction (e.g. only sync `mcpServers` from `.claude.json`)
 - **跨 agent 共享 / Cross-agent sharing**：Skills 和 MCP 配置自动在所有 agent 间分发 / Skills and MCP configs auto-distributed across all agents
 - **删除传播 / Delete propagation**：所有 agent 都删除的 skill/MCP → 自动从 repo 清理 / Items deleted from all agents are pruned from repo
@@ -84,7 +86,21 @@ wangchuan pull
 wangchuan status
 ```
 
-### 5. 只操作指定智能体 / Filter by agent
+### 5. 切换显示语言 / Switch display language
+
+```bash
+wangchuan lang         # 查看当前语言 / Show current language
+wangchuan lang en      # 切换到英文 / Switch to English
+wangchuan lang zh      # 切换到中文 / Switch to Chinese
+```
+
+也可通过环境变量覆盖 / Or override via env var:
+
+```bash
+WANGCHUAN_LANG=en wangchuan status
+```
+
+### 6. 只操作指定智能体 / Filter by agent
 
 ```bash
 wangchuan push --agent openclaw -m "更新 OpenClaw 记忆"
@@ -239,12 +255,14 @@ wangchuan/
 │   │   ├── status.ts         状态命令 / status command
 │   │   ├── diff.ts           差异命令 / diff command
 │   │   ├── list.ts           清单命令 / list command (shared/agents grouping)
-│   │   └── dump.ts           明文快照 / dump command (plaintext snapshot)
+│   │   ├── dump.ts           明文快照 / dump command (plaintext snapshot)
+│   │   └── lang.ts           语言切换 / lang command (i18n switching)
 │   ├── utils/
 │   │   ├── logger.ts         日志工具 / Logger
 │   │   ├── validator.ts      参数校验 / Validator
 │   │   ├── linediff.ts       LCS 行级差异算法 / LCS line diff
 │   │   └── prompt.ts         交互式冲突提示 / Interactive conflict prompt
+│   ├── i18n.ts               国际化消息字典 / i18n message dictionary & t() helper
 │   └── types.ts              全局类型定义 / Global type definitions
 ├── skill/
 │   ├── SKILL.md              OpenClaw Skill 说明 / OpenClaw Skill doc

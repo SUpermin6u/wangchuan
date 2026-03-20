@@ -13,6 +13,7 @@ wangchuan diff   [--agent openclaw|claude|gemini]     Show line-level file diff
 wangchuan pull   [--agent openclaw|claude|gemini]     Pull & restore from repo
 wangchuan push   [--agent <name>] [-m "<msg>"]        Encrypt & push to repo
 wangchuan dump   [--agent openclaw|claude|gemini]     Plaintext snapshot to temp dir
+wangchuan lang   [zh|en]                              Switch CLI display language
 wangchuan init   --repo <git-url>                     First-time init
 ```
 
@@ -33,6 +34,10 @@ wangchuan init   --repo <git-url>                     First-time init
 > Push claude configs only
 
 > Generate a plaintext dump so I can inspect
+
+> Switch to English output
+
+> Switch back to Chinese
 
 ## Output Guide
 

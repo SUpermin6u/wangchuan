@@ -27,6 +27,7 @@ Users need to configure AI agents (Claude, Gemini, OpenClaw) across different en
 5. **差异对比（diff）/ Diff**：逐文件行级差异比较 / Per-file line-level diff
 6. **清单列表（list）/ List**：列出所有托管文件 / List all managed files
 7. **明文快照（dump）/ Dump**：生成明文快照到临时目录 / Generate plaintext snapshot to temp dir
+8. **语言切换（lang）/ Language**：切换 CLI 显示语言 zh/en / Switch CLI display language zh/en
 
 ### 支持同步的配置 / Sync Scope
 
@@ -77,12 +78,14 @@ wangchuan/
 │   │   ├── status.ts           状态命令 / status command
 │   │   ├── diff.ts             差异命令 / diff command
 │   │   ├── list.ts             清单命令 / list command
-│   │   └── dump.ts             明文快照命令 / dump command
+│   │   ├── dump.ts             明文快照命令 / dump command
+│   │   └── lang.ts             语言切换命令 / lang command
 │   ├── utils/
 │   │   ├── logger.ts           日志工具 / Logger
 │   │   ├── validator.ts        验证工具 / Validator
 │   │   ├── linediff.ts         行级差异 / Line diff
 │   │   └── prompt.ts           交互式提示 / Interactive prompt
+│   ├── i18n.ts                国际化消息字典 / i18n message dictionary
 │   └── types.ts                全局类型定义 / Global type definitions
 ├── skill/
 │   ├── SKILL.md                OpenClaw Skill 文档 / OpenClaw Skill doc
@@ -129,6 +132,10 @@ wangchuan diff
 
 # 明文快照 / Plaintext snapshot
 wangchuan dump
+
+# 切换语言 / Switch language
+wangchuan lang zh
+wangchuan lang en
 ```
 
 ### OpenClaw Skill 封装 / OpenClaw Skill Wrapper
