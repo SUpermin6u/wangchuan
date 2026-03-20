@@ -30,8 +30,8 @@ export async function cmdPush({ message, agent }: PushOptions = {}): Promise<Pus
 
   const agentTag = agent ? `[${agent}]` : '';
   const msg = message
-    ? `sync: ${message} ${agentTag}[${hostname}]`.trimEnd()
-    : `sync: update configs ${agentTag}[${hostname}]`.trimEnd();
+    ? `sync: ${message} / update ${agentTag}[${hostname}]`.trimEnd()
+    : `sync: 更新配置 / update configs ${agentTag}[${hostname}]`.trimEnd();
 
   // ── 1. 工作区 → 仓库目录 ────────────────────────────────────
   let spinner = ora('加密并准备配置文件 …').start();
