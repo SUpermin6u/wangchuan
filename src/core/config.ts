@@ -10,6 +10,7 @@ import os   from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
+import { t }      from '../i18n.js';
 import type { WangchuanConfig, AgentProfiles, SharedConfig } from '../types.js';
 
 const WANGCHUAN_DIR = path.join(os.homedir(), '.wangchuan');
@@ -93,7 +94,7 @@ export const config = {
       const raw = fs.readFileSync(CONFIG_PATH, 'utf-8');
       return JSON.parse(raw) as WangchuanConfig;
     } catch (err) {
-      throw new Error(`读取配置失败: ${(err as Error).message}`);
+      throw new Error(t('config.loadFailed', { error: (err as Error).message }));
     }
   },
 
@@ -101,7 +102,7 @@ export const config = {
   save(cfg: WangchuanConfig): void {
     fs.mkdirSync(WANGCHUAN_DIR, { recursive: true });
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
-    logger.debug(`配置已保存到 ${CONFIG_PATH}`);
+    logger.debug(t('config.saved', { path: CONFIG_PATH }));
   },
 
   /** 探测远程仓库的默认分支 */

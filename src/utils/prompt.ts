@@ -1,18 +1,19 @@
 /**
- * prompt.ts — Interactive user confirmation / 交互式用户确认工具
+ * prompt.ts — Interactive user confirmation
  *
  * Provides single-file conflict prompt and batch conflict strategy,
  * supports TTY interactive and CI non-interactive mode (WANGCHUAN_NONINTERACTIVE=1).
  */
 
 import readline from 'readline';
+import { t } from '../i18n.js';
 
 /** Conflict resolution decision for each file during pull */
 export type ConflictDecision =
-  | 'overwrite'     // Overwrite local / 覆盖本地
-  | 'skip'          // Skip (keep local) / 跳过
-  | 'overwrite_all' // Overwrite all subsequent / 覆盖全部
-  | 'skip_all';     // Skip all subsequent / 跳过全部
+  | 'overwrite'     // Overwrite local
+  | 'skip'          // Skip (keep local)
+  | 'overwrite_all' // Overwrite all subsequent
+  | 'skip_all';     // Skip all subsequent
 
 /** Default strategy for non-interactive mode (CI) */
 const NON_INTERACTIVE_DEFAULT: ConflictDecision = 'skip';
@@ -30,10 +31,10 @@ export async function askConflict(repoRel: string): Promise<ConflictDecision> {
 
   return new Promise(resolve => {
     process.stdout.write(
-      `\n  ⚡ Conflict / 冲突: ${repoRel}\n` +
-      `     Local file exists and differs / 本地文件已存在且内容不同。\n` +
-      `     [o] Overwrite/覆盖  [s] Skip/跳过  [A] Overwrite all/全部覆盖  [S] Skip all/全部跳过\n` +
-      `  Choose / 请选择 [o/s/A/S]: `
+      `\n  ⚡ ${t('prompt.conflict', { file: repoRel })}\n` +
+      `     ${t('prompt.conflictDesc')}\n` +
+      `     ${t('prompt.conflictChoices')}\n` +
+      `  ${t('prompt.choose')}`
     );
 
     rl.once('line', (ans: string) => {

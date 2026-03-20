@@ -1,11 +1,12 @@
 /**
- * validator.ts — Common validation functions / 通用校验函数
+ * validator.ts — Common validation functions
  *
  * requireInit uses TypeScript asserts predicate to narrow cfg to non-null.
  * Must declare explicit interface (TS2775: assertion functions cannot be called through inferred const objects).
  */
 
 import fs from 'fs';
+import { t } from '../i18n.js';
 import type { WangchuanConfig } from '../types.js';
 
 const SENSITIVE_PATTERNS: readonly RegExp[] = [
@@ -39,7 +40,7 @@ export const validator: Validator = {
 
   requireInit(cfg: WangchuanConfig | null): asserts cfg is WangchuanConfig {
     if (cfg === null) {
-      throw new Error('Wangchuan not initialized, run: wangchuan init --repo <url> / 忘川尚未初始化');
+      throw new Error(t('validator.notInit'));
     }
   },
 };

@@ -1,5 +1,5 @@
 /**
- * list.ts — wangchuan list command / list 命令
+ * list.ts — wangchuan list command
  *
  * Lists all managed config files with local/repo presence.
  * Grouped by agent and shared tier.
@@ -11,6 +11,7 @@ import { ensureMigrated }  from '../core/migrate.js';
 import { syncEngine }      from '../core/sync.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
+import { t }               from '../i18n.js';
 import type { ListOptions, AgentName, SyncTier } from '../types.js';
 import chalk from 'chalk';
 
@@ -18,11 +19,11 @@ const TIER_LABELS: Record<SyncTier, string> = {
   openclaw: 'OpenClaw',
   claude:   'Claude',
   gemini:   'Gemini',
-  shared:   'Shared (cross-agent / 跨 Agent 共享)',
+  shared:   '', // filled dynamically via t()
 };
 
 export async function cmdList({ agent }: ListOptions = {}): Promise<void> {
-  logger.banner('Wangchuan · List / 忘川 · 配置清单');
+  logger.banner(t('list.banner'));
 
   let cfg = config.load();
   validator.requireInit(cfg);
@@ -46,7 +47,8 @@ export async function cmdList({ agent }: ListOptions = {}): Promise<void> {
     const group = groups.get(tier);
     if (!group || group.length === 0) continue;
 
-    console.log(chalk.bold.cyan(`  ▸ ${TIER_LABELS[tier]}`));
+    const label = tier === 'shared' ? t('list.tierShared') : TIER_LABELS[tier];
+    console.log(chalk.bold.cyan(`  ▸ ${label}`));
 
     for (const e of group) {
       const localExists = fs.existsSync(e.srcAbs);
@@ -55,10 +57,10 @@ export async function cmdList({ agent }: ListOptions = {}): Promise<void> {
       const localMark = localExists ? chalk.green('✔') : chalk.red('✖');
       const repoMark  = repoExists  ? chalk.green('✔') : chalk.gray('·');
       const encLabel  = e.encrypt   ? chalk.magenta('[enc]') : '     ';
-      const jsonLabel = e.jsonExtract ? chalk.yellow('[field/字段]') : '            ';
+      const jsonLabel = e.jsonExtract ? chalk.yellow(t('list.fieldLabel')) : '            ';
 
       console.log(
-        `    ${localMark} local/本地  ${repoMark} repo/仓库  ${encLabel} ${jsonLabel}  ${chalk.white(e.repoRel)}`
+        `    ${localMark} ${t('list.localLabel')}  ${repoMark} ${t('list.repoLabel')}  ${encLabel} ${jsonLabel}  ${chalk.white(e.repoRel)}`
       );
       console.log(chalk.gray(`              └─ ${e.srcAbs}`));
     }
@@ -66,6 +68,6 @@ export async function cmdList({ agent }: ListOptions = {}): Promise<void> {
     totalFiles += group.length;
   }
 
-  console.log(chalk.gray(`  ${totalFiles} config files / 共 ${totalFiles} 个配置文件`));
-  console.log(chalk.gray(`  ✔ = exists/存在  · = not in repo/仓库中尚无  [enc] = encrypted/加密  [field/字段] = JSON field extraction/字段提取`));
+  console.log(chalk.gray(`  ${t('list.totalFiles', { count: totalFiles })}`));
+  console.log(chalk.gray(`  ${t('list.legend')}`));
 }

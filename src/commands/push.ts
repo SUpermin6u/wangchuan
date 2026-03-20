@@ -1,5 +1,5 @@
 /**
- * push.ts — wangchuan push command / push 命令
+ * push.ts — wangchuan push command
  */
 
 import os from 'os';
@@ -9,6 +9,7 @@ import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
+import { t }               from '../i18n.js';
 import type { PushOptions, CommitResult, StageResult } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
@@ -18,7 +19,7 @@ export interface PushCommandResult extends CommitResult {
 }
 
 export async function cmdPush({ message, agent }: PushOptions = {}): Promise<PushCommandResult> {
-  logger.banner('Wangchuan · Push / 忘川 · 推送配置');
+  logger.banner(t('push.banner'));
 
   let cfg = config.load();
   validator.requireInit(cfg);
@@ -26,61 +27,65 @@ export async function cmdPush({ message, agent }: PushOptions = {}): Promise<Pus
 
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   const hostname = cfg.hostname || os.hostname();
-  if (agent) logger.info(`Filter agent / 过滤智能体: ${chalk.cyan(agent)}`);
+  if (agent) logger.info(t('push.filterAgent', { agent: chalk.cyan(agent) }));
 
   const agentTag = agent ? `[${agent}]` : '';
   const msg = message
-    ? `sync: ${message} / update ${agentTag}[${hostname}]`.trimEnd()
-    : `sync: 更新配置 / update configs ${agentTag}[${hostname}]`.trimEnd();
+    ? t('push.commitMsgCustom', { message, tag: agentTag, host: hostname })
+    : t('push.commitMsgDefault', { tag: agentTag, host: hostname });
 
-  // ── 1. Workspace → repo dir / 工作区 → 仓库目录 ────────────────
-  let spinner = ora('Encrypting and staging files … / 加密并准备配置文件 …').start();
+  // ── 1. Workspace → repo dir ────────────────────────────────────
+  let spinner = ora(t('push.staging')).start();
   let stageResult: StageResult;
   try {
     stageResult = await syncEngine.stageToRepo(cfg, agent);
-    spinner.succeed(`Staged ${stageResult.synced.length} files / 已准备 ${stageResult.synced.length} 个文件`);
+    spinner.succeed(t('push.staged', { count: stageResult.synced.length }));
   } catch (err) {
-    spinner.fail('Staging failed / 暂存文件失败');
-    throw new Error(`Staging failed / 准备文件失败: ${(err as Error).message}`);
+    spinner.fail(t('push.stagingFailed'));
+    throw new Error(t('push.stagingFailedDetail', { error: (err as Error).message }));
   }
 
   if (stageResult.synced.length === 0 && stageResult.deleted.length === 0) {
-    logger.info('No syncable files found, check workspace paths / 没有可同步的文件，请检查工作区路径');
+    logger.info(t('push.noFiles'));
     return { committed: false, pushed: false };
   }
 
-  // ── 2. commit + push ────────────────────────────────────────
-  spinner = ora('Committing and pushing … / 提交并推送到远端仓库 …').start();
+  // ── 2. commit + push ──────────────────────────────────────────
+  spinner = ora(t('push.committing')).start();
   let pushResult: CommitResult;
   try {
     pushResult = await gitEngine.commitAndPush(repoPath, msg, cfg.branch);
     if (pushResult.committed) {
-      spinner.succeed(`Pushed to / 已推送到 ${cfg.repo}`);
+      spinner.succeed(t('push.pushed', { repo: cfg.repo }));
     } else {
-      spinner.info('Nothing to commit (repo is up to date) / 没有变更需要提交');
+      spinner.info(t('push.nothingToCommit'));
     }
   } catch (err) {
-    spinner.fail('Push failed, rolling back … / 推送失败，正在回滚 …');
+    spinner.fail(t('push.pushFailed'));
     try { await gitEngine.rollback(repoPath); } catch (re) {
-      logger.error(`Rollback failed / 回滚失败: ${(re as Error).message}`);
+      logger.error(t('push.rollbackFailed', { error: (re as Error).message }));
     }
-    throw new Error(`Push failed / 推送失败: ${(err as Error).message}`);
+    throw new Error(t('push.pushFailedDetail', { error: (err as Error).message }));
   }
 
-  // ── 3. Summary / 输出汇总 ─────────────────────────────────────
+  // ── 3. Summary ────────────────────────────────────────────────
   if (pushResult.committed) {
     console.log();
     for (const f of stageResult.synced) {
-      const label = stageResult.encrypted.includes(f) ? chalk.gray('[encrypted/已加密]') : '';
+      const label = stageResult.encrypted.includes(f) ? chalk.gray(t('push.encrypted')) : '';
       logger.ok(`  ${chalk.green(f)} ${label}`);
     }
     for (const f of stageResult.deleted) {
-      logger.info(`  ${chalk.red('✕ ' + f)} ${chalk.gray('[pruned/已清理]')}`);
+      logger.info(`  ${chalk.red('✕ ' + f)} ${chalk.gray(t('push.pruned'))}`);
     }
-    const delTag = stageResult.deleted.length > 0
-      ? `, pruned ${stageResult.deleted.length} stale / 清理 ${stageResult.deleted.length} 个过期文件`
+    const pruned = stageResult.deleted.length > 0
+      ? t('push.prunedSummary', { count: stageResult.deleted.length })
       : '';
-    logger.ok(`\nPush complete: ${stageResult.synced.length} files${delTag}, commit: ${pushResult.sha ?? '-'}`);
+    logger.ok('\n' + t('push.complete', {
+      count:  stageResult.synced.length,
+      pruned,
+      sha:    pushResult.sha ?? '-',
+    }));
   }
 
   return { ...pushResult, stageResult };

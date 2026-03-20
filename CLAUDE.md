@@ -47,7 +47,11 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Commands (`src/commands/`)
 
-Seven commands: `init`, `pull`, `push`, `status`, `diff`, `list`, `dump`. All support `--agent openclaw|claude|gemini` filtering. Every command (except `init`) calls `ensureMigrated()` after `config.load()` to ensure config is up to date.
+Eight commands: `init`, `pull`, `push`, `status`, `diff`, `list`, `dump`, `lang`. All support `--agent openclaw|claude|gemini` filtering (except `lang`). Every command (except `init` and `lang`) calls `ensureMigrated()` after `config.load()` to ensure config is up to date.
+
+### i18n (`src/i18n.ts`)
+
+All CLI user-facing messages use `t(key, params?)` from `src/i18n.ts`. The message dictionary maps keys to `[english, chinese]` tuples. Language is resolved by: `WANGCHUAN_LANG` env → `config.json` `lang` field → default `'zh'`. Use `wangchuan lang [zh|en]` to switch.
 
 ### Type System (`src/types.ts`)
 
@@ -69,6 +73,24 @@ import { cryptoEngine } from '../core/crypto.js';
 ## Testing
 
 Uses Node.js built-in `node:test` framework; test files in `test/` loaded via tsx. Covers crypto, json-field, and sync engine (including shared distribution, delete propagation, one-click restore, JSON fault tolerance — 42 test cases).
+
+## Language Conventions (MANDATORY — check before every commit)
+
+| Content type | Language rule | Examples |
+|---|---|---|
+| **AI-consumed files** | English only | `CLAUDE.md`, `skill/SKILL.md`, code comments, TSDoc |
+| **Human-consumed docs** | Bilingual (English + Chinese) | `README.md`, `REQUIREMENTS.md` |
+| **CLI output messages** | i18n via `t()` — single language per user setting | All `src/commands/*.ts`, `src/utils/*.ts`, `src/core/*.ts` |
+
+Rules:
+
+1. **AI files = English only**: Skill definitions (`skill/SKILL.md`), agent instructions (`CLAUDE.md`), and all source code comments must be written in English. These files are consumed by AI agents and must not contain Chinese.
+2. **README = bilingual**: `README.md` and other human-facing documentation must provide both English and Chinese (中英对照).
+3. **CLI messages = i18n via `t()`**: Every user-facing string in CLI output must use `t('key')` or `t('key', { param })` from `src/i18n.ts`. Never hardcode bilingual inline strings like `'English / 中文'`. Add both English and Chinese entries to the message dictionary in `i18n.ts`.
+4. **Pre-commit check**: Before every commit, verify:
+   - No Chinese text in `skill/SKILL.md` or project `CLAUDE.md`
+   - No hardcoded bilingual strings (`/ 中文` pattern) in any `src/**/*.ts` files — use `t()` instead
+   - Any new CLI message has a corresponding entry in `src/i18n.ts` message dictionary with both `[en, zh]` values
 
 ## Release Checklist
 

@@ -21,6 +21,7 @@ import { jsonField }    from './json-field.js';
 import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
 import { askConflict }  from '../utils/prompt.js';
+import { t }            from '../i18n.js';
 import type {
   WangchuanConfig,
   FileEntry,
@@ -271,7 +272,7 @@ function distributeShared(cfg: WangchuanConfig): void {
       const dest = path.join(skillsDir, relFile);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(srcAbs, dest);
-      logger.debug(`  distribute skill / 分发 skill: ${relFile} → ${source.agent}`);
+      logger.debug(`  ${t('sync.distributeSkill', { file: relFile, agent: source.agent })}`);
     }
   }
 
@@ -314,7 +315,7 @@ function distributeShared(cfg: WangchuanConfig): void {
           json[source.field] = currentMcp;
           fs.mkdirSync(path.dirname(srcPath), { recursive: true });
           fs.writeFileSync(srcPath, JSON.stringify(json, null, 2), 'utf-8');
-          logger.debug(`  distribute MCP servers / 分发 MCP servers → ${source.agent}`);
+          logger.debug(`  ${t('sync.distributeMcp', { agent: source.agent })}`);
         }
       } catch { /* 忽略 */ }
     }
@@ -340,7 +341,7 @@ function pruneRepoStaleFiles(repoPath: string, entries: FileEntry[]): string[] {
         const abs = path.join(repoPath, repoRel);
         fs.unlinkSync(abs);
         deleted.push(repoRel);
-        logger.debug(`  repo prune stale / repo 清理过期文件: ${repoRel}`);
+        logger.debug(`  ${t('sync.pruneStale', { file: repoRel })}`);
 
         // 清理空目录
         let dir = path.dirname(abs);
@@ -378,7 +379,7 @@ export const syncEngine = {
 
     for (const entry of entries) {
       if (!fs.existsSync(entry.srcAbs)) {
-        logger.debug(`Skipping (not found) / 跳过（不存在）: ${entry.srcAbs}`);
+        logger.debug(t('sync.skipNotFound', { path: entry.srcAbs }));
         (result.skipped as string[]).push(entry.srcAbs);
         continue;
       }
@@ -402,7 +403,7 @@ export const syncEngine = {
           }
           (result.synced as string[]).push(entry.repoRel);
         } catch (err) {
-          logger.warn(`Skipping JSON field extraction (parse error) / 跳过 JSON 字段提取（解析失败）: ${entry.srcAbs} — ${(err as Error).message}`);
+          logger.warn(t('sync.skipJsonParse', { path: entry.srcAbs, error: (err as Error).message }));
           (result.skipped as string[]).push(entry.repoRel);
         }
         continue;
@@ -412,8 +413,8 @@ export const syncEngine = {
       if (!entry.encrypt) {
         const content = fs.readFileSync(entry.srcAbs, 'utf-8');
         if (validator.containsSensitiveData(content)) {
-          logger.warn(`⚠  Possible plaintext sensitive data detected / 检测到疑似明文敏感信息: ${entry.srcAbs}`);
-          logger.warn(`   Consider setting encrypt:true in config / 建议标记为 encrypt:true`);
+          logger.warn(`⚠  ${t('sync.sensitiveData', { path: entry.srcAbs })}`);
+          logger.warn(`   ${t('sync.suggestEncrypt')}`);
         }
       }
       if (entry.encrypt) {
@@ -460,7 +461,7 @@ export const syncEngine = {
         } else if (fs.existsSync(entry.srcAbs)) {
           (result.localOnly as string[]).push(entry.repoRel);
         }
-        logger.debug(`Skipping (not in repo) / 跳过（仓库中不存在）: ${entry.repoRel}`);
+        logger.debug(t('sync.skipNotInRepo', { file: entry.repoRel }));
         (result.skipped as string[]).push(entry.repoRel);
         continue;
       }
@@ -547,7 +548,7 @@ export const syncEngine = {
           (result.conflicts as string[]).push(entry.repoRel);
 
           if (batchDecision === 'skip_all') {
-            logger.info(`  ↷ Skipped (keep local) / 跳过（保留本地）: ${entry.repoRel}`);
+            logger.info(`  ↷ ${t('sync.skippedKeepLocal', { file: entry.repoRel })}`);
             (result.skipped as string[]).push(entry.repoRel);
             continue;
           }
@@ -555,7 +556,7 @@ export const syncEngine = {
             const ans = await askConflict(entry.repoRel);
             if (ans === 'skip' || ans === 'skip_all') {
               if (ans === 'skip_all') batchDecision = 'skip_all';
-              logger.info(`  ↷ Skipped (keep local) / 跳过（保留本地）: ${entry.repoRel}`);
+              logger.info(`  ↷ ${t('sync.skippedKeepLocal', { file: entry.repoRel })}`);
               (result.skipped as string[]).push(entry.repoRel);
               continue;
             }

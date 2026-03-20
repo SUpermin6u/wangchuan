@@ -1,5 +1,5 @@
 /**
- * diff.ts — wangchuan diff command / diff 命令
+ * diff.ts — wangchuan diff command
  *
  * Shows line-level unified diff for each changed file.
  * Encrypted files are decrypted before comparison.
@@ -13,12 +13,13 @@ import { syncEngine }      from '../core/sync.js';
 import { cryptoEngine }    from '../core/crypto.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
+import { t }               from '../i18n.js';
 import { diffText }     from '../utils/linediff.js';
 import type { DiffCommandOptions } from '../types.js';
 import chalk from 'chalk';
 
 export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void> {
-  logger.banner('Wangchuan · Diff / 忘川 · 文件差异');
+  logger.banner(t('diff.banner'));
 
   let cfg = config.load();
   validator.requireInit(cfg);
@@ -28,7 +29,7 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
   const keyPath  = syncEngine.expandHome(cfg.keyPath);
   const entries  = syncEngine.buildFileEntries(cfg, undefined, agent);
 
-  if (agent) logger.info(`Filter agent / 过滤智能体: ${chalk.cyan(agent)}\n`);
+  if (agent) logger.info(t('diff.filterAgent', { agent: chalk.cyan(agent) }) + '\n');
 
   let totalChanged = 0;
 
@@ -37,9 +38,9 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
     const repoAbs    = path.join(repoPath, entry.repoRel);
     const repoExists = fs.existsSync(repoAbs);
 
-    // ── Only one side exists / 仅一侧存在 ────────────────────────
+    // ── Only one side exists ──────────────────────────────────────
     if (srcExists && !repoExists) {
-      console.log(chalk.bold.green(`+++ ${entry.repoRel}`) + chalk.gray('  (new, not in repo / 新增，仓库中不存在)'));
+      console.log(chalk.bold.green(`+++ ${entry.repoRel}`) + chalk.gray('  ' + t('diff.newFile')));
       const lines = fs.readFileSync(entry.srcAbs, 'utf-8').split('\n');
       lines.forEach(l => console.log(chalk.green(`+ ${l}`)));
       console.log();
@@ -47,14 +48,14 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
       continue;
     }
     if (!srcExists && repoExists) {
-      console.log(chalk.bold.red(`--- ${entry.repoRel}`) + chalk.gray('  (missing locally / 本地缺失)'));
+      console.log(chalk.bold.red(`--- ${entry.repoRel}`) + chalk.gray('  ' + t('diff.missingFile')));
       console.log();
       totalChanged++;
       continue;
     }
     if (!srcExists && !repoExists) continue;
 
-    // ── Both sides exist, read content / 两侧均存在 ──────────────
+    // ── Both sides exist, read content ────────────────────────────
     const localText = fs.readFileSync(entry.srcAbs, 'utf-8');
     let   repoText: string;
 
@@ -65,7 +66,7 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
           keyPath,
         );
       } catch {
-        console.log(chalk.yellow(`~ ${entry.repoRel}`) + chalk.gray('  [encrypted, cannot decrypt / 加密文件，无法解密比较]'));
+        console.log(chalk.yellow(`~ ${entry.repoRel}`) + chalk.gray('  ' + t('diff.cannotDecrypt')));
         console.log();
         totalChanged++;
         continue;
@@ -79,8 +80,8 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
 
     const encLabel = entry.encrypt ? chalk.gray(' [enc]') : '';
     console.log(chalk.bold(`~~~ ${entry.repoRel}`) + encLabel);
-    console.log(chalk.gray('    --- repo version / 仓库版本'));
-    console.log(chalk.gray('    +++ local version / 本地版本'));
+    console.log(chalk.gray('    ' + t('diff.repoVersion')));
+    console.log(chalk.gray('    ' + t('diff.localVersion')));
     console.log();
 
     for (const line of diffLines) {
@@ -99,8 +100,8 @@ export async function cmdDiff({ agent }: DiffCommandOptions = {}): Promise<void>
   }
 
   if (totalChanged === 0) {
-    logger.ok('All files match repo, no diff / 所有文件与仓库一致，无差异');
+    logger.ok(t('diff.noDiff'));
   } else {
-    logger.info(`${totalChanged} files differ / ${totalChanged} 个文件有差异`);
+    logger.info(t('diff.filesDiffer', { count: totalChanged }));
   }
 }

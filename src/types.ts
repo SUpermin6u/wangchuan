@@ -88,6 +88,8 @@ export interface WangchuanConfig {
   };
   /** 跨 agent 共享配置 */
   readonly shared?: SharedConfig;
+  /** 显示语言 */
+  readonly lang?: 'zh' | 'en';
 }
 
 // ─── Agent 过滤 ──────────────────────────────────────────────────
