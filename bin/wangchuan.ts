@@ -3,7 +3,7 @@
  * wangchuan.ts — CLI entry
  *
  * Usage:
- *   wangchuan <command> [--agent openclaw|claude|gemini] [flags]
+ *   wangchuan <command> [--agent openclaw|claude|gemini|codebuddy|workbuddy|cursor] [flags]
  */
 
 import { Command } from 'commander';
@@ -18,11 +18,10 @@ import { cmdLang }   from '../src/commands/lang.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
-
-const AGENT_CHOICES = ['openclaw', 'claude', 'gemini'];
+import { AGENT_NAMES } from '../src/types.js';
 
 function parseAgent(val: string): AgentName {
-  if (!AGENT_CHOICES.includes(val)) {
+  if (!(AGENT_NAMES as readonly string[]).includes(val)) {
     throw new Error(t('cli.invalidAgent', { val }));
   }
   return val as AgentName;

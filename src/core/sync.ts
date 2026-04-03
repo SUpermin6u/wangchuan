@@ -31,6 +31,7 @@ import type {
   AgentName,
   AgentProfile,
 } from '../types.js';
+import { AGENT_NAMES } from '../types.js';
 
 export function expandHome(p: string): string {
   if (p.startsWith('~')) return path.join(os.homedir(), p.slice(1));
@@ -61,8 +62,6 @@ function deduplicateEntries(entries: FileEntry[]): FileEntry[] {
     return true;
   });
 }
-
-const AGENT_NAMES: AgentName[] = ['openclaw', 'claude', 'gemini'];
 
 /**
  * 为指定 agent profile 生成 syncFiles + syncDirs + jsonFields 条目

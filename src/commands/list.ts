@@ -13,13 +13,17 @@ import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
 import type { ListOptions, AgentName, SyncTier } from '../types.js';
+import { AGENT_NAMES } from '../types.js';
 import chalk from 'chalk';
 
 const TIER_LABELS: Record<SyncTier, string> = {
-  openclaw: 'OpenClaw',
-  claude:   'Claude',
-  gemini:   'Gemini',
-  shared:   '', // filled dynamically via t()
+  openclaw:  'OpenClaw',
+  claude:    'Claude',
+  gemini:    'Gemini',
+  codebuddy: 'CodeBuddy',
+  workbuddy: 'WorkBuddy',
+  cursor:    'Cursor',
+  shared:    '', // filled dynamically via t()
 };
 
 export async function cmdList({ agent }: ListOptions = {}): Promise<void> {
@@ -42,7 +46,7 @@ export async function cmdList({ agent }: ListOptions = {}): Promise<void> {
 
   let totalFiles = 0;
 
-  const order: SyncTier[] = ['shared', 'openclaw', 'claude', 'gemini'];
+  const order: SyncTier[] = ['shared', ...AGENT_NAMES];
   for (const tier of order) {
     const group = groups.get(tier);
     if (!group || group.length === 0) continue;

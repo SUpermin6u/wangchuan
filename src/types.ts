@@ -38,6 +38,9 @@ export interface AgentProfiles {
   readonly openclaw: AgentProfile;
   readonly claude: AgentProfile;
   readonly gemini: AgentProfile;
+  readonly codebuddy: AgentProfile;
+  readonly workbuddy: AgentProfile;
+  readonly cursor: AgentProfile;
 }
 
 // ─── Shared tier（跨 agent 共享） ───────────────────────────────
@@ -94,8 +97,11 @@ export interface WangchuanConfig {
 
 // ─── Agent 过滤 ──────────────────────────────────────────────────
 
+/** Canonical list of all supported agent names — single source of truth */
+export const AGENT_NAMES = ['openclaw', 'claude', 'gemini', 'codebuddy', 'workbuddy', 'cursor'] as const;
+
 /** 支持过滤的智能体名称 */
-export type AgentName = 'openclaw' | 'claude' | 'gemini';
+export type AgentName = (typeof AGENT_NAMES)[number];
 
 /** 同步层级标识 */
 export type SyncTier = AgentName | 'shared';

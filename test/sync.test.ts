@@ -27,6 +27,9 @@ const REPO    = path.join(TMP, 'repo');
 const WS_OC   = path.join(TMP, 'openclaw');
 const WS_CL   = path.join(TMP, 'claude');
 const WS_GE   = path.join(TMP, 'gemini');
+const WS_CB   = path.join(TMP, 'codebuddy');
+const WS_WB   = path.join(TMP, 'workbuddy');
+const WS_CU   = path.join(TMP, 'cursor');
 
 function mkCfg(overrides?: Partial<WangchuanConfig>): WangchuanConfig {
   return {
@@ -64,19 +67,58 @@ function mkCfg(overrides?: Partial<WangchuanConfig>): WangchuanConfig {
             { src: 'settings.json', fields: ['security', 'model'], repoName: 'settings-sync.json', encrypt: false },
           ],
         },
+        codebuddy: {
+          enabled: true,
+          workspacePath: WS_CB,
+          syncFiles: [
+            { src: 'MEMORY.md',    encrypt: true  },
+            { src: 'CODEBUDDY.md', encrypt: false },
+          ],
+          jsonFields: [
+            { src: 'mcp.json', fields: ['mcpServers'], repoName: 'mcpServers.json', encrypt: true },
+            { src: 'settings.json', fields: ['enabledPlugins'], repoName: 'settings-sync.json', encrypt: true },
+          ],
+        },
+        workbuddy: {
+          enabled: true,
+          workspacePath: WS_WB,
+          syncFiles: [
+            { src: 'MEMORY.md',   encrypt: true  },
+            { src: 'IDENTITY.md', encrypt: false },
+            { src: 'SOUL.md',     encrypt: false },
+            { src: 'USER.md',     encrypt: true  },
+          ],
+          jsonFields: [
+            { src: 'mcp.json', fields: ['mcpServers'], repoName: 'mcpServers.json', encrypt: true },
+            { src: 'settings.json', fields: ['enabledPlugins'], repoName: 'settings-sync.json', encrypt: true },
+          ],
+        },
+        cursor: {
+          enabled: true,
+          workspacePath: WS_CU,
+          syncFiles: [],
+          jsonFields: [
+            { src: 'mcp.json', fields: ['mcpServers'], repoName: 'mcpServers.json', encrypt: true },
+            { src: 'cli-config.json', fields: ['permissions', 'model', 'enabledPlugins'], repoName: 'cli-config-sync.json', encrypt: true },
+          ],
+        },
       },
     },
     shared: {
       skills: {
         sources: [
-          { agent: 'claude',   dir: 'skills/' },
-          { agent: 'openclaw', dir: 'skills/' },
+          { agent: 'claude',    dir: 'skills/' },
+          { agent: 'openclaw',  dir: 'skills/' },
+          { agent: 'codebuddy', dir: 'skills/' },
         ],
       },
       mcp: {
         sources: [
-          { agent: 'claude',   src: '.claude.json',       field: 'mcpServers' },
-          { agent: 'openclaw', src: 'config/mcporter.json', field: 'mcpServers' },
+          { agent: 'claude',    src: '.claude.json',         field: 'mcpServers' },
+          { agent: 'openclaw',  src: 'config/mcporter.json', field: 'mcpServers' },
+          { agent: 'codebuddy', src: 'mcp.json',             field: 'mcpServers' },
+          { agent: 'workbuddy', src: 'mcp.json',             field: 'mcpServers' },
+          { agent: 'cursor',    src: 'mcp.json',             field: 'mcpServers' },
         ],
       },
       syncFiles: [],
@@ -91,13 +133,27 @@ function writeFile(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content, 'utf-8');
 }
 
+/** CodeBuddy MCP config is at workspacePath/mcp.json */
+const CB_MCP = path.join(WS_CB, 'mcp.json');
+
+/** Prepare empty MCP configs for all agents that participate in shared MCP */
+function prepareEmptyMcpFiles(): void {
+  writeFile(path.join(WS_CL, '.claude.json'), '{"mcpServers":{}}');
+  writeFile(path.join(WS_OC, 'config', 'mcporter.json'), '{"mcpServers":{}}');
+  writeFile(CB_MCP, '{"mcpServers":{}}');
+  writeFile(path.join(WS_WB, 'mcp.json'), '{"mcpServers":{}}');
+  writeFile(path.join(WS_CU, 'mcp.json'), '{"mcpServers":{}}');
+}
+
 // ── Setup / Teardown ────────────────────────────────────────────────
 
 before(() => {
   cryptoEngine.generateKey(KEY);
-  for (const d of [REPO, WS_OC, WS_CL, WS_GE]) {
+  for (const d of [REPO, WS_OC, WS_CL, WS_GE, WS_CB, WS_WB, WS_CU]) {
     fs.mkdirSync(d, { recursive: true });
   }
+  // Pre-create empty MCP configs for all shared MCP source agents
+  prepareEmptyMcpFiles();
 });
 
 after(() => {
@@ -362,6 +418,10 @@ describe('MCP 跨 agent 共享', () => {
 
 describe('新环境一键还原', () => {
   it('工作区为空时 pull 能完整还原所有 agent 配置', async () => {
+    // Clean repo to avoid leftover data from previous tests
+    fs.rmSync(REPO, { recursive: true, force: true });
+    fs.mkdirSync(REPO, { recursive: true });
+
     // 先 push 一份完整数据到 repo
     writeFile(path.join(WS_OC, 'MEMORY.md'), '# 永久记忆');
     writeFile(path.join(WS_OC, 'SOUL.md'), '# 灵魂身份');
@@ -377,12 +437,16 @@ describe('新环境一键还原', () => {
     }, null, 2));
     writeFile(path.join(WS_CL, 'skills', 'review.md'), '# code review');
     writeFile(path.join(WS_OC, 'config', 'mcporter.json'), '{"mcpServers":{}}');
+    // New agents: empty MCP configs for shared MCP sources
+    writeFile(CB_MCP, '{"mcpServers":{}}');
+    writeFile(path.join(WS_WB, 'mcp.json'), '{"mcpServers":{}}');
+    writeFile(path.join(WS_CU, 'mcp.json'), '{"mcpServers":{}}');
 
     const cfg = mkCfg();
     await syncEngine.stageToRepo(cfg);
 
     // 模拟新服务器：清空所有工作区
-    for (const d of [WS_OC, WS_CL, WS_GE]) {
+    for (const d of [WS_OC, WS_CL, WS_GE, WS_CB, WS_WB, WS_CU]) {
       fs.rmSync(d, { recursive: true, force: true });
       fs.mkdirSync(d, { recursive: true });
     }
@@ -451,11 +515,13 @@ describe('删除传播', () => {
     await syncEngine.stageToRepo(cfg);
     assert.ok(fs.existsSync(path.join(REPO, 'shared', 'skills', 'obsolete.md')));
 
-    // 从所有 agent 删除（Claude 有，OpenClaw 也被分发了）
+    // 从所有 agent 删除（Claude 有，OpenClaw 和 CodeBuddy 也被分发了）
     const clSkill = path.join(WS_CL, 'skills', 'obsolete.md');
     const ocSkill = path.join(WS_OC, 'skills', 'obsolete.md');
+    const cbSkill = path.join(WS_CB, 'skills', 'obsolete.md');
     if (fs.existsSync(clSkill)) fs.unlinkSync(clSkill);
     if (fs.existsSync(ocSkill)) fs.unlinkSync(ocSkill);
+    if (fs.existsSync(cbSkill)) fs.unlinkSync(cbSkill);
 
     // 再次 push
     const result = await syncEngine.stageToRepo(cfg);
@@ -503,7 +569,7 @@ describe('删除传播', () => {
     await syncEngine.stageToRepo(cfg);
 
     // 从所有 agent 删除并 push（触发 repo 清理）
-    for (const d of [WS_CL, WS_OC]) {
+    for (const d of [WS_CL, WS_OC, WS_CB]) {
       const f = path.join(d, 'skills', 'temp.md');
       if (fs.existsSync(f)) fs.unlinkSync(f);
     }
@@ -556,6 +622,10 @@ describe('pull 检测本地独有文件', () => {
     writeFile(path.join(WS_GE, 'settings.json'), '{}');
     writeFile(path.join(WS_OC, 'MEMORY.md'), '# M');
     writeFile(path.join(WS_OC, 'SOUL.md'), '# S');
+    // Reset new agents' MCP files to empty (no mcpServers field)
+    writeFile(CB_MCP, '{}');
+    writeFile(path.join(WS_WB, 'mcp.json'), '{}');
+    writeFile(path.join(WS_CU, 'mcp.json'), '{}');
 
     const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, syncFiles: [] } });
     const result = await syncEngine.restoreFromRepo(cfg);

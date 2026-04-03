@@ -85,6 +85,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
 
   try {
     // ── 2. Move <agent>/ → agents/<agent>/ ──────────────────────
+    // Only the original v1 agents need directory migration
     for (const agent of ['openclaw', 'claude', 'gemini'] as const) {
       const oldDir = path.join(repoPath, agent);
       const newDir = path.join(repoPath, 'agents', agent);
