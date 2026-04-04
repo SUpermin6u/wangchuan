@@ -178,3 +178,9 @@ export interface StatusOptions extends AgentOptions {}
 export interface DiffCommandOptions extends AgentOptions {}
 
 export interface ListOptions extends AgentOptions {}
+
+export interface SyncOptions extends AgentOptions {}
+
+export interface WatchOptions extends AgentOptions {
+  readonly interval?: number;
+}

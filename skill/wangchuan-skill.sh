@@ -41,7 +41,7 @@ CMD="${1:-status}"
 shift || true   # Remove first arg, pass remaining / 移除第一个参数，剩余透传
 
 case "$CMD" in
-  pull|push|status|diff|list|dump|lang)
+  pull|push|status|diff|list|dump|lang|sync|watch)
     node "$BIN" "$CMD" "$@"
     ;;
   init)
@@ -49,7 +49,7 @@ case "$CMD" in
     ;;
   *)
     echo "✖ Unknown command / 未知命令: $CMD" >&2
-    echo "  Available / 可用: pull | push | status | diff | list | dump | lang | init" >&2
+    echo "  Available / 可用: pull | push | status | diff | list | dump | lang | sync | watch | init" >&2
     exit 1
     ;;
 esac

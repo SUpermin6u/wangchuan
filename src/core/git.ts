@@ -81,6 +81,21 @@ export const gitEngine = {
     logger.warn('回滚完成，本地变更已保留在暂存区');
   },
 
+  /**
+   * Fetch from remote and check if remote branch is ahead of local.
+   * Returns the number of commits the remote is ahead.
+   */
+  async fetchAndCheckRemoteAhead(localPath: string, branch = 'main'): Promise<number> {
+    const git = createGit(localPath);
+    await git.fetch('origin', branch);
+    const local  = await git.revparse([branch]);
+    const remote = await git.revparse([`origin/${branch}`]);
+    if (local.trim() === remote.trim()) return 0;
+    // Count commits remote is ahead
+    const log = await git.log({ from: branch, to: `origin/${branch}` });
+    return log.total;
+  },
+
   async isGitAvailable(): Promise<boolean> {
     try {
       await simpleGit().version();

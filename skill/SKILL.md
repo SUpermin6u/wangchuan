@@ -12,6 +12,8 @@ wangchuan status [--agent openclaw|claude|gemini]     Show sync status & diff su
 wangchuan diff   [--agent openclaw|claude|gemini]     Show line-level file diff
 wangchuan pull   [--agent openclaw|claude|gemini]     Pull & restore from repo
 wangchuan push   [--agent <name>] [-m "<msg>"]        Encrypt & push to repo
+wangchuan sync   [--agent openclaw|claude|gemini]     Smart bidirectional sync (pull if needed, then push)
+wangchuan watch  [--agent <name>] [-i <minutes>]      Watch for file changes and auto-sync (daemon)
 wangchuan dump   [--agent openclaw|claude|gemini]     Plaintext snapshot to temp dir
 wangchuan lang   [zh|en]                              Switch CLI display language
 wangchuan init   --repo <git-url>                     First-time init
@@ -32,6 +34,14 @@ wangchuan init   --repo <git-url>                     First-time init
 > Push my MEMORY.md changes with note "update project memory"
 
 > Push claude configs only
+
+> Smart sync — pull remote changes first, then push local
+
+> Sync openclaw only
+
+> Start watching for file changes and auto-sync
+
+> Watch with 10-minute poll interval
 
 > Generate a plaintext dump so I can inspect
 
@@ -65,9 +75,12 @@ All commands support `--agent` to filter by agent.
 
 | Value | Description |
 |-------|-------------|
-| `openclaw` | MEMORY.md (enc), AGENTS.md, SOUL.md — default ~/.openclaw/workspace/ |
-| `claude`   | CLAUDE.md, settings.json (enc), .claude.json → mcpServers field extraction (enc) — default ~/.claude-internal/ |
-| `gemini`   | settings.internal.json → security + model field extraction (enc) — default ~/.gemini/ |
+| `openclaw`  | MEMORY.md (enc), AGENTS.md, SOUL.md, IDENTITY.md, USER.md (enc), memory/ dir (enc) |
+| `claude`    | CLAUDE.md, settings.json (enc), .claude.json → mcpServers (enc) |
+| `gemini`    | settings.internal.json → security + model + general (enc) |
+| `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
+| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
+| `cursor`    | rules/ dir, mcp.json → mcpServers (enc), cli-config.json → permissions + model + enabledPlugins (enc) |
 
 When omitted, operates on all enabled agents plus the shared tier (skills/MCP/shared memory).
 

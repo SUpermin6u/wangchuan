@@ -15,6 +15,8 @@ import { cmdDiff }   from '../src/commands/diff.js';
 import { cmdList }   from '../src/commands/list.js';
 import { cmdDump }   from '../src/commands/dump.js';
 import { cmdLang }   from '../src/commands/lang.js';
+import { cmdSync }   from '../src/commands/sync.js';
+import { cmdWatch }  from '../src/commands/watch.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -106,6 +108,25 @@ program
   .description(t('cli.cmd.lang'))
   .action(async (language?: string) => {
     await run(() => cmdLang(language));
+  });
+
+// ── sync ────────────────────────────────────────────────────────
+program
+  .command('sync')
+  .description(t('cli.cmd.sync'))
+  .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
+  .action(async (opts: { agent?: AgentName }) => {
+    await run(() => cmdSync(opts));
+  });
+
+// ── watch ───────────────────────────────────────────────────────
+program
+  .command('watch')
+  .description(t('cli.cmd.watch'))
+  .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
+  .option('-i, --interval <minutes>', t('cli.cmd.watch.interval'), parseFloat)
+  .action(async (opts: { agent?: AgentName; interval?: number }) => {
+    await run(() => cmdWatch(opts));
   });
 
 // ── Error handler ───────────────────────────────────────────────
