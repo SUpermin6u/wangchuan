@@ -26,7 +26,7 @@ export interface SyncCommandResult {
   readonly pushResult?: (CommitResult & { readonly stageResult?: StageResult | undefined }) | undefined;
 }
 
-export async function cmdSync({ agent }: SyncOptions = {}): Promise<SyncCommandResult> {
+export async function cmdSync({ agent, dryRun }: SyncOptions = {}): Promise<SyncCommandResult> {
   logger.banner(t('sync.banner'));
 
   let cfg = config.load();
@@ -36,6 +36,7 @@ export async function cmdSync({ agent }: SyncOptions = {}): Promise<SyncCommandR
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   const hostname = cfg.hostname || os.hostname();
   if (agent) logger.info(t('sync.filterAgent', { agent: chalk.cyan(agent) }));
+  if (dryRun) logger.info(chalk.yellow(t('dryRun.enabled')));
 
   // ── 1. Fetch and check remote ───────────────────────────────
   let spinner = ora(t('sync.fetching')).start();
@@ -94,6 +95,25 @@ export async function cmdSync({ agent }: SyncOptions = {}): Promise<SyncCommandR
     { committed: false, pushed: false };
 
   if (stageResult.synced.length > 0 || stageResult.deleted.length > 0) {
+    // ── Dry-run: print summary and skip commit/push ─────────────
+    if (dryRun) {
+      console.log();
+      for (const f of stageResult.synced) {
+        logger.ok(`  ${chalk.green(f)}`);
+      }
+      for (const f of stageResult.deleted) {
+        logger.info(`  ${chalk.red('✕ ' + f)}`);
+      }
+      logger.ok('\n' + t('dryRun.wouldSync', {
+        count: stageResult.synced.length,
+        encrypted: stageResult.encrypted.length,
+      }));
+      if (stageResult.deleted.length > 0) {
+        logger.ok(t('dryRun.wouldPrune', { count: stageResult.deleted.length }));
+      }
+      logger.ok(t('dryRun.wouldCommit', { repo: cfg.repo }));
+      pushResult = { committed: false, pushed: false, stageResult };
+    } else {
     const agentTag = agent ? `[${agent}]` : '';
     const msg = t('sync.commitMsg', { tag: agentTag, host: hostname });
 
@@ -113,6 +133,7 @@ export async function cmdSync({ agent }: SyncOptions = {}): Promise<SyncCommandR
       }
       throw new Error(t('sync.pushFailedDetail', { error: (err as Error).message }));
     }
+    } // end else (non-dry-run)
   } else {
     logger.info(t('sync.noChanges'));
   }

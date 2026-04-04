@@ -19,7 +19,7 @@ export interface PushCommandResult extends CommitResult {
   readonly stageResult?: StageResult;
 }
 
-export async function cmdPush({ message, agent }: PushOptions = {}): Promise<PushCommandResult> {
+export async function cmdPush({ message, agent, dryRun }: PushOptions = {}): Promise<PushCommandResult> {
   logger.banner(t('push.banner'));
 
   let cfg = config.load();
@@ -29,6 +29,7 @@ export async function cmdPush({ message, agent }: PushOptions = {}): Promise<Pus
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   const hostname = cfg.hostname || os.hostname();
   if (agent) logger.info(t('push.filterAgent', { agent: chalk.cyan(agent) }));
+  if (dryRun) logger.info(chalk.yellow(t('dryRun.enabled')));
 
   const agentTag = agent ? `[${agent}]` : '';
   const msg = message
@@ -49,6 +50,27 @@ export async function cmdPush({ message, agent }: PushOptions = {}): Promise<Pus
   if (stageResult.synced.length === 0 && stageResult.deleted.length === 0) {
     logger.info(t('push.noFiles'));
     return { committed: false, pushed: false };
+  }
+
+  // ── Dry-run: print summary and exit ──────────────────────────
+  if (dryRun) {
+    console.log();
+    for (const f of stageResult.synced) {
+      const label = stageResult.encrypted.includes(f) ? chalk.gray(t('push.encrypted')) : '';
+      logger.ok(`  ${chalk.green(f)} ${label}`);
+    }
+    for (const f of stageResult.deleted) {
+      logger.info(`  ${chalk.red('✕ ' + f)} ${chalk.gray(t('push.pruned'))}`);
+    }
+    logger.ok('\n' + t('dryRun.wouldSync', {
+      count: stageResult.synced.length,
+      encrypted: stageResult.encrypted.length,
+    }));
+    if (stageResult.deleted.length > 0) {
+      logger.ok(t('dryRun.wouldPrune', { count: stageResult.deleted.length }));
+    }
+    logger.ok(t('dryRun.wouldCommit', { repo: cfg.repo }));
+    return { committed: false, pushed: false, stageResult };
   }
 
   // ── 2. commit + push ──────────────────────────────────────────

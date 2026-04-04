@@ -171,6 +171,7 @@ export interface InitOptions {
 
 export interface PushOptions extends AgentOptions {
   readonly message?: string;
+  readonly dryRun?: boolean;
 }
 
 export interface PullOptions extends AgentOptions {}
@@ -181,7 +182,9 @@ export interface DiffCommandOptions extends AgentOptions {}
 
 export interface ListOptions extends AgentOptions {}
 
-export interface SyncOptions extends AgentOptions {}
+export interface SyncOptions extends AgentOptions {
+  readonly dryRun?: boolean;
+}
 
 export interface WatchOptions extends AgentOptions {
   readonly interval?: number;

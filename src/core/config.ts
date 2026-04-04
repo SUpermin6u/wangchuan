@@ -166,15 +166,27 @@ const DEFAULT_SHARED: SharedConfig = {
 };
 
 export const config = {
-  /** 读取配置，不存在时返回 null */
+  /** Read config, return null if not found */
   load(): WangchuanConfig | null {
     if (!fs.existsSync(CONFIG_PATH)) return null;
+    let parsed: Record<string, unknown>;
     try {
       const raw = fs.readFileSync(CONFIG_PATH, 'utf-8');
-      return JSON.parse(raw) as WangchuanConfig;
+      parsed = JSON.parse(raw) as Record<string, unknown>;
     } catch (err) {
       throw new Error(t('config.loadFailed', { error: (err as Error).message }));
     }
+    // Validate required fields
+    for (const field of ['repo', 'branch', 'localRepoPath', 'keyPath'] as const) {
+      if (!parsed[field]) {
+        throw new Error(t('config.invalidFormat', { field }));
+      }
+    }
+    const profiles = parsed['profiles'] as Record<string, unknown> | undefined;
+    if (!profiles?.['default']) {
+      throw new Error(t('config.invalidFormat', { field: 'profiles.default' }));
+    }
+    return parsed as unknown as WangchuanConfig;
   },
 
   /** 保存配置到磁盘 */

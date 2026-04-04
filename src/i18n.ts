@@ -270,9 +270,22 @@ const M: Msgs = {
   'watch.started':         ['Watch daemon started', '监听守护进程已启动'],
   'watch.stopHint':        ['Press Ctrl+C to stop', '按 Ctrl+C 停止'],
 
+  // ── sync-meta ─────────────────────────────────────────────────
+  'sync.meta.lastSync':   ['Last synced: {time} from {hostname} ({env})', '上次同步: {time}，来自 {hostname}（{env}）'],
+  'sync.meta.staleDays':  ['Warning: repo data is {days} days old', '警告: 仓库数据已有 {days} 天未更新'],
+
+  // ── dry-run ───────────────────────────────────────────────────
+  'dryRun.enabled':       ['Dry-run mode: no changes will be committed or pushed', '预览模式: 不会提交或推送任何变更'],
+  'dryRun.wouldSync':     ['Would sync {count} files ({encrypted} encrypted)', '将同步 {count} 个文件（{encrypted} 个加密）'],
+  'dryRun.wouldPrune':    ['Would prune {count} stale files', '将清理 {count} 个过期文件'],
+  'dryRun.wouldCommit':   ['Would commit and push to {repo}', '将提交并推送到 {repo}'],
+  'dryRun.nothingToSync': ['Nothing to sync', '没有需要同步的内容'],
+  'cli.cmd.dryRun':       ['Preview changes without committing or pushing', '预览变更，不实际提交或推送'],
+
   // ── config ──────────────────────────────────────────────────
   'config.loadFailed': ['Failed to load config: {error}', '读取配置失败: {error}'],
   'config.saved':      ['Config saved to {path}', '配置已保存到 {path}'],
+  'config.invalidFormat': ['Invalid config: missing required field "{field}"', '配置文件无效: 缺少必需字段 "{field}"'],
 
   // ── env command ──────────────────────────────────────────────
   'cli.cmd.env':              ['Manage environments (list|create|switch|current|delete)', '管理多环境 (list|create|switch|current|delete)'],

@@ -359,9 +359,42 @@ function pruneRepoStaleFiles(repoPath: string, entries: FileEntry[]): string[] {
   return deleted;
 }
 
+/** Sync metadata stored in repo root */
+export interface SyncMeta {
+  readonly lastSyncAt: string;
+  readonly hostname: string;
+  readonly environment: string;
+}
+
+const SYNC_META_FILE = 'sync-meta.json';
+
+function writeSyncMeta(repoPath: string, cfg: WangchuanConfig): void {
+  const meta: SyncMeta = {
+    lastSyncAt:  new Date().toISOString(),
+    hostname:    cfg.hostname || os.hostname(),
+    environment: cfg.environment ?? 'default',
+  };
+  fs.writeFileSync(
+    path.join(repoPath, SYNC_META_FILE),
+    JSON.stringify(meta, null, 2),
+    'utf-8',
+  );
+}
+
+function readSyncMeta(repoPath: string): SyncMeta | null {
+  const metaPath = path.join(repoPath, SYNC_META_FILE);
+  if (!fs.existsSync(metaPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(metaPath, 'utf-8')) as SyncMeta;
+  } catch {
+    return null;
+  }
+}
+
 export const syncEngine = {
   expandHome,
   buildFileEntries,
+  readSyncMeta,
 
   /**
    * 推送前：先分发 shared 内容到各 agent，再收集文件到 repo。
@@ -432,6 +465,9 @@ export const syncEngine = {
       const pruned = pruneRepoStaleFiles(repoPath, syncedEntries);
       (result.deleted as string[]).push(...pruned);
     }
+
+    // Write sync metadata to repo root
+    writeSyncMeta(repoPath, cfg);
 
     return result;
   },
@@ -574,6 +610,22 @@ export const syncEngine = {
       }
       (result.synced as string[]).push(entry.repoRel);
     }
+
+    // Log sync-meta freshness info
+    const meta = readSyncMeta(repoPath);
+    if (meta) {
+      logger.info(t('sync.meta.lastSync', {
+        time:     meta.lastSyncAt,
+        hostname: meta.hostname,
+        env:      meta.environment,
+      }));
+      const ageMs  = Date.now() - new Date(meta.lastSyncAt).getTime();
+      const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+      if (ageDays >= 3) {
+        logger.warn(t('sync.meta.staleDays', { days: ageDays }));
+      }
+    }
+
     return result;
   },
 

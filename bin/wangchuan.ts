@@ -63,7 +63,8 @@ program
   .description(t('cli.cmd.push'))
   .option('-m, --message <msg>', t('cli.cmd.push.msg'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
-  .action(async (opts: { message?: string; agent?: AgentName }) => {
+  .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
+  .action(async (opts: { message?: string; agent?: AgentName; dryRun?: boolean }) => {
     await run(() => cmdPush(opts));
   });
 
@@ -116,7 +117,8 @@ program
   .command('sync')
   .description(t('cli.cmd.sync'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
-  .action(async (opts: { agent?: AgentName }) => {
+  .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
+  .action(async (opts: { agent?: AgentName; dryRun?: boolean }) => {
     await run(() => cmdSync(opts));
   });
 
