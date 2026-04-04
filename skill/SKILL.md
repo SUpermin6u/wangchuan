@@ -22,6 +22,9 @@ wangchuan env    current                              Show active environment
 wangchuan env    create <name> [--from <branch>]      Create new environment (git branch)
 wangchuan env    switch <name>                        Switch to environment
 wangchuan env    delete <name>                        Delete environment branch
+wangchuan agent  list                                 List all agents with enabled/disabled status
+wangchuan agent  enable <name>                        Enable an agent for sync
+wangchuan agent  disable <name>                       Disable an agent from sync
 ```
 
 ## Invocation Examples

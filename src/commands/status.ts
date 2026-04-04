@@ -85,6 +85,44 @@ export async function cmdStatus({ agent }: StatusOptions = {}): Promise<void> {
         `${chalk.red('-')} ${diff.missing.length} ${t('status.missingLabel')}`
       );
     }
+
+    // ── Conflict detection ──────────────────────────────────────
+    if (diff.modified.length > 0) {
+      const meta = syncEngine.readSyncMeta(repoPath);
+      if (meta) {
+        const lastSyncTs = new Date(meta.lastSyncAt).getTime();
+        const conflictFiles: string[] = [];
+        const entries = syncEngine.buildFileEntries(cfg, undefined, agent);
+
+        for (const repoRel of diff.modified) {
+          const entry = entries.find(e => e.repoRel === repoRel);
+          if (!entry || !fs.existsSync(entry.srcAbs)) continue;
+          const stat = fs.statSync(entry.srcAbs);
+          if (stat.mtimeMs > lastSyncTs) {
+            conflictFiles.push(repoRel);
+          }
+        }
+
+        if (conflictFiles.length > 0) {
+          // Check if remote also has newer commits
+          try {
+            const branch = resolveGitBranch(cfg);
+            const ahead = await gitEngine.fetchAndCheckRemoteAhead(repoPath, branch);
+            if (ahead > 0) {
+              console.log();
+              console.log(chalk.bold.yellow(`  ${t('status.conflictWarning')}`));
+              for (const f of conflictFiles) {
+                console.log(`    ${chalk.yellow(t('status.conflictFile', { file: f }))}`);
+              }
+              console.log();
+              logger.info(`  ${t('status.conflictHint')}`);
+            }
+          } catch {
+            // Fetch failed — skip conflict check silently
+          }
+        }
+      }
+    }
   } catch (err) {
     logger.warn(t('status.diffFailed', { error: (err as Error).message }));
   }

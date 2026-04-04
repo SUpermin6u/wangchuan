@@ -18,6 +18,7 @@ import { cmdLang }   from '../src/commands/lang.js';
 import { cmdSync }   from '../src/commands/sync.js';
 import { cmdWatch }  from '../src/commands/watch.js';
 import { cmdEnv }    from '../src/commands/env.js';
+import { cmdAgent }  from '../src/commands/agent.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -139,6 +140,14 @@ program
   .option('--from <branch>', t('cli.cmd.env.from'))
   .action(async (action: string, name: string | undefined, opts: { from?: string }) => {
     await run(() => cmdEnv({ action, name, from: opts.from }));
+  });
+
+// ── agent ───────────────────────────────────────────────────
+program
+  .command('agent <action> [name]')
+  .description(t('cli.cmd.agent.desc'))
+  .action(async (action: string, name?: string) => {
+    await run(() => cmdAgent({ action, name }));
   });
 
 // ── Error handler ───────────────────────────────────────────────

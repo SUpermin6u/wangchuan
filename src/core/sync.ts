@@ -22,6 +22,7 @@ import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
 import { askConflict }  from '../utils/prompt.js';
 import { t }            from '../i18n.js';
+import chalk            from 'chalk';
 import type {
   WangchuanConfig,
   FileEntry,
@@ -61,6 +62,24 @@ function deduplicateEntries(entries: FileEntry[]): FileEntry[] {
     seen.add(e.repoRel);
     return true;
   });
+}
+
+/** Log a colorized progress line for stage/restore operations */
+function logProgress(
+  index: number,
+  total: number,
+  tag: 'enc' | 'field' | 'decrypted' | 'copy',
+  filePath: string,
+): void {
+  const counter = chalk.gray(`[${index}/${total}]`);
+  const tagColors: Record<string, string> = {
+    enc:       chalk.magenta(t('sync.progress.enc')),
+    field:     chalk.yellow(t('sync.progress.field')),
+    decrypted: chalk.cyan(t('sync.progress.decrypted')),
+    copy:      chalk.white(t('sync.progress.copy')),
+  };
+  const coloredTag = tagColors[tag] ?? tag;
+  logger.info(`  ${counter} ${coloredTag} ${chalk.white(filePath)}`);
 }
 
 /**
@@ -408,6 +427,8 @@ export const syncEngine = {
     const keyPath  = expandHome(cfg.keyPath);
     const entries  = buildFileEntries(cfg, undefined, agent);
     const result: StageResult = { synced: [], skipped: [], encrypted: [], deleted: [] };
+    let progressIdx = 0;
+    const totalEntries = entries.length;
 
     for (const entry of entries) {
       if (!fs.existsSync(entry.srcAbs)) {
@@ -434,6 +455,8 @@ export const syncEngine = {
             fs.writeFileSync(destAbs, content, 'utf-8');
           }
           (result.synced as string[]).push(entry.repoRel);
+          progressIdx++;
+          logProgress(progressIdx, totalEntries, 'field', entry.repoRel);
         } catch (err) {
           logger.warn(t('sync.skipJsonParse', { path: entry.srcAbs, error: (err as Error).message }));
           (result.skipped as string[]).push(entry.repoRel);
@@ -452,8 +475,12 @@ export const syncEngine = {
       if (entry.encrypt) {
         cryptoEngine.encryptFile(entry.srcAbs, destAbs, keyPath);
         (result.encrypted as string[]).push(entry.repoRel);
+        progressIdx++;
+        logProgress(progressIdx, totalEntries, 'enc', entry.repoRel);
       } else {
         fs.copyFileSync(entry.srcAbs, destAbs);
+        progressIdx++;
+        logProgress(progressIdx, totalEntries, 'copy', entry.repoRel);
       }
       (result.synced as string[]).push(entry.repoRel);
     }
@@ -477,6 +504,8 @@ export const syncEngine = {
     const keyPath  = expandHome(cfg.keyPath);
     const entries  = buildFileEntries(cfg, repoPath, agent);
     const result: RestoreResult = { synced: [], skipped: [], decrypted: [], conflicts: [], localOnly: [] };
+    let restoreIdx = 0;
+    const restoreTotal = entries.length;
 
     let batchDecision: 'overwrite_all' | 'skip_all' | undefined;
 
@@ -542,6 +571,8 @@ export const syncEngine = {
 
         (result.synced as string[]).push(entry.repoRel);
         if (entry.encrypt) (result.decrypted as string[]).push(entry.repoRel);
+        restoreIdx++;
+        logProgress(restoreIdx, restoreTotal, entry.encrypt ? 'decrypted' : 'field', entry.repoRel);
         continue;
       }
 
@@ -559,6 +590,8 @@ export const syncEngine = {
           }
         }
         (result.synced as string[]).push(entry.repoRel);
+        restoreIdx++;
+        logProgress(restoreIdx, restoreTotal, 'copy', entry.repoRel);
         continue;
       }
 
@@ -609,6 +642,8 @@ export const syncEngine = {
         fs.copyFileSync(srcRepo, entry.srcAbs);
       }
       (result.synced as string[]).push(entry.repoRel);
+      restoreIdx++;
+      logProgress(restoreIdx, restoreTotal, entry.encrypt ? 'decrypted' : 'copy', entry.repoRel);
     }
 
     // Log sync-meta freshness info

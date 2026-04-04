@@ -282,6 +282,30 @@ const M: Msgs = {
   'dryRun.nothingToSync': ['Nothing to sync', '没有需要同步的内容'],
   'cli.cmd.dryRun':       ['Preview changes without committing or pushing', '预览变更，不实际提交或推送'],
 
+  // ── agent command ──────────────────────────────────────────
+  'cli.cmd.agent.desc':      ['Manage agents (list|enable|disable)', '管理智能体 (list|enable|disable)'],
+  'agent.banner':            ['Wangchuan · Agents', '忘川 · 智能体管理'],
+  'agent.list.header':       ['Agents:', '智能体列表：'],
+  'agent.enabled':           ['enabled', '已启用'],
+  'agent.disabled':          ['disabled', '已禁用'],
+  'agent.alreadyEnabled':    ['Agent {name} is already enabled', '智能体 {name} 已处于启用状态'],
+  'agent.alreadyDisabled':   ['Agent {name} is already disabled', '智能体 {name} 已处于禁用状态'],
+  'agent.nowEnabled':        ['Agent {name} enabled', '智能体 {name} 已启用'],
+  'agent.nowDisabled':       ['Agent {name} disabled', '智能体 {name} 已禁用'],
+  'agent.unknownAction':     ['Unknown action: {action}. Use list|enable|disable', '未知操作: {action}，请使用 list|enable|disable'],
+  'agent.nameRequired':      ['Agent name is required for enable/disable', 'enable/disable 操作需要指定智能体名称'],
+
+  // ── conflict detection in status ──────────────────────────
+  'status.conflictWarning':  ['Potential sync conflicts detected:', '检测到潜在同步冲突：'],
+  'status.conflictFile':     ['⚠ {file} — modified locally since last sync, remote also updated', '⚠ {file} — 上次同步后本地有修改，远端也有更新'],
+  'status.conflictHint':     ['Run wangchuan diff to inspect, then push or pull to resolve', '执行 wangchuan diff 查看详情，然后 push 或 pull 解决冲突'],
+
+  // ── colorized sync progress ───────────────────────────────
+  'sync.progress.enc':       ['[enc]', '[加密]'],
+  'sync.progress.field':     ['[field]', '[字段]'],
+  'sync.progress.decrypted': ['[decrypted]', '[解密]'],
+  'sync.progress.copy':      ['[copy]', '[复制]'],
+
   // ── config ──────────────────────────────────────────────────
   'config.loadFailed': ['Failed to load config: {error}', '读取配置失败: {error}'],
   'config.saved':      ['Config saved to {path}', '配置已保存到 {path}'],
