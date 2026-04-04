@@ -3,8 +3,9 @@
  */
 
 import fs from 'fs';
-import { config }          from '../core/config.js';
-import { ensureMigrated }  from '../core/migrate.js';
+import { config }           from '../core/config.js';
+import { resolveGitBranch } from '../core/config.js';
+import { ensureMigrated }   from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
 import { validator }       from '../utils/validator.js';
@@ -24,7 +25,8 @@ export async function cmdStatus({ agent }: StatusOptions = {}): Promise<void> {
 
   console.log(chalk.bold('  ' + t('status.repo')) + chalk.cyan(cfg.repo));
   console.log(chalk.bold('  ' + t('status.local')) + repoPath);
-  console.log(chalk.bold('  ' + t('status.branch')) + chalk.yellow(cfg.branch));
+  console.log(chalk.bold('  ' + t('status.branch')) + chalk.yellow(resolveGitBranch(cfg)));
+  console.log(chalk.bold('  ' + t('status.env')) + chalk.magenta(cfg.environment ?? 'default'));
   if (agent) console.log(chalk.bold('  ' + t('status.agent')) + chalk.cyan(agent));
   console.log();
 

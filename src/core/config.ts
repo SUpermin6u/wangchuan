@@ -236,3 +236,15 @@ export const config = {
     example: EXAMPLE_PATH,
   },
 } as const;
+
+/**
+ * Resolve the git branch for the given config's active environment.
+ * - environment undefined or 'default' → cfg.branch (typically 'main')
+ * - any other value → 'env/{name}'
+ */
+export function resolveGitBranch(cfg: WangchuanConfig): string {
+  if (!cfg.environment || cfg.environment === 'default') {
+    return cfg.branch;
+  }
+  return `env/${cfg.environment}`;
+}

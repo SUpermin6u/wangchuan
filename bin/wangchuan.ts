@@ -17,6 +17,7 @@ import { cmdDump }   from '../src/commands/dump.js';
 import { cmdLang }   from '../src/commands/lang.js';
 import { cmdSync }   from '../src/commands/sync.js';
 import { cmdWatch }  from '../src/commands/watch.js';
+import { cmdEnv }    from '../src/commands/env.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -127,6 +128,15 @@ program
   .option('-i, --interval <minutes>', t('cli.cmd.watch.interval'), parseFloat)
   .action(async (opts: { agent?: AgentName; interval?: number }) => {
     await run(() => cmdWatch(opts));
+  });
+
+// ── env ─────────────────────────────────────────────────────────
+program
+  .command('env <action> [name]')
+  .description(t('cli.cmd.env'))
+  .option('--from <branch>', t('cli.cmd.env.from'))
+  .action(async (action: string, name: string | undefined, opts: { from?: string }) => {
+    await run(() => cmdEnv({ action, name, from: opts.from }));
   });
 
 // ── Error handler ───────────────────────────────────────────────

@@ -4,6 +4,7 @@
 
 import os from 'os';
 import { config }          from '../core/config.js';
+import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
@@ -54,7 +55,7 @@ export async function cmdPush({ message, agent }: PushOptions = {}): Promise<Pus
   spinner = ora(t('push.committing')).start();
   let pushResult: CommitResult;
   try {
-    pushResult = await gitEngine.commitAndPush(repoPath, msg, cfg.branch);
+    pushResult = await gitEngine.commitAndPush(repoPath, msg, resolveGitBranch(cfg));
     if (pushResult.committed) {
       spinner.succeed(t('push.pushed', { repo: cfg.repo }));
     } else {

@@ -8,6 +8,7 @@
 
 import os from 'os';
 import { config }          from '../core/config.js';
+import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
@@ -40,7 +41,7 @@ export async function cmdSync({ agent }: SyncOptions = {}): Promise<SyncCommandR
   let spinner = ora(t('sync.fetching')).start();
   let remoteAhead = 0;
   try {
-    remoteAhead = await gitEngine.fetchAndCheckRemoteAhead(repoPath, cfg.branch);
+    remoteAhead = await gitEngine.fetchAndCheckRemoteAhead(repoPath, resolveGitBranch(cfg));
     if (remoteAhead > 0) {
       spinner.succeed(t('sync.remoteAhead', { count: remoteAhead }));
     } else {
@@ -57,7 +58,7 @@ export async function cmdSync({ agent }: SyncOptions = {}): Promise<SyncCommandR
   if (remoteAhead > 0) {
     spinner = ora(t('sync.pulling')).start();
     try {
-      await gitEngine.pull(repoPath, cfg.branch);
+      await gitEngine.pull(repoPath, resolveGitBranch(cfg));
       spinner.succeed(t('sync.pulled'));
     } catch (err) {
       spinner.fail(t('sync.pullFailed'));
@@ -98,7 +99,7 @@ export async function cmdSync({ agent }: SyncOptions = {}): Promise<SyncCommandR
 
     spinner = ora(t('sync.pushing')).start();
     try {
-      const gitResult = await gitEngine.commitAndPush(repoPath, msg, cfg.branch);
+      const gitResult = await gitEngine.commitAndPush(repoPath, msg, resolveGitBranch(cfg));
       if (gitResult.committed) {
         spinner.succeed(t('sync.pushed', { repo: cfg.repo }));
       } else {

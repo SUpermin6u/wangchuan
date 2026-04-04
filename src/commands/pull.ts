@@ -3,6 +3,7 @@
  */
 
 import { config }          from '../core/config.js';
+import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
@@ -26,7 +27,7 @@ export async function cmdPull({ agent }: PullOptions = {}): Promise<RestoreResul
   // ── 1. git pull ────────────────────────────────────────────
   let spinner = ora(t('pull.pulling', { repo: cfg.repo })).start();
   try {
-    await gitEngine.pull(repoPath, cfg.branch);
+    await gitEngine.pull(repoPath, resolveGitBranch(cfg));
     spinner.succeed(t('pull.pulled'));
   } catch (err) {
     spinner.fail(t('pull.gitFailed'));

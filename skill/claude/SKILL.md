@@ -56,6 +56,32 @@ wangchuan status
 wangchuan sync --agent claude
 ```
 
+## Multi-Environment Support
+
+Each environment is an isolated git branch. Use env commands to manage them:
+
+```bash
+# Show current environment
+wangchuan env current
+
+# List all environments
+wangchuan env list
+
+# Create a new environment (e.g., for a work machine)
+wangchuan env create work
+
+# Switch to an environment — all subsequent push/pull/sync use its branch
+wangchuan env switch work
+
+# Switch back to default
+wangchuan env switch default
+
+# Delete an environment
+wangchuan env delete work
+```
+
+All push/pull/sync commands automatically operate on the branch of the active environment.
+
 ## Current Sync Status
 
 !`wangchuan status 2>/dev/null || echo "wangchuan not initialized"`

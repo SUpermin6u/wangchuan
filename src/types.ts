@@ -93,6 +93,8 @@ export interface WangchuanConfig {
   readonly shared?: SharedConfig;
   /** 显示语言 */
   readonly lang?: 'zh' | 'en';
+  /** Active environment name. 'default' or undefined → main branch; others → env/{name} */
+  readonly environment?: string;
 }
 
 // ─── Agent 过滤 ──────────────────────────────────────────────────
@@ -183,4 +185,10 @@ export interface SyncOptions extends AgentOptions {}
 
 export interface WatchOptions extends AgentOptions {
   readonly interval?: number;
+}
+
+export interface EnvOptions {
+  readonly action: string;
+  readonly name: string | undefined;
+  readonly from: string | undefined;
 }

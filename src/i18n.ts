@@ -139,6 +139,7 @@ const M: Msgs = {
   'status.repo':           ['Repo:   ', '仓库地址：'],
   'status.local':          ['Local:  ', '本地路径：'],
   'status.branch':         ['Branch: ', '分支：  '],
+  'status.env':            ['Env:    ', '环境：  '],
   'status.agent':          ['Agent:  ', '过滤智能体：'],
   'status.recentCommits':  ['Recent commits:', '最近提交：'],
   'status.cannotReadLog':  ['Cannot read git log (repo may not be cloned)', '无法读取 git 日志'],
@@ -272,6 +273,25 @@ const M: Msgs = {
   // ── config ──────────────────────────────────────────────────
   'config.loadFailed': ['Failed to load config: {error}', '读取配置失败: {error}'],
   'config.saved':      ['Config saved to {path}', '配置已保存到 {path}'],
+
+  // ── env command ──────────────────────────────────────────────
+  'cli.cmd.env':              ['Manage environments (list|create|switch|current|delete)', '管理多环境 (list|create|switch|current|delete)'],
+  'cli.cmd.env.from':         ['Base branch to create from (default: current branch)', '创建环境时的基础分支（默认：当前分支）'],
+  'env.banner':               ['Wangchuan · Environments', '忘川 · 多环境管理'],
+  'env.current':              ['Current environment: {name}', '当前环境: {name}'],
+  'env.list.header':          ['Environments:', '环境列表：'],
+  'env.list.empty':           ['No environments found', '暂无环境'],
+  'env.notFound':             ['Environment not found: {name}', '环境不存在: {name}'],
+  'env.alreadyExists':        ['Environment already exists: {name}', '环境已存在: {name}'],
+  'env.cannotDeleteCurrent':  ['Cannot delete current environment: {name}', '无法删除当前环境: {name}'],
+  'env.cannotDeleteDefault':  ['Cannot delete the default environment', '无法删除 default 环境'],
+  'env.created':              ['Environment created: {name}', '环境已创建: {name}'],
+  'env.switched':             ['Switched to environment: {name}', '已切换到环境: {name}'],
+  'env.deleted':              ['Environment deleted: {name}', '环境已删除: {name}'],
+  'env.create.creating':      ['Creating environment {name} …', '正在创建环境 {name} …'],
+  'env.switch.switching':     ['Switching to environment {name} …', '正在切换到环境 {name} …'],
+  'env.delete.deleting':      ['Deleting environment {name} …', '正在删除环境 {name} …'],
+  'env.unknownAction':        ['Unknown action: {action}. Use list|create|switch|current|delete', '未知操作: {action}，请使用 list|create|switch|current|delete'],
 };
 
 /**

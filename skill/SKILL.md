@@ -17,6 +17,11 @@ wangchuan watch  [--agent <name>] [-i <minutes>]      Watch for file changes and
 wangchuan dump   [--agent openclaw|claude|gemini]     Plaintext snapshot to temp dir
 wangchuan lang   [zh|en]                              Switch CLI display language
 wangchuan init   --repo <git-url>                     First-time init
+wangchuan env    list                                 List all environments
+wangchuan env    current                              Show active environment
+wangchuan env    create <name> [--from <branch>]      Create new environment (git branch)
+wangchuan env    switch <name>                        Switch to environment
+wangchuan env    delete <name>                        Delete environment branch
 ```
 
 ## Invocation Examples
