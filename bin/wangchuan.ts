@@ -21,6 +21,7 @@ import { cmdEnv }    from '../src/commands/env.js';
 import { cmdAgent }  from '../src/commands/agent.js';
 import { cmdKey }    from '../src/commands/key.js';
 import { cmdReport } from '../src/commands/report.js';
+import { cmdDoctor } from '../src/commands/doctor.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -167,6 +168,14 @@ program
   .option('--json', t('cli.cmd.report.json'), false)
   .action(async (opts: { json: boolean }) => {
     await run(() => cmdReport(opts));
+  });
+
+// ── doctor ──────────────────────────────────────────────────
+program
+  .command('doctor')
+  .description(t('cli.cmd.doctor'))
+  .action(async () => {
+    await run(() => cmdDoctor());
   });
 
 // ── Error handler ───────────────────────────────────────────────

@@ -7,6 +7,7 @@ import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
+import { syncLock }        from '../core/sync-lock.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -24,7 +25,20 @@ export async function cmdPull({ agent }: PullOptions = {}): Promise<RestoreResul
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   if (agent) logger.info(t('pull.filterAgent', { agent: chalk.cyan(agent) }));
 
-  // ── 1. git pull ────────────────────────────────────────────
+  // ── Acquire sync lock ─────────────────────────────────────────
+  await syncLock.acquire(repoPath);
+  try {
+    return await runPull(cfg, repoPath, agent);
+  } finally {
+    syncLock.release();
+  }
+}
+
+async function runPull(
+  cfg: import('../types.js').WangchuanConfig,
+  repoPath: string,
+  agent: import('../types.js').AgentName | undefined,
+): Promise<RestoreResult> {
   let spinner = ora(t('pull.pulling', { repo: cfg.repo })).start();
   try {
     await gitEngine.pull(repoPath, resolveGitBranch(cfg));

@@ -8,6 +8,7 @@ import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
+import { syncLock }        from '../core/sync-lock.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -31,6 +32,23 @@ export async function cmdPush({ message, agent, dryRun }: PushOptions = {}): Pro
   if (agent) logger.info(t('push.filterAgent', { agent: chalk.cyan(agent) }));
   if (dryRun) logger.info(chalk.yellow(t('dryRun.enabled')));
 
+  // ── Acquire sync lock ─────────────────────────────────────────
+  await syncLock.acquire(repoPath);
+  try {
+    return await runPush(cfg, repoPath, hostname, message, agent, dryRun);
+  } finally {
+    syncLock.release();
+  }
+}
+
+async function runPush(
+  cfg: import('../types.js').WangchuanConfig,
+  repoPath: string,
+  hostname: string,
+  message: string | undefined,
+  agent: import('../types.js').AgentName | undefined,
+  dryRun: boolean | undefined,
+): Promise<PushCommandResult> {
   const agentTag = agent ? `[${agent}]` : '';
   const msg = message
     ? t('push.commitMsgCustom', { message, tag: agentTag, host: hostname })

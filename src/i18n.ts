@@ -381,6 +381,40 @@ const M: Msgs = {
   'init.differentRepo':     ['Already initialized with a different repo: {existing}', '已使用不同仓库初始化: {existing}'],
   'init.useForceSwitch':    ['Use --force to switch repo', '如需切换仓库请使用 --force'],
   'init.repoMissing':       ['Repo directory missing, re-cloning …', '仓库目录缺失，正在重新克隆 …'],
+
+  // ── sync-lock ──────────────────────────────────────────────────
+  'syncLock.anotherRunning':   ['Another sync is running (PID {pid}), please wait or kill it', '另一个同步正在进行中 (PID {pid})，请等待或终止该进程'],
+  'syncLock.staleLock':        ['Stale sync lock found (PID {pid} is dead), cleaning up …', '发现过期同步锁 (PID {pid} 已终止)，正在清理 …'],
+  'syncLock.acquired':         ['Sync lock acquired', '同步锁已获取'],
+  'syncLock.released':         ['Sync lock released', '同步锁已释放'],
+  'syncLock.cleanedDirtyState':['Cleaned dirty git state from interrupted sync', '已清理被中断同步留下的脏状态'],
+  'syncLock.cleanFailed':      ['Failed to clean dirty state: {error}', '清理脏状态失败: {error}'],
+
+  // ── doctor command ─────────────────────────────────────────────
+  'cli.cmd.doctor':            ['Run health checks on the Wangchuan setup', '对忘川配置进行健康检查'],
+  'doctor.banner':             ['Wangchuan · Doctor', '忘川 · 健康检查'],
+  'doctor.configOk':           ['Config file exists and is valid', '配置文件存在且有效'],
+  'doctor.configMissing':      ['Config file not found: {path}', '配置文件未找到: {path}'],
+  'doctor.configInvalid':      ['Config file is invalid: {error}', '配置文件无效: {error}'],
+  'doctor.keyOk':              ['Master key exists with correct permissions', '主密钥存在且权限正确'],
+  'doctor.keyMissing':         ['Master key not found: {path}', '主密钥未找到: {path}'],
+  'doctor.keyBadPerms':        ['Master key has insecure permissions (expected 0600): {path}', '主密钥权限不安全 (应为 0600): {path}'],
+  'doctor.gitOk':              ['Git is available', 'Git 可用'],
+  'doctor.gitMissing':         ['Git is not installed or not in PATH', 'Git 未安装或不在 PATH 中'],
+  'doctor.repoOk':             ['Git repo is cloned: {path}', 'Git 仓库已克隆: {path}'],
+  'doctor.repoMissing':        ['Git repo not cloned: {path}', 'Git 仓库未克隆: {path}'],
+  'doctor.sshOk':              ['Remote repo is accessible', '远端仓库可访问'],
+  'doctor.sshFailed':          ['Cannot access remote repo: {error}', '无法访问远端仓库: {error}'],
+  'doctor.sshTimeout':         ['Remote access check timed out (10s)', '远端访问检查超时 (10秒)'],
+  'doctor.agentOk':            ['Agent {name} workspace exists: {path}', '智能体 {name} 工作区存在: {path}'],
+  'doctor.agentMissing':       ['Agent {name} workspace not found: {path}', '智能体 {name} 工作区未找到: {path}'],
+  'doctor.lockNone':           ['No stale sync lock', '无过期同步锁'],
+  'doctor.lockStale':          ['Stale sync lock found (PID {pid} is dead), run sync to auto-clean', '发现过期同步锁 (PID {pid} 已终止)，执行同步可自动清理'],
+  'doctor.lockActive':         ['Active sync lock (PID {pid})', '同步锁活动中 (PID {pid})'],
+  'doctor.integrityOk':        ['Integrity checksums match ({count} files)', '完整性校验通过 ({count} 个文件)'],
+  'doctor.integrityMissing':   ['No integrity.json in repo', '仓库中无 integrity.json'],
+  'doctor.integrityFailed':    ['{count} files failed integrity check', '{count} 个文件完整性校验失败'],
+  'doctor.summary':            ['{pass} passed, {warn} warnings, {fail} failed', '{pass} 通过, {warn} 警告, {fail} 失败'],
 };
 
 /**

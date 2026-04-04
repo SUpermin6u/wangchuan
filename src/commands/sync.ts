@@ -12,6 +12,7 @@ import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
+import { syncLock }        from '../core/sync-lock.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -38,7 +39,22 @@ export async function cmdSync({ agent, dryRun }: SyncOptions = {}): Promise<Sync
   if (agent) logger.info(t('sync.filterAgent', { agent: chalk.cyan(agent) }));
   if (dryRun) logger.info(chalk.yellow(t('dryRun.enabled')));
 
-  // ── 1. Fetch and check remote ───────────────────────────────
+  // ── Acquire sync lock ─────────────────────────────────────────
+  await syncLock.acquire(repoPath);
+  try {
+    return await runSync(cfg, repoPath, hostname, agent, dryRun);
+  } finally {
+    syncLock.release();
+  }
+}
+
+async function runSync(
+  cfg: import('../types.js').WangchuanConfig,
+  repoPath: string,
+  hostname: string,
+  agent: import('../types.js').AgentName | undefined,
+  dryRun: boolean | undefined,
+): Promise<SyncCommandResult> {
   let spinner = ora(t('sync.fetching')).start();
   let remoteAhead = 0;
   try {
