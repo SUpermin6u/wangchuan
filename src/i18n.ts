@@ -329,6 +329,35 @@ const M: Msgs = {
   'env.switch.switching':     ['Switching to environment {name} …', '正在切换到环境 {name} …'],
   'env.delete.deleting':      ['Deleting environment {name} …', '正在删除环境 {name} …'],
   'env.unknownAction':        ['Unknown action: {action}. Use list|create|switch|current|delete', '未知操作: {action}，请使用 list|create|switch|current|delete'],
+
+  // ── key command ──────────────────────────────────────────────
+  'cli.cmd.key.desc':         ['Manage master key (rotate|export|import)', '管理主密钥 (rotate|export|import)'],
+  'key.banner':               ['Wangchuan · Key Management', '忘川 · 密钥管理'],
+  'key.rotate.start':         ['Rotating master key …', '正在轮换主密钥 …'],
+  'key.rotate.decrypting':    ['Decrypting {count} files with old key …', '使用旧密钥解密 {count} 个文件 …'],
+  'key.rotate.reencrypting':  ['Re-encrypting with new key …', '使用新密钥重新加密 …'],
+  'key.rotate.complete':      ['Key rotation complete: {count} files re-encrypted', '密钥轮换完成: 重新加密 {count} 个文件'],
+  'key.rotate.noFiles':       ['No encrypted files found in repo', '仓库中没有加密文件'],
+  'key.rotate.failed':        ['Key rotation failed: {error}', '密钥轮换失败: {error}'],
+  'key.rotate.rolledBack':    ['Old key restored after failed rotation', '轮换失败，已恢复旧密钥'],
+  'key.export.hex':           ['Master key (hex): {hex}', '主密钥（hex）: {hex}'],
+  'key.export.warning':       ['Keep this key safe — anyone with it can decrypt your data', '请妥善保管此密钥，持有者可解密所有数据'],
+  'key.import.success':       ['Master key imported: {path}', '主密钥已导入: {path}'],
+  'key.import.invalidHex':    ['Invalid key format, expected 64 hex chars (256-bit)', '密钥格式无效，需要 64 位十六进制字符'],
+  'key.import.hexRequired':   ['Key hex string is required', '需要提供密钥十六进制字符串'],
+  'key.unknownAction':        ['Unknown action: {action}. Use rotate|export|import', '未知操作: {action}，请使用 rotate|export|import'],
+
+  // ── integrity checksum ────────────────────────────────────────
+  'integrity.writing':        ['Writing integrity checksums …', '写入完整性校验 …'],
+  'integrity.verified':       ['Integrity verified: {count} files OK', '完整性校验通过: {count} 个文件'],
+  'integrity.mismatch':       ['Integrity mismatch: {file} (possible corruption or tampering)', '完整性校验失败: {file}（可能被篡改或损坏）'],
+  'integrity.missingChecksum':['No integrity.json in repo, skipping verification', '仓库中无 integrity.json，跳过校验'],
+  'integrity.mismatchCount':  ['Warning: {count} files failed integrity check', '警告: {count} 个文件完整性校验失败'],
+
+  // ── backup before pull ────────────────────────────────────────
+  'backup.creating':          ['Backing up {count} files before overwrite …', '覆盖前备份 {count} 个文件 …'],
+  'backup.created':           ['Backup saved: {path}', '备份已保存: {path}'],
+  'backup.rotated':           ['Rotated old backups (kept {kept}, removed {removed})', '清理旧备份（保留 {kept} 个，删除 {removed} 个）'],
 };
 
 /**

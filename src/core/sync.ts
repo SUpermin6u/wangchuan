@@ -16,6 +16,7 @@
 import fs   from 'fs';
 import path from 'path';
 import os   from 'os';
+import crypto from 'crypto';
 import { cryptoEngine } from './crypto.js';
 import { jsonField }    from './json-field.js';
 import { validator }    from '../utils/validator.js';
@@ -410,6 +411,145 @@ function readSyncMeta(repoPath: string): SyncMeta | null {
   }
 }
 
+// ── Integrity checksum ──────────────────────────────────────────
+
+const INTEGRITY_FILE = 'integrity.json';
+
+interface IntegrityManifest {
+  readonly generatedAt: string;
+  readonly checksums: Record<string, string>;
+}
+
+/** Compute SHA-256 hash of a file */
+function sha256File(filePath: string): string {
+  const content = fs.readFileSync(filePath);
+  return crypto.createHash('sha256').update(content).digest('hex');
+}
+
+/** Write integrity.json to repo root after staging */
+function writeIntegrity(repoPath: string, syncedFiles: readonly string[]): void {
+  const checksums: Record<string, string> = {};
+  for (const repoRel of syncedFiles) {
+    const absPath = path.join(repoPath, repoRel);
+    if (fs.existsSync(absPath)) {
+      checksums[repoRel] = sha256File(absPath);
+    }
+  }
+  const manifest: IntegrityManifest = {
+    generatedAt: new Date().toISOString(),
+    checksums,
+  };
+  fs.writeFileSync(
+    path.join(repoPath, INTEGRITY_FILE),
+    JSON.stringify(manifest, null, 2),
+    'utf-8',
+  );
+  logger.debug(t('integrity.writing'));
+}
+
+/** Verify integrity.json checksums against repo files, return mismatched file list */
+function verifyIntegrity(repoPath: string): string[] {
+  const manifestPath = path.join(repoPath, INTEGRITY_FILE);
+  if (!fs.existsSync(manifestPath)) {
+    logger.debug(t('integrity.missingChecksum'));
+    return [];
+  }
+  let manifest: IntegrityManifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as IntegrityManifest;
+  } catch {
+    return [];
+  }
+
+  const mismatched: string[] = [];
+  for (const [repoRel, expectedHash] of Object.entries(manifest.checksums)) {
+    const absPath = path.join(repoPath, repoRel);
+    if (!fs.existsSync(absPath)) continue;
+    const actualHash = sha256File(absPath);
+    if (actualHash !== expectedHash) {
+      mismatched.push(repoRel);
+      logger.warn(t('integrity.mismatch', { file: repoRel }));
+    }
+  }
+  if (mismatched.length === 0) {
+    const count = Object.keys(manifest.checksums).length;
+    logger.debug(t('integrity.verified', { count }));
+  } else {
+    logger.warn(t('integrity.mismatchCount', { count: mismatched.length }));
+  }
+  return mismatched;
+}
+
+// ── Backup before destructive pull ──────────────────────────────
+
+const WANGCHUAN_DIR = path.join(os.homedir(), '.wangchuan');
+const BACKUPS_DIR   = path.join(WANGCHUAN_DIR, 'backups');
+const MAX_BACKUPS   = 5;
+
+/**
+ * Create a timestamped backup of local files that would be overwritten by restore.
+ * Returns the backup directory path, or null if no files needed backup.
+ */
+function backupBeforeRestore(
+  entries: readonly FileEntry[],
+  repoPath: string,
+): string | null {
+  // Collect local files that exist and have a corresponding repo file
+  const filesToBackup: Array<{ srcAbs: string; repoRel: string }> = [];
+  for (const entry of entries) {
+    const srcRepo = path.join(repoPath, entry.repoRel);
+    if (!fs.existsSync(srcRepo) || !fs.existsSync(entry.srcAbs)) continue;
+    // For jsonExtract entries, check the original path
+    const localPath = entry.jsonExtract ? entry.jsonExtract.originalPath : entry.srcAbs;
+    if (!fs.existsSync(localPath)) continue;
+
+    // Only backup if content actually differs
+    const localBuf = fs.readFileSync(localPath);
+    const repoBuf  = fs.readFileSync(srcRepo);
+    if (!localBuf.equals(repoBuf)) {
+      filesToBackup.push({ srcAbs: localPath, repoRel: entry.repoRel });
+    }
+  }
+
+  if (filesToBackup.length === 0) return null;
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupDir = path.join(BACKUPS_DIR, timestamp);
+  fs.mkdirSync(backupDir, { recursive: true });
+
+  logger.info(t('backup.creating', { count: filesToBackup.length }));
+
+  // Deduplicate by srcAbs (jsonExtract entries may share originalPath)
+  const seen = new Set<string>();
+  for (const { srcAbs, repoRel } of filesToBackup) {
+    if (seen.has(srcAbs)) continue;
+    seen.add(srcAbs);
+    const dest = path.join(backupDir, repoRel);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(srcAbs, dest);
+  }
+
+  logger.info(t('backup.created', { path: backupDir }));
+  return backupDir;
+}
+
+/** Keep only the N most recent backup directories, delete the rest */
+function rotateBackups(): void {
+  if (!fs.existsSync(BACKUPS_DIR)) return;
+  const dirs = fs.readdirSync(BACKUPS_DIR)
+    .filter(d => fs.statSync(path.join(BACKUPS_DIR, d)).isDirectory())
+    .sort()
+    .reverse(); // newest first
+
+  if (dirs.length <= MAX_BACKUPS) return;
+
+  const toRemove = dirs.slice(MAX_BACKUPS);
+  for (const dir of toRemove) {
+    fs.rmSync(path.join(BACKUPS_DIR, dir), { recursive: true, force: true });
+  }
+  logger.debug(t('backup.rotated', { kept: MAX_BACKUPS, removed: toRemove.length }));
+}
+
 export const syncEngine = {
   expandHome,
   buildFileEntries,
@@ -496,6 +636,11 @@ export const syncEngine = {
     // Write sync metadata to repo root
     writeSyncMeta(repoPath, cfg);
 
+    // Write integrity checksums for all synced files
+    if (result.synced.length > 0) {
+      writeIntegrity(repoPath, result.synced);
+    }
+
     return result;
   },
 
@@ -506,6 +651,13 @@ export const syncEngine = {
     const result: RestoreResult = { synced: [], skipped: [], decrypted: [], conflicts: [], localOnly: [] };
     let restoreIdx = 0;
     const restoreTotal = entries.length;
+
+    // ── Verify integrity checksums before restore ────────────────
+    verifyIntegrity(repoPath);
+
+    // ── Backup local files before overwriting ────────────────────
+    backupBeforeRestore(entries, repoPath);
+    rotateBackups();
 
     let batchDecision: 'overwrite_all' | 'skip_all' | undefined;
 
