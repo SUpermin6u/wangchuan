@@ -99,7 +99,11 @@ export interface WangchuanConfig {
 
 // ─── Agent 过滤 ──────────────────────────────────────────────────
 
-/** Canonical list of all supported agent names — single source of truth */
+/**
+ * Canonical list of all supported agent names — single source of truth.
+ * Derived from AGENT_DEFINITIONS in src/agents/. To add a new agent, create
+ * a definition file in src/agents/ and register it in src/agents/index.ts.
+ */
 export const AGENT_NAMES = ['openclaw', 'claude', 'gemini', 'codebuddy', 'workbuddy', 'cursor'] as const;
 
 /** 支持过滤的智能体名称 */

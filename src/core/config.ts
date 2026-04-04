@@ -11,7 +11,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { t }      from '../i18n.js';
-import type { WangchuanConfig, AgentProfiles, SharedConfig } from '../types.js';
+import { buildDefaultProfiles, buildDefaultShared } from '../agents/index.js';
+import type { WangchuanConfig } from '../types.js';
 
 const WANGCHUAN_DIR = path.join(os.homedir(), '.wangchuan');
 const CONFIG_PATH   = path.join(WANGCHUAN_DIR, 'config.json');
@@ -20,150 +21,11 @@ const EXAMPLE_PATH  = fileURLToPath(new URL('../../.wangchuan/config.example.jso
 
 export const CONFIG_VERSION = 2;
 
-/** 默认配置骨架 v2 — 细粒度同步 */
-const DEFAULT_PROFILES: AgentProfiles = {
-  openclaw: {
-    enabled: true,
-    workspacePath: path.join(os.homedir(), '.openclaw', 'workspace'),
-    syncFiles: [
-      { src: 'MEMORY.md',   encrypt: true  },
-      { src: 'AGENTS.md',   encrypt: false },
-      { src: 'SOUL.md',     encrypt: false },
-      { src: 'IDENTITY.md', encrypt: false },
-      { src: 'USER.md',     encrypt: true  },
-    ],
-    syncDirs: [
-      { src: 'memory/', encrypt: true },  // dated memory logs (memory/SHARED.md etc.)
-    ],
-    // skills/ → shared tier; TOOLS.md excluded (environment-specific)
-  },
-  claude: {
-    enabled: true,
-    workspacePath: path.join(os.homedir(), '.claude-internal'),
-    syncFiles: [
-      { src: 'CLAUDE.md',     encrypt: false },
-      { src: 'settings.json', encrypt: true  },
-    ],
-    jsonFields: [
-      {
-        src:      '.claude.json',
-        fields:   ['mcpServers'],
-        repoName: 'mcpServers.json',
-        encrypt:  true,
-      },
-    ],
-  },
-  gemini: {
-    enabled: true,
-    workspacePath: path.join(os.homedir(), '.gemini'),
-    syncFiles: [],
-    jsonFields: [
-      {
-        src:      'settings.internal.json',
-        fields:   ['security', 'model', 'general'],
-        repoName: 'settings-sync.json',
-        encrypt:  true,
-      },
-    ],
-  },
-  codebuddy: {
-    enabled: true,
-    workspacePath: path.join(os.homedir(), '.codebuddy'),
-    syncFiles: [
-      { src: 'MEMORY.md',     encrypt: true  },
-      { src: 'CODEBUDDY.md',  encrypt: false },
-    ],
-    jsonFields: [
-      // MCP config at ~/.codebuddy/mcp.json
-      {
-        src:      'mcp.json',
-        fields:   ['mcpServers'],
-        repoName: 'mcpServers.json',
-        encrypt:  true,
-      },
-      // settings.json → only portable fields (exclude hooks with absolute paths)
-      {
-        src:      'settings.json',
-        fields:   ['enabledPlugins'],
-        repoName: 'settings-sync.json',
-        encrypt:  true,
-      },
-    ],
-  },
-  workbuddy: {
-    enabled: true,
-    workspacePath: path.join(os.homedir(), '.workbuddy'),
-    syncFiles: [
-      { src: 'MEMORY.md',   encrypt: true  },
-      { src: 'IDENTITY.md', encrypt: false },
-      { src: 'SOUL.md',     encrypt: false },
-      { src: 'USER.md',     encrypt: true  },
-    ],
-    jsonFields: [
-      // MCP config at ~/.workbuddy/mcp.json
-      {
-        src:      'mcp.json',
-        fields:   ['mcpServers'],
-        repoName: 'mcpServers.json',
-        encrypt:  true,
-      },
-      // settings.json → only portable fields
-      {
-        src:      'settings.json',
-        fields:   ['enabledPlugins'],
-        repoName: 'settings-sync.json',
-        encrypt:  true,
-      },
-    ],
-  },
-  cursor: {
-    enabled: true,
-    workspacePath: path.join(os.homedir(), '.cursor'),
-    syncFiles: [],
-    syncDirs: [
-      { src: 'rules/', encrypt: false },  // global rules directory
-    ],
-    jsonFields: [
-      // MCP config at ~/.cursor/mcp.json
-      {
-        src:      'mcp.json',
-        fields:   ['mcpServers'],
-        repoName: 'mcpServers.json',
-        encrypt:  true,
-      },
-      // cli-config.json → only portable fields (exclude authInfo, privacyCache)
-      {
-        src:      'cli-config.json',
-        fields:   ['permissions', 'model', 'enabledPlugins'],
-        repoName: 'cli-config-sync.json',
-        encrypt:  true,
-      },
-    ],
-  },
-};
+/** 默认配置骨架 v2 — derived from agent definitions in src/agents/ */
+const DEFAULT_PROFILES = buildDefaultProfiles();
 
-/** 共享层默认配置 */
-const DEFAULT_SHARED: SharedConfig = {
-  skills: {
-    sources: [
-      { agent: 'claude',    dir: 'skills/' },
-      { agent: 'openclaw',  dir: 'skills/' },
-      { agent: 'codebuddy', dir: 'skills/' },
-    ],
-  },
-  mcp: {
-    sources: [
-      { agent: 'claude',    src: '.claude.json',          field: 'mcpServers' },
-      { agent: 'openclaw',  src: 'config/mcporter.json',  field: 'mcpServers' },
-      { agent: 'codebuddy', src: 'mcp.json',              field: 'mcpServers' },
-      { agent: 'workbuddy', src: 'mcp.json',              field: 'mcpServers' },
-      { agent: 'cursor',    src: 'mcp.json',              field: 'mcpServers' },
-    ],
-  },
-  syncFiles: [
-    { src: 'memory/SHARED.md', workspacePath: '~/.openclaw/workspace', encrypt: true },
-  ],
-};
+/** 共享层默认配置 — derived from agent definitions in src/agents/ */
+const DEFAULT_SHARED = buildDefaultShared();
 
 export const config = {
   /** Read config, return null if not found */

@@ -358,6 +358,29 @@ const M: Msgs = {
   'backup.creating':          ['Backing up {count} files before overwrite …', '覆盖前备份 {count} 个文件 …'],
   'backup.created':           ['Backup saved: {path}', '备份已保存: {path}'],
   'backup.rotated':           ['Rotated old backups (kept {kept}, removed {removed})', '清理旧备份（保留 {kept} 个，删除 {removed} 个）'],
+
+  // ── report command ────────────────────────────────────────────
+  'cli.cmd.report':         ['Show sync state summary report', '显示同步状态汇总报告'],
+  'cli.cmd.report.json':    ['Output as JSON', '以 JSON 格式输出'],
+  'report.banner':          ['Wangchuan · Report', '忘川 · 同步报告'],
+  'report.repo':            ['Repo:   ', '仓库：  '],
+  'report.branch':          ['Branch: ', '分支：  '],
+  'report.env':             ['Env:    ', '环境：  '],
+  'report.host':            ['Host:   ', '主机：  '],
+  'report.lastSync':        ['Last sync: ', '上次同步：'],
+  'report.noSync':          ['never', '从未同步'],
+  'report.agentsHeader':    ['Agents:', '智能体：'],
+  'report.totalFiles':      ['Total: {count} files', '合计: {count} 个文件'],
+  'report.encrypted':       ['encrypted', '加密'],
+  'report.plaintext':       ['plaintext', '明文'],
+  'report.localOnly':       ['{count} local-only files (not in repo):', '{count} 个本地独有文件（不在仓库中）：'],
+  'report.missing':         ['{count} missing files (in repo but not local):', '{count} 个缺失文件（在仓库中但本地没有）：'],
+
+  // ── init (idempotent) ────────────────────────────────────────
+  'init.alreadySame':       ['Already initialized with the same repo, nothing to do', '已使用相同仓库初始化，无需操作'],
+  'init.differentRepo':     ['Already initialized with a different repo: {existing}', '已使用不同仓库初始化: {existing}'],
+  'init.useForceSwitch':    ['Use --force to switch repo', '如需切换仓库请使用 --force'],
+  'init.repoMissing':       ['Repo directory missing, re-cloning …', '仓库目录缺失，正在重新克隆 …'],
 };
 
 /**

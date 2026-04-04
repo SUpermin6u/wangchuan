@@ -20,6 +20,7 @@ import { cmdWatch }  from '../src/commands/watch.js';
 import { cmdEnv }    from '../src/commands/env.js';
 import { cmdAgent }  from '../src/commands/agent.js';
 import { cmdKey }    from '../src/commands/key.js';
+import { cmdReport } from '../src/commands/report.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -157,6 +158,15 @@ program
   .description(t('cli.cmd.key.desc'))
   .action(async (action: string, hex?: string) => {
     await run(() => cmdKey({ action, hex }));
+  });
+
+// ── report ──────────────────────────────────────────────────
+program
+  .command('report')
+  .description(t('cli.cmd.report'))
+  .option('--json', t('cli.cmd.report.json'), false)
+  .action(async (opts: { json: boolean }) => {
+    await run(() => cmdReport(opts));
   });
 
 // ── Error handler ───────────────────────────────────────────────
