@@ -78,6 +78,12 @@ export interface SharedConfig {
   readonly syncFiles: readonly SharedSyncFileEntry[];
 }
 
+/** Webhook configuration for post-sync notifications */
+export interface WebhookEntry {
+  readonly url: string;
+  readonly events: readonly ('push' | 'pull' | 'sync')[];
+}
+
 export interface WangchuanConfig {
   readonly repo: string;
   readonly branch: string;
@@ -95,6 +101,8 @@ export interface WangchuanConfig {
   readonly lang?: 'zh' | 'en';
   /** Active environment name. 'default' or undefined → main branch; others → env/{name} */
   readonly environment?: string;
+  /** Webhook endpoints for post-sync notifications */
+  readonly webhooks?: readonly WebhookEntry[];
 }
 
 // ─── Agent 过滤 ──────────────────────────────────────────────────

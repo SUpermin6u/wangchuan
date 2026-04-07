@@ -10,6 +10,8 @@ import { config }           from '../core/config.js';
 import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }   from '../core/migrate.js';
 import { syncEngine }       from '../core/sync.js';
+import { readSyncHistory }  from '../core/sync-history.js';
+import type { SyncEvent }   from '../core/sync-history.js';
 import { validator }        from '../utils/validator.js';
 import { logger }           from '../utils/logger.js';
 import { t }                from '../i18n.js';
@@ -45,6 +47,73 @@ interface ReportData {
   readonly totalPlaintext: number;
   readonly localOnlyFiles: readonly string[];
   readonly missingFiles: readonly string[];
+  readonly syncStats: SyncStats | null;
+}
+
+interface SyncStats {
+  readonly totalSyncs: number;
+  readonly pushCount: number;
+  readonly pullCount: number;
+  readonly syncCount: number;
+  readonly avgFilesPerSync: number;
+  readonly mostActiveAgent: string | null;
+  readonly mostActiveAgentFiles: number;
+  readonly last7DaysSparkline: string;
+}
+
+/** Build a 7-day activity sparkline from sync events */
+function buildSparkline(events: readonly SyncEvent[]): string {
+  const BARS = '▁▂▃▄▅▆▇█';
+  const now = Date.now();
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const days = new Array<number>(7).fill(0);
+
+  for (const ev of events) {
+    const age = now - new Date(ev.timestamp).getTime();
+    const dayIdx = Math.floor(age / msPerDay);
+    if (dayIdx >= 0 && dayIdx < 7) {
+      days[6 - dayIdx]! += ev.fileCount; // index 0 = 6 days ago, 6 = today
+    }
+  }
+
+  const max = Math.max(...days, 1);
+  return days.map(d => BARS[Math.round((d / max) * (BARS.length - 1))]!).join('');
+}
+
+function buildSyncStats(events: readonly SyncEvent[]): SyncStats | null {
+  if (events.length === 0) return null;
+
+  const pushCount = events.filter(e => e.action === 'push').length;
+  const pullCount = events.filter(e => e.action === 'pull').length;
+  const syncCount = events.filter(e => e.action === 'sync').length;
+  const totalFiles = events.reduce((sum, e) => sum + e.fileCount, 0);
+  const avgFilesPerSync = Math.round((totalFiles / events.length) * 10) / 10;
+
+  // Most active agent by file count
+  const agentFiles = new Map<string, number>();
+  for (const ev of events) {
+    const agent = ev.agent ?? 'all';
+    agentFiles.set(agent, (agentFiles.get(agent) ?? 0) + ev.fileCount);
+  }
+  let mostActiveAgent: string | null = null;
+  let mostActiveAgentFiles = 0;
+  for (const [agent, count] of agentFiles) {
+    if (count > mostActiveAgentFiles) {
+      mostActiveAgent = agent;
+      mostActiveAgentFiles = count;
+    }
+  }
+
+  return {
+    totalSyncs: events.length,
+    pushCount,
+    pullCount,
+    syncCount,
+    avgFilesPerSync,
+    mostActiveAgent,
+    mostActiveAgentFiles,
+    last7DaysSparkline: buildSparkline(events),
+  };
 }
 
 function gatherReport(cfg: import('../types.js').WangchuanConfig): ReportData {
@@ -94,6 +163,10 @@ function gatherReport(cfg: import('../types.js').WangchuanConfig): ReportData {
   // Sync meta
   const meta = syncEngine.readSyncMeta(repoPath);
 
+  // Sync statistics from history
+  const history = readSyncHistory();
+  const syncStats = buildSyncStats(history);
+
   return {
     repo: cfg.repo,
     branch: resolveGitBranch(cfg),
@@ -108,6 +181,7 @@ function gatherReport(cfg: import('../types.js').WangchuanConfig): ReportData {
     totalPlaintext,
     localOnlyFiles,
     missingFiles,
+    syncStats,
   };
 }
 
@@ -156,6 +230,26 @@ function printText(data: ReportData): void {
     for (const f of data.missingFiles) {
       console.log(`    ${chalk.red('-')} ${f}`);
     }
+  }
+
+  // Sync Statistics
+  if (data.syncStats) {
+    console.log();
+    console.log(chalk.bold(`  ${t('report.statsHeader')}`));
+    console.log(`    ${t('report.statsTotalSyncs', {
+      total: data.syncStats.totalSyncs,
+      push:  data.syncStats.pushCount,
+      pull:  data.syncStats.pullCount,
+      sync:  data.syncStats.syncCount,
+    })}`);
+    console.log(`    ${t('report.statsAvgFiles', { avg: data.syncStats.avgFilesPerSync })}`);
+    if (data.syncStats.mostActiveAgent) {
+      console.log(`    ${t('report.statsMostActive', {
+        agent: data.syncStats.mostActiveAgent,
+        count: data.syncStats.mostActiveAgentFiles,
+      })}`);
+    }
+    console.log(`    ${t('report.statsLast7Days', { sparkline: data.syncStats.last7DaysSparkline })}`);
   }
 }
 

@@ -26,6 +26,7 @@ import { cmdHistory } from '../src/commands/history.js';
 import { cmdSnapshot } from '../src/commands/snapshot.js';
 import { cmdSummary } from '../src/commands/summary.js';
 import { cmdSetup }   from '../src/commands/setup.js';
+import { cmdHealth }  from '../src/commands/health.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -226,6 +227,14 @@ program
   .description(t('cli.cmd.setup'))
   .action(async () => {
     await run(() => cmdSetup());
+  });
+
+// ── health ──────────────────────────────────────────────────
+program
+  .command('health')
+  .description(t('cli.cmd.health'))
+  .action(async () => {
+    await run(() => cmdHealth());
   });
 
 // ── Error handler ───────────────────────────────────────────────

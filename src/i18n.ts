@@ -481,6 +481,32 @@ const M: Msgs = {
   'snapshot.pruned':           ['Auto-pruned {count} old snapshots (max: {max})', '自动清理 {count} 个旧快照（上限: {max}）'],
   'snapshot.unknownAction':    ['Unknown action: {action}. Use save|list|restore|delete', '未知操作: {action}，请使用 save|list|restore|delete'],
   'snapshot.nameRequired':     ['Snapshot name is required for restore/delete', 'restore/delete 操作需要指定快照名称'],
+
+  // ── webhook ──────────────────────────────────────────────────────
+  'webhook.firing':   ['Firing {count} webhook(s) for event: {event}', '触发 {count} 个 webhook，事件: {event}'],
+  'webhook.success':  ['Webhook OK: {url} ({status})', 'Webhook 成功: {url} ({status})'],
+  'webhook.failed':   ['Webhook failed: {url} — {error}', 'Webhook 失败: {url} — {error}'],
+
+  // ── health command ───────────────────────────────────────────────
+  'cli.cmd.health':           ['Show memory health score', '显示记忆健康评分'],
+  'health.banner':            ['Wangchuan · Health', '忘川 · 健康评分'],
+  'health.freshness':         ['Freshness', '新鲜度'],
+  'health.coverage':          ['Coverage', '覆盖率'],
+  'health.integrity':         ['Integrity', '完整性'],
+  'health.encryption':        ['Encryption', '加密率'],
+  'health.overall':           ['Overall', '综合'],
+  'health.agentHeader':       ['Agent scores:', '智能体评分：'],
+  'health.lastSyncDaysAgo':   ['Last sync: {days} days ago', '上次同步: {days} 天前'],
+  'health.lastSyncToday':     ['Last sync: today', '上次同步: 今天'],
+  'health.noSyncHistory':     ['No sync history', '无同步记录'],
+
+  // ── report sync statistics ─────────────────────────────────────
+  'report.statsHeader':       ['Sync Statistics:', '同步统计：'],
+  'report.statsTotalSyncs':   ['Total syncs: {total} (push: {push}, pull: {pull}, sync: {sync})', '总同步次数: {total} (push: {push}, pull: {pull}, sync: {sync})'],
+  'report.statsAvgFiles':     ['Avg files per sync: {avg}', '平均每次同步文件数: {avg}'],
+  'report.statsMostActive':   ['Most active agent: {agent} ({count} files)', '最活跃智能体: {agent}（{count} 个文件）'],
+  'report.statsLast7Days':    ['Last 7 days: {sparkline}', '最近 7 天: {sparkline}'],
+  'report.statsNoHistory':    ['No sync history yet', '暂无同步记录'],
 };
 
 /**

@@ -9,6 +9,7 @@ import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
 import { syncLock }        from '../core/sync-lock.js';
 import { appendSyncEvent } from '../core/sync-history.js';
+import { fireWebhooks, buildWebhookPayload } from '../core/webhook.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -104,6 +105,11 @@ async function runPull(
     encrypted:   result.decrypted.length,
     hostname:    cfg.hostname || (await import('os')).default.hostname(),
   });
+
+  // Fire webhooks (fire-and-forget)
+  await fireWebhooks(cfg, 'pull', buildWebhookPayload(
+    cfg, 'pull', result.synced.length,
+  ));
 
   return result;
 }

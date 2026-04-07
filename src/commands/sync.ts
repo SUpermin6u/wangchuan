@@ -14,6 +14,7 @@ import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
 import { syncLock }        from '../core/sync-lock.js';
 import { appendSyncEvent } from '../core/sync-history.js';
+import { fireWebhooks, buildWebhookPayload } from '../core/webhook.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -190,6 +191,11 @@ async function runSync(
       sha:         pushResult.sha,
       hostname,
     });
+
+    // Fire webhooks (fire-and-forget)
+    await fireWebhooks(cfg, 'sync', buildWebhookPayload(
+      cfg, 'sync', totalFiles, pushResult.sha,
+    ));
   }
 
   return { pulled, pullResult, pushed: pushResult.committed, pushResult };
