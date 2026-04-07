@@ -26,7 +26,10 @@ import { cmdHistory } from '../src/commands/history.js';
 import { cmdSnapshot } from '../src/commands/snapshot.js';
 import { cmdSummary } from '../src/commands/summary.js';
 import { cmdSetup }   from '../src/commands/setup.js';
-import { cmdHealth }  from '../src/commands/health.js';
+import { cmdHealth }     from '../src/commands/health.js';
+import { cmdSearch }     from '../src/commands/search.js';
+import { cmdConfigMgmt } from '../src/commands/config-mgmt.js';
+import { cmdChangelog }  from '../src/commands/changelog.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -235,6 +238,35 @@ program
   .description(t('cli.cmd.health'))
   .action(async () => {
     await run(() => cmdHealth());
+  });
+
+// ── search ──────────────────────────────────────────────────
+program
+  .command('search <query>')
+  .description(t('cli.cmd.search'))
+  .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
+  .option('-i, --ignore-case', t('cli.cmd.search.ignoreCase'), false)
+  .option('--regex', t('cli.cmd.search.regex'), false)
+  .option('-C, --context <lines>', t('cli.cmd.search.context'), parseInt)
+  .action(async (query: string, opts: { agent?: AgentName; ignoreCase?: boolean; regex?: boolean; context?: number }) => {
+    await run(() => cmdSearch({ query, ...opts }));
+  });
+
+// ── config export/import ────────────────────────────────────
+program
+  .command('config <action> [file]')
+  .description(t('cli.cmd.config'))
+  .action(async (action: string, file?: string) => {
+    await run(() => cmdConfigMgmt({ action, file }));
+  });
+
+// ── changelog ───────────────────────────────────────────────
+program
+  .command('changelog')
+  .description(t('cli.cmd.changelog'))
+  .option('-l, --limit <n>', t('cli.cmd.changelog.limit'), parseInt)
+  .action(async (opts: { limit?: number }) => {
+    await run(() => cmdChangelog({ limit: opts.limit ?? 5 }));
   });
 
 // ── Error handler ───────────────────────────────────────────────

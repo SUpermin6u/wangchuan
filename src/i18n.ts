@@ -507,6 +507,37 @@ const M: Msgs = {
   'report.statsMostActive':   ['Most active agent: {agent} ({count} files)', '最活跃智能体: {agent}（{count} 个文件）'],
   'report.statsLast7Days':    ['Last 7 days: {sparkline}', '最近 7 天: {sparkline}'],
   'report.statsNoHistory':    ['No sync history yet', '暂无同步记录'],
+
+  // ── search command ──────────────────────────────────────────────
+  'cli.cmd.search':            ['Search across synced memories', '搜索同步的记忆内容'],
+  'cli.cmd.search.ignoreCase': ['Case-insensitive search', '忽略大小写搜索'],
+  'cli.cmd.search.regex':      ['Treat query as regular expression', '将查询视为正则表达式'],
+  'cli.cmd.search.context':    ['Lines of context before/after match (default: 2)', '匹配行前后的上下文行数（默认: 2）'],
+  'search.banner':             ['Wangchuan · Search', '忘川 · 搜索'],
+  'search.filterAgent':        ['Filter agent: {agent}', '过滤智能体: {agent}'],
+  'search.searching':          ['Searching {count} files …', '搜索 {count} 个文件 …'],
+  'search.noResults':          ['No results found for: {query}', '未找到匹配内容: {query}'],
+  'search.summary':            ['Found {hits} matches in {files} files', '找到 {hits} 处匹配，分布在 {files} 个文件中'],
+
+  // ── config export/import command ────────────────────────────────
+  'cli.cmd.config':              ['Manage config (export|import)', '管理配置 (export|import)'],
+  'configMgmt.banner':           ['Wangchuan · Config', '忘川 · 配置管理'],
+  'configMgmt.exported':         ['Config exported to {path}', '配置已导出到 {path}'],
+  'configMgmt.exportHint':       ['Copy this file to another machine and run: wangchuan config import <file>', '将此文件复制到另一台机器并执行: wangchuan config import <file>'],
+  'configMgmt.imported':         ['Config imported from {path}', '配置已从 {path} 导入'],
+  'configMgmt.fileNotFound':     ['File not found: {path}', '文件不存在: {path}'],
+  'configMgmt.invalidFile':      ['Invalid config file: {error}', '配置文件无效: {error}'],
+  'configMgmt.importFileRequired': ['File path is required for import', 'import 操作需要指定文件路径'],
+  'configMgmt.unknownAction':    ['Unknown action: {action}. Use export|import', '未知操作: {action}，请使用 export|import'],
+
+  // ── changelog command ───────────────────────────────────────────
+  'cli.cmd.changelog':           ['Show sync changelog from git history', '显示 Git 历史中的同步变更日志'],
+  'cli.cmd.changelog.limit':     ['Number of commits to show (default: 5)', '显示的提交数量（默认: 5）'],
+  'changelog.banner':            ['Wangchuan · Changelog', '忘川 · 变更日志'],
+  'changelog.noRepo':            ['Sync repo not found, run wangchuan init first', '同步仓库不存在，请先执行 wangchuan init'],
+  'changelog.empty':             ['No commits found in sync repo', '同步仓库中没有提交记录'],
+  'changelog.firstCommit':       ['(initial commit)', '(初始提交)'],
+  'changelog.shown':             ['Showing {count} recent commits', '显示最近 {count} 条提交'],
 };
 
 /**
