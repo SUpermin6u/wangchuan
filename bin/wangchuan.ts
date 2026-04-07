@@ -23,6 +23,7 @@ import { cmdKey }    from '../src/commands/key.js';
 import { cmdReport } from '../src/commands/report.js';
 import { cmdDoctor } from '../src/commands/doctor.js';
 import { cmdHistory } from '../src/commands/history.js';
+import { cmdSnapshot } from '../src/commands/snapshot.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -33,6 +34,10 @@ function parseAgent(val: string): AgentName {
     throw new Error(t('cli.invalidAgent', { val }));
   }
   return val as AgentName;
+}
+
+function parseCommaSeparated(val: string): string[] {
+  return val.split(',').map(s => s.trim()).filter(s => s.length > 0);
 }
 
 const program = new Command();
@@ -58,7 +63,9 @@ program
   .command('pull')
   .description(t('cli.cmd.pull'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
-  .action(async (opts: { agent?: AgentName }) => {
+  .option('-o, --only <patterns>', t('cli.cmd.only'), parseCommaSeparated)
+  .option('-x, --exclude <patterns>', t('cli.cmd.exclude'), parseCommaSeparated)
+  .action(async (opts: { agent?: AgentName; only?: string[]; exclude?: string[] }) => {
     await run(() => cmdPull(opts));
   });
 
@@ -69,7 +76,9 @@ program
   .option('-m, --message <msg>', t('cli.cmd.push.msg'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
-  .action(async (opts: { message?: string; agent?: AgentName; dryRun?: boolean }) => {
+  .option('-o, --only <patterns>', t('cli.cmd.only'), parseCommaSeparated)
+  .option('-x, --exclude <patterns>', t('cli.cmd.exclude'), parseCommaSeparated)
+  .action(async (opts: { message?: string; agent?: AgentName; dryRun?: boolean; only?: string[]; exclude?: string[] }) => {
     await run(() => cmdPush(opts));
   });
 
@@ -123,7 +132,9 @@ program
   .description(t('cli.cmd.sync'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
-  .action(async (opts: { agent?: AgentName; dryRun?: boolean }) => {
+  .option('-o, --only <patterns>', t('cli.cmd.only'), parseCommaSeparated)
+  .option('-x, --exclude <patterns>', t('cli.cmd.exclude'), parseCommaSeparated)
+  .action(async (opts: { agent?: AgentName; dryRun?: boolean; only?: string[]; exclude?: string[] }) => {
     await run(() => cmdSync(opts));
   });
 
@@ -187,6 +198,15 @@ program
   .option('--json', t('cli.cmd.history.json'), false)
   .action(async (opts: { limit?: number; json?: boolean }) => {
     await run(() => cmdHistory({ limit: opts.limit ?? 10, json: opts.json }));
+  });
+
+// ── snapshot ──────────────────────────────────────────────────
+program
+  .command('snapshot <action> [name]')
+  .description(t('cli.cmd.snapshot'))
+  .option('-l, --limit <n>', t('cli.cmd.snapshot.limit'), parseInt)
+  .action(async (action: string, name?: string, opts?: { limit?: number }) => {
+    await run(() => cmdSnapshot({ action, name, maxSnapshots: opts?.limit }));
   });
 
 // ── Error handler ───────────────────────────────────────────────

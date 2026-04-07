@@ -32,6 +32,7 @@ import type {
   DiffResult,
   AgentName,
   AgentProfile,
+  FilterOptions,
 } from '../types.js';
 import { AGENT_NAMES } from '../types.js';
 
@@ -306,15 +307,36 @@ function buildSharedEntries(
 }
 
 /**
- * 构建需要同步的文件条目列表（所有同步方向的单一事实来源）。
+ * Apply --only / --exclude filtering to file entries.
+ * --only: keep entries whose repoRel contains any of the patterns (substring match)
+ * --exclude: drop entries whose repoRel contains any of the patterns
+ */
+function applyFilter(entries: FileEntry[], filter?: FilterOptions): FileEntry[] {
+  if (!filter) return entries;
+  let result = entries;
+  if (filter.only && filter.only.length > 0) {
+    const patterns = filter.only;
+    result = result.filter(e => patterns.some(p => e.repoRel.includes(p)));
+  }
+  if (filter.exclude && filter.exclude.length > 0) {
+    const patterns = filter.exclude;
+    result = result.filter(e => !patterns.some(p => e.repoRel.includes(p)));
+  }
+  return result;
+}
+
+/**
+ * Build the list of file entries to sync (single source of truth for all sync directions).
  *
- * @param repoDirBase 传入本地仓库根目录时，syncDirs 从仓库侧枚举（pull 方向）
- * @param agent       只返回指定智能体的条目，undefined 表示全部
+ * @param repoDirBase  Pass local repo root to scan syncDirs from repo side (pull direction)
+ * @param agent        Only return entries for specified agent, undefined = all
+ * @param filter       Optional --only / --exclude filtering
  */
 export function buildFileEntries(
   cfg: WangchuanConfig,
   repoDirBase?: string,
   agent?: AgentName,
+  filter?: FilterOptions,
 ): FileEntry[] {
   const entries: FileEntry[] = [];
   const profiles = cfg.profiles.default;
@@ -331,7 +353,7 @@ export function buildFileEntries(
     entries.push(...buildSharedEntries(cfg, repoDirBase));
   }
 
-  return deduplicateEntries(entries);
+  return applyFilter(deduplicateEntries(entries), filter);
 }
 
 /**
@@ -638,23 +660,35 @@ function rotateBackups(): void {
   logger.debug(t('backup.rotated', { kept: MAX_BACKUPS, removed: toRemove.length }));
 }
 
+/** Check if a file's content matches a buffer (byte-equal for <64KB, SHA-256 for larger) */
+function contentUnchanged(existingPath: string, newContent: Buffer): boolean {
+  if (!fs.existsSync(existingPath)) return false;
+  const existingBuf = fs.readFileSync(existingPath);
+  if (existingBuf.length !== newContent.length) return false;
+  // For small files (<64KB), direct byte comparison; otherwise hash
+  if (newContent.length < 65536) return existingBuf.equals(newContent);
+  const h1 = crypto.createHash('sha256').update(existingBuf).digest('hex');
+  const h2 = crypto.createHash('sha256').update(newContent).digest('hex');
+  return h1 === h2;
+}
+
 export const syncEngine = {
   expandHome,
   buildFileEntries,
   readSyncMeta,
 
   /**
-   * 推送前：先分发 shared 内容到各 agent，再收集文件到 repo。
+   * Push: distribute shared content to all agents, then collect files to repo.
    */
-  async stageToRepo(cfg: WangchuanConfig, agent?: AgentName): Promise<StageResult> {
-    // 推送全部时，先分发 shared 资源到各 agent
+  async stageToRepo(cfg: WangchuanConfig, agent?: AgentName, filter?: FilterOptions): Promise<StageResult> {
+    // Distribute shared resources to all agents before full push
     if (!agent) {
       distributeShared(cfg);
     }
     const repoPath = expandHome(cfg.localRepoPath);
     const keyPath  = expandHome(cfg.keyPath);
-    const entries  = buildFileEntries(cfg, undefined, agent);
-    const result: StageResult = { synced: [], skipped: [], encrypted: [], deleted: [] };
+    const entries  = buildFileEntries(cfg, undefined, agent, filter);
+    const result: StageResult = { synced: [], skipped: [], encrypted: [], deleted: [], unchanged: [] };
     let progressIdx = 0;
     const totalEntries = entries.length;
 
@@ -668,7 +702,7 @@ export const syncEngine = {
       const destAbs = path.join(repoPath, entry.repoRel);
       fs.mkdirSync(path.dirname(destAbs), { recursive: true });
 
-      // ── JSON 字段级提取 ─────────────────────────────────────
+      // ── JSON field-level extraction ────────────────────────────
       if (entry.jsonExtract) {
         try {
           const fullJson = JSON.parse(fs.readFileSync(entry.srcAbs, 'utf-8')) as Record<string, unknown>;
@@ -677,9 +711,19 @@ export const syncEngine = {
 
           if (entry.encrypt) {
             const encrypted = cryptoEngine.encryptString(content, keyPath);
+            const newBuf = Buffer.from(encrypted, 'utf-8');
+            if (contentUnchanged(destAbs, newBuf)) {
+              (result.unchanged as string[]).push(entry.repoRel);
+              continue;
+            }
             fs.writeFileSync(destAbs, encrypted, 'utf-8');
             (result.encrypted as string[]).push(entry.repoRel);
           } else {
+            const newBuf = Buffer.from(content, 'utf-8');
+            if (contentUnchanged(destAbs, newBuf)) {
+              (result.unchanged as string[]).push(entry.repoRel);
+              continue;
+            }
             fs.writeFileSync(destAbs, content, 'utf-8');
           }
           (result.synced as string[]).push(entry.repoRel);
@@ -692,9 +736,15 @@ export const syncEngine = {
         continue;
       }
 
-      // ── 整文件同步（原有逻辑） ────────────────────────────────
+      // ── Whole-file sync ────────────────────────────────────────
       if (!entry.encrypt) {
-        const content = fs.readFileSync(entry.srcAbs, 'utf-8');
+        // Incremental check: skip if content is identical
+        const srcBuf = fs.readFileSync(entry.srcAbs);
+        if (contentUnchanged(destAbs, srcBuf)) {
+          (result.unchanged as string[]).push(entry.repoRel);
+          continue;
+        }
+        const content = srcBuf.toString('utf-8');
         if (validator.containsSensitiveData(content)) {
           logger.warn(`⚠  ${t('sync.sensitiveData', { path: entry.srcAbs })}`);
           logger.warn(`   ${t('sync.suggestEncrypt')}`);
@@ -732,10 +782,10 @@ export const syncEngine = {
     return result;
   },
 
-  async restoreFromRepo(cfg: WangchuanConfig, agent?: AgentName): Promise<RestoreResult> {
+  async restoreFromRepo(cfg: WangchuanConfig, agent?: AgentName, filter?: FilterOptions): Promise<RestoreResult> {
     const repoPath = expandHome(cfg.localRepoPath);
     const keyPath  = expandHome(cfg.keyPath);
-    const entries  = buildFileEntries(cfg, repoPath, agent);
+    const entries  = buildFileEntries(cfg, repoPath, agent, filter);
     const result: RestoreResult = { synced: [], skipped: [], decrypted: [], conflicts: [], localOnly: [] };
     let restoreIdx = 0;
     const restoreTotal = entries.length;
@@ -904,10 +954,10 @@ export const syncEngine = {
     return result;
   },
 
-  async diff(cfg: WangchuanConfig, agent?: AgentName): Promise<DiffResult> {
+  async diff(cfg: WangchuanConfig, agent?: AgentName, filter?: FilterOptions): Promise<DiffResult> {
     const repoPath = expandHome(cfg.localRepoPath);
     const keyPath  = expandHome(cfg.keyPath);
-    const entries  = buildFileEntries(cfg, undefined, agent);
+    const entries  = buildFileEntries(cfg, undefined, agent, filter);
     const diff: DiffResult = { added: [], modified: [], missing: [] };
 
     for (const entry of entries) {

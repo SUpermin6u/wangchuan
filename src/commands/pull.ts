@@ -12,11 +12,11 @@ import { appendSyncEvent } from '../core/sync-history.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
-import type { PullOptions, RestoreResult } from '../types.js';
+import type { PullOptions, RestoreResult, FilterOptions } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
 
-export async function cmdPull({ agent }: PullOptions = {}): Promise<RestoreResult> {
+export async function cmdPull({ agent, only, exclude }: PullOptions = {}): Promise<RestoreResult> {
   logger.banner(t('pull.banner'));
 
   let cfg = config.load();
@@ -25,11 +25,15 @@ export async function cmdPull({ agent }: PullOptions = {}): Promise<RestoreResul
 
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   if (agent) logger.info(t('pull.filterAgent', { agent: chalk.cyan(agent) }));
+  if (only?.length)    logger.info(t('filter.only', { patterns: only.join(', ') }));
+  if (exclude?.length) logger.info(t('filter.exclude', { patterns: exclude.join(', ') }));
+
+  const filter = (only?.length || exclude?.length) ? { only, exclude } : undefined;
 
   // ── Acquire sync lock ─────────────────────────────────────────
   await syncLock.acquire(repoPath);
   try {
-    return await runPull(cfg, repoPath, agent);
+    return await runPull(cfg, repoPath, agent, filter);
   } finally {
     syncLock.release();
   }
@@ -39,6 +43,7 @@ async function runPull(
   cfg: import('../types.js').WangchuanConfig,
   repoPath: string,
   agent: import('../types.js').AgentName | undefined,
+  filter: FilterOptions | undefined,
 ): Promise<RestoreResult> {
   let spinner = ora(t('pull.pulling', { repo: cfg.repo })).start();
   try {
@@ -53,7 +58,7 @@ async function runPull(
   spinner.stop();
   let result: RestoreResult;
   try {
-    result = await syncEngine.restoreFromRepo(cfg, agent);
+    result = await syncEngine.restoreFromRepo(cfg, agent, filter);
   } catch (err) {
     throw new Error(t('pull.restoreFailed', { error: (err as Error).message }));
   }

@@ -427,6 +427,30 @@ const M: Msgs = {
   'history.separator':         ['─────────────────────────────────────────────────────────────────', '─────────────────────────────────────────────────────────────────────'],
 
   'doctor.summary':            ['{pass} passed, {warn} warnings, {fail} failed', '{pass} 通过, {warn} 警告, {fail} 失败'],
+
+  // ── filter (--only / --exclude) ─────────────────────────────────
+  'cli.cmd.only':              ['Only sync files matching patterns (comma-separated)', '仅同步匹配的文件（逗号分隔）'],
+  'cli.cmd.exclude':           ['Exclude files matching patterns (comma-separated)', '排除匹配的文件（逗号分隔）'],
+  'filter.only':               ['Filter --only: {patterns}', '过滤 --only: {patterns}'],
+  'filter.exclude':            ['Filter --exclude: {patterns}', '过滤 --exclude: {patterns}'],
+
+  // ── push unchanged (incremental) ─────────────────────────────────
+  'push.unchangedSummary':     ['({count} unchanged, skipped)', '（{count} 个未变更，已跳过）'],
+
+  // ── snapshot command ──────────────────────────────────────────────
+  'cli.cmd.snapshot':          ['Manage sync snapshots (save|list|restore|delete)', '管理同步快照 (save|list|restore|delete)'],
+  'cli.cmd.snapshot.limit':    ['Max snapshots to keep (default: 10)', '保留的最大快照数（默认: 10）'],
+  'snapshot.banner':           ['Wangchuan · Snapshot', '忘川 · 快照管理'],
+  'snapshot.saved':            ['Snapshot saved: {name} ({count} files)', '快照已保存: {name}（{count} 个文件）'],
+  'snapshot.restored':         ['Snapshot restored: {name}', '快照已恢复: {name}'],
+  'snapshot.deleted':          ['Snapshot deleted: {name}', '快照已删除: {name}'],
+  'snapshot.notFound':         ['Snapshot not found: {name}', '快照不存在: {name}'],
+  'snapshot.listHeader':       ['Snapshots:', '快照列表：'],
+  'snapshot.listEmpty':        ['No snapshots found', '暂无快照'],
+  'snapshot.listEntry':        ['{name}  {time}  {count} files  {size}', '{name}  {time}  {count} 个文件  {size}'],
+  'snapshot.pruned':           ['Auto-pruned {count} old snapshots (max: {max})', '自动清理 {count} 个旧快照（上限: {max}）'],
+  'snapshot.unknownAction':    ['Unknown action: {action}. Use save|list|restore|delete', '未知操作: {action}，请使用 save|list|restore|delete'],
+  'snapshot.nameRequired':     ['Snapshot name is required for restore/delete', 'restore/delete 操作需要指定快照名称'],
 };
 
 /**

@@ -138,8 +138,10 @@ export interface StageResult {
   readonly synced: string[];
   readonly skipped: string[];
   readonly encrypted: string[];
-  /** push 时从 repo 中清理的过期文件 */
+  /** push — stale files pruned from repo */
   readonly deleted: string[];
+  /** push — files skipped because content is identical to repo */
+  readonly unchanged: string[];
 }
 
 export interface RestoreResult {
@@ -173,12 +175,18 @@ export interface InitOptions {
   readonly key?: string;
 }
 
-export interface PushOptions extends AgentOptions {
+/** Mixin for --only / --exclude file filtering */
+export interface FilterOptions {
+  readonly only?: readonly string[] | undefined;
+  readonly exclude?: readonly string[] | undefined;
+}
+
+export interface PushOptions extends AgentOptions, FilterOptions {
   readonly message?: string;
   readonly dryRun?: boolean;
 }
 
-export interface PullOptions extends AgentOptions {}
+export interface PullOptions extends AgentOptions, FilterOptions {}
 
 export interface StatusOptions extends AgentOptions {}
 
@@ -186,7 +194,7 @@ export interface DiffCommandOptions extends AgentOptions {}
 
 export interface ListOptions extends AgentOptions {}
 
-export interface SyncOptions extends AgentOptions {
+export interface SyncOptions extends AgentOptions, FilterOptions {
   readonly dryRun?: boolean;
 }
 

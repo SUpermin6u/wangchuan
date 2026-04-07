@@ -17,7 +17,7 @@ import { appendSyncEvent } from '../core/sync-history.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
-import type { SyncOptions, RestoreResult, StageResult, CommitResult } from '../types.js';
+import type { SyncOptions, RestoreResult, StageResult, CommitResult, FilterOptions } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
 
@@ -28,7 +28,7 @@ export interface SyncCommandResult {
   readonly pushResult?: (CommitResult & { readonly stageResult?: StageResult | undefined }) | undefined;
 }
 
-export async function cmdSync({ agent, dryRun }: SyncOptions = {}): Promise<SyncCommandResult> {
+export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}): Promise<SyncCommandResult> {
   logger.banner(t('sync.banner'));
 
   let cfg = config.load();
@@ -38,12 +38,16 @@ export async function cmdSync({ agent, dryRun }: SyncOptions = {}): Promise<Sync
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   const hostname = cfg.hostname || os.hostname();
   if (agent) logger.info(t('sync.filterAgent', { agent: chalk.cyan(agent) }));
+  if (only?.length)    logger.info(t('filter.only', { patterns: only.join(', ') }));
+  if (exclude?.length) logger.info(t('filter.exclude', { patterns: exclude.join(', ') }));
   if (dryRun) logger.info(chalk.yellow(t('dryRun.enabled')));
+
+  const filter = (only?.length || exclude?.length) ? { only, exclude } : undefined;
 
   // ── Acquire sync lock ─────────────────────────────────────────
   await syncLock.acquire(repoPath);
   try {
-    return await runSync(cfg, repoPath, hostname, agent, dryRun);
+    return await runSync(cfg, repoPath, hostname, agent, dryRun, filter);
   } finally {
     syncLock.release();
   }
@@ -55,6 +59,7 @@ async function runSync(
   hostname: string,
   agent: import('../types.js').AgentName | undefined,
   dryRun: boolean | undefined,
+  filter: FilterOptions | undefined,
 ): Promise<SyncCommandResult> {
   let spinner = ora(t('sync.fetching')).start();
   let remoteAhead = 0;
@@ -84,7 +89,7 @@ async function runSync(
     }
 
     try {
-      pullResult = await syncEngine.restoreFromRepo(cfg, agent);
+      pullResult = await syncEngine.restoreFromRepo(cfg, agent, filter);
       pulled = true;
       if (pullResult.synced.length > 0) {
         logger.ok(t('sync.pullSummary', {
@@ -101,8 +106,9 @@ async function runSync(
   spinner = ora(t('sync.staging')).start();
   let stageResult: StageResult;
   try {
-    stageResult = await syncEngine.stageToRepo(cfg, agent);
-    spinner.succeed(t('sync.staged', { count: stageResult.synced.length }));
+    stageResult = await syncEngine.stageToRepo(cfg, agent, filter);
+    spinner.succeed(t('sync.staged', { count: stageResult.synced.length }) +
+      (stageResult.unchanged.length > 0 ? ' ' + t('push.unchangedSummary', { count: stageResult.unchanged.length }) : ''));
   } catch (err) {
     spinner.fail(t('sync.stagingFailed'));
     throw new Error(t('sync.stagingFailedDetail', { error: (err as Error).message }));

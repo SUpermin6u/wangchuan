@@ -13,7 +13,7 @@ import { appendSyncEvent } from '../core/sync-history.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
-import type { PushOptions, CommitResult, StageResult } from '../types.js';
+import type { PushOptions, CommitResult, StageResult, FilterOptions } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
 
@@ -21,7 +21,7 @@ export interface PushCommandResult extends CommitResult {
   readonly stageResult?: StageResult;
 }
 
-export async function cmdPush({ message, agent, dryRun }: PushOptions = {}): Promise<PushCommandResult> {
+export async function cmdPush({ message, agent, dryRun, only, exclude }: PushOptions = {}): Promise<PushCommandResult> {
   logger.banner(t('push.banner'));
 
   let cfg = config.load();
@@ -31,12 +31,16 @@ export async function cmdPush({ message, agent, dryRun }: PushOptions = {}): Pro
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   const hostname = cfg.hostname || os.hostname();
   if (agent) logger.info(t('push.filterAgent', { agent: chalk.cyan(agent) }));
+  if (only?.length)    logger.info(t('filter.only', { patterns: only.join(', ') }));
+  if (exclude?.length) logger.info(t('filter.exclude', { patterns: exclude.join(', ') }));
   if (dryRun) logger.info(chalk.yellow(t('dryRun.enabled')));
+
+  const filter = (only?.length || exclude?.length) ? { only, exclude } : undefined;
 
   // ── Acquire sync lock ─────────────────────────────────────────
   await syncLock.acquire(repoPath);
   try {
-    return await runPush(cfg, repoPath, hostname, message, agent, dryRun);
+    return await runPush(cfg, repoPath, hostname, message, agent, dryRun, filter);
   } finally {
     syncLock.release();
   }
@@ -49,6 +53,7 @@ async function runPush(
   message: string | undefined,
   agent: import('../types.js').AgentName | undefined,
   dryRun: boolean | undefined,
+  filter: FilterOptions | undefined,
 ): Promise<PushCommandResult> {
   const agentTag = agent ? `[${agent}]` : '';
   const msg = message
@@ -59,8 +64,9 @@ async function runPush(
   let spinner = ora(t('push.staging')).start();
   let stageResult: StageResult;
   try {
-    stageResult = await syncEngine.stageToRepo(cfg, agent);
-    spinner.succeed(t('push.staged', { count: stageResult.synced.length }));
+    stageResult = await syncEngine.stageToRepo(cfg, agent, filter);
+    spinner.succeed(t('push.staged', { count: stageResult.synced.length }) +
+      (stageResult.unchanged.length > 0 ? ' ' + t('push.unchangedSummary', { count: stageResult.unchanged.length }) : ''));
   } catch (err) {
     spinner.fail(t('push.stagingFailed'));
     throw new Error(t('push.stagingFailedDetail', { error: (err as Error).message }));
