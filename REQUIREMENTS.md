@@ -37,9 +37,9 @@ Users need to configure AI agents (Claude, Gemini, OpenClaw) across different en
 - `~/.openclaw/workspace/SOUL.md` - Agent 人格设定 / Agent persona
 
 #### Claude 配置 / Claude Configs
-- `~/.claude-internal/CLAUDE.md` - 全局指令 / Global instructions
-- `~/.claude-internal/settings.json` - 权限/插件/模型（加密）/ Permissions/plugins/model (encrypted)
-- `~/.claude-internal/.claude.json` → `mcpServers` 字段 - JSON 字段级提取（加密）/ JSON field-level extraction (encrypted)
+- `~/.claude/CLAUDE.md` - 全局指令 / Global instructions
+- `~/.claude/settings.json` - 权限/插件/模型（加密）/ Permissions/plugins/model (encrypted)
+- `~/.claude/.claude.json` → `mcpServers` 字段 - JSON 字段级提取（加密）/ JSON field-level extraction (encrypted)
 
 #### Gemini 配置 / Gemini Configs
 - `~/.gemini/settings.internal.json` → `security`, `model` 字段 - JSON 字段级提取（加密）/ JSON field-level extraction (encrypted)

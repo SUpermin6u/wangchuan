@@ -10,7 +10,7 @@ export const claude: AgentDefinition = {
   name: 'claude',
   profile: {
     enabled: true,
-    workspacePath: path.join(os.homedir(), '.claude-internal'),
+    workspacePath: path.join(os.homedir(), '.claude'),
     syncFiles: [
       { src: 'CLAUDE.md',     encrypt: false },
       { src: 'settings.json', encrypt: true  },

@@ -155,7 +155,7 @@ repo/
 | `settings.json`  | ✔ | 权限、插件、模型配置 / Permissions, plugins, model |
 | `.claude.json` → `mcpServers` | ✔ | JSON 字段级提取，仅同步 MCP 配置 / Field-level extraction, MCP config only |
 
-默认路径 / Default path：`~/.claude-internal/`
+默认路径 / Default path：`~/.claude/`
 
 ### Gemini（默认开启 / enabled by default）
 
@@ -191,7 +191,7 @@ Config at `~/.wangchuan/config.json`, see [.wangchuan/config.example.json](.wang
   "profiles": {
     "default": {
       "openclaw": { "enabled": true,  "workspacePath": "~/.openclaw/workspace", ... },
-      "claude":   { "enabled": true,  "workspacePath": "~/.claude-internal", ... },
+      "claude":   { "enabled": true,  "workspacePath": "~/.claude", ... },
       "gemini":   { "enabled": true,  "workspacePath": "~/.gemini", ... }
     }
   },

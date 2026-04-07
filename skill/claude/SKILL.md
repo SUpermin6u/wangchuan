@@ -23,8 +23,8 @@ At the end of each task session, evaluate whether the conversation produced any 
 
 | Category | What to look for | Where to update |
 |----------|-----------------|-----------------|
-| **New skill learned** | Reusable workflow, automation pattern, or domain knowledge | Create/update skill in `~/.claude-internal/skills/` |
-| **User preference discovered** | Coding style, tool preference, communication preference | Append to `~/.claude-internal/CLAUDE.md` |
+| **New skill learned** | Reusable workflow, automation pattern, or domain knowledge | Create/update skill in `~/.claude/skills/` |
+| **User preference discovered** | Coding style, tool preference, communication preference | Append to `~/.claude/CLAUDE.md` |
 | **Memory worth preserving** | Key decisions, project context, recurring patterns | Append to agent memory file |
 | **Config change made** | MCP servers added, settings changed, permissions updated | Already tracked by file sync |
 

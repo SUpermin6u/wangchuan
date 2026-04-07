@@ -24,7 +24,7 @@
       },
       "claude": {
         "enabled": true,
-        "workspacePath": "~/.claude-internal",
+        "workspacePath": "~/.claude",
         "syncFiles": [
           { "src": "CLAUDE.md",     "encrypt": false },
           { "src": "settings.json", "encrypt": true  }
