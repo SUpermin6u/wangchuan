@@ -114,6 +114,20 @@ function checkAgentWorkspaces(cfg: import('../types.js').WangchuanConfig): Check
   return results;
 }
 
+function checkAgentDiscovery(cfg: import('../types.js').WangchuanConfig): CheckResult[] {
+  const results: CheckResult[] = [];
+  const profiles = cfg.profiles.default;
+  for (const name of AGENT_NAMES) {
+    const p = profiles[name];
+    if (p.enabled) continue;
+    const wsPath = syncEngine.expandHome(p.workspacePath);
+    if (fs.existsSync(wsPath)) {
+      results.push(WARN(t('doctor.discoveredAgent', { name, path: wsPath })));
+    }
+  }
+  return results;
+}
+
 function checkSyncLock(): CheckResult {
   const lock = syncLock.read();
   if (!lock) return PASS(t('doctor.lockNone'));
@@ -201,6 +215,9 @@ export async function cmdDoctor(): Promise<void> {
 
     // 9. Ignore file
     results.push(checkIgnoreFile());
+
+    // 10. Agent discovery (disabled agents with existing workspaces)
+    results.push(...checkAgentDiscovery(cfg));
   }
 
   // Print results

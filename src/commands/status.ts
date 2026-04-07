@@ -11,6 +11,7 @@ import { syncEngine }      from '../core/sync.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
+import { AGENT_NAMES }     from '../types.js';
 import type { StatusOptions } from '../types.js';
 import chalk from 'chalk';
 
@@ -136,5 +137,25 @@ export async function cmdStatus({ agent }: StatusOptions = {}): Promise<void> {
     const encLabel = e.encrypt ? chalk.gray('[enc]') : '';
     const jfLabel  = e.jsonExtract ? chalk.blue(t('status.fieldLabel')) : '';
     console.log(`    ${mark} ${e.repoRel} ${encLabel}${jfLabel}`);
+  }
+
+  // ── Agent discovery hints ────────────────────────────────────────
+  const profiles = cfg.profiles.default;
+  const discovered: string[] = [];
+  for (const name of AGENT_NAMES) {
+    const p = profiles[name];
+    if (p.enabled) continue;
+    const wsPath = syncEngine.expandHome(p.workspacePath);
+    if (fs.existsSync(wsPath)) {
+      discovered.push(name);
+    }
+  }
+  if (discovered.length > 0) {
+    console.log();
+    for (const name of discovered) {
+      const p = profiles[name as import('../types.js').AgentName];
+      const wsPath = syncEngine.expandHome(p.workspacePath);
+      logger.info(t('status.discoveredAgent', { name, path: wsPath }));
+    }
   }
 }

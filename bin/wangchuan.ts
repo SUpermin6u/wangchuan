@@ -32,6 +32,8 @@ import { cmdConfigMgmt } from '../src/commands/config-mgmt.js';
 import { cmdChangelog }  from '../src/commands/changelog.js';
 import { cmdTag }        from '../src/commands/tag.js';
 import { cmdCleanup }    from '../src/commands/cleanup.js';
+import { cmdTemplate }   from '../src/commands/template.js';
+import { cmdBatch }      from '../src/commands/batch.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -288,6 +290,23 @@ program
   .option('--days <n>', t('cli.cmd.cleanup.days'), parseInt)
   .action(async (opts: { agent?: AgentName; auto?: boolean; days?: number }) => {
     await run(() => cmdCleanup(opts));
+  });
+
+// ── template ──────────────────────────────────────────────────
+program
+  .command('template <action> [name]')
+  .description(t('cli.cmd.template'))
+  .action(async (action: string, name?: string) => {
+    await run(() => cmdTemplate({ action, name }));
+  });
+
+// ── batch ─────────────────────────────────────────────────────
+program
+  .command('batch <commands...>')
+  .description(t('cli.cmd.batch'))
+  .option('--continue-on-error', t('cli.cmd.batch.continueOnError'), false)
+  .action(async (commands: string[], opts: { continueOnError?: boolean }) => {
+    await run(() => cmdBatch({ commands, continueOnError: opts.continueOnError ?? false }));
   });
 
 // ── Error handler ───────────────────────────────────────────────

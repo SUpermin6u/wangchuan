@@ -575,6 +575,35 @@ const M: Msgs = {
   'prompt.showDiff':           ['Show full diff', '显示完整差异'],
   'prompt.merge':              ['Attempt merge', '尝试合并'],
   'prompt.moreChanges':        ['{count} more changes …', '还有 {count} 处变更 …'],
+
+  // ── template command ──────────────────────────────────────────
+  'cli.cmd.template':            ['Manage sync config templates (list|apply)', '管理同步配置模板 (list|apply)'],
+  'template.banner':             ['Wangchuan · Template', '忘川 · 配置模板'],
+  'template.list.header':        ['Available templates:', '可用模板：'],
+  'template.desc.minimal':       ['Claude only — minimal setup', '仅 Claude — 最小化配置'],
+  'template.desc.full':          ['All agents enabled — full sync', '全部智能体启用 — 完整同步'],
+  'template.desc.developer':     ['Claude + Cursor + CodeBuddy — developer focused', 'Claude + Cursor + CodeBuddy — 开发者向'],
+  'template.desc.personal':      ['OpenClaw + WorkBuddy — personal assistant', 'OpenClaw + WorkBuddy — 个人助手向'],
+  'template.applied':            ['Template applied: {name}', '模板已应用: {name}'],
+  'template.notFound':           ['Template not found: {name}. Run wangchuan template list', '模板不存在: {name}，执行 wangchuan template list 查看'],
+  'template.nameRequired':       ['Template name is required for apply', 'apply 操作需要指定模板名称'],
+  'template.unknownAction':      ['Unknown action: {action}. Use list|apply', '未知操作: {action}，请使用 list|apply'],
+
+  // ── batch command ──────────────────────────────────────────────
+  'cli.cmd.batch':               ['Run multiple commands in sequence', '按顺序执行多个命令'],
+  'cli.cmd.batch.continueOnError': ['Continue on error instead of stopping', '遇到错误时继续执行而非停止'],
+  'batch.banner':                ['Wangchuan · Batch', '忘川 · 批量执行'],
+  'batch.noCommands':            ['No commands specified', '未指定任何命令'],
+  'batch.unknownCommand':        ['Unknown command: {command}. Supported: {supported}', '未知命令: {command}，支持: {supported}'],
+  'batch.running':               ['Running {count} commands …', '执行 {count} 个命令 …'],
+  'batch.commandDone':           ['Done: {command} ({time})', '完成: {command} ({time})'],
+  'batch.commandFailed':         ['Failed: {command} — {error}', '失败: {command} — {error}'],
+  'batch.stopped':               ['Stopped: {passed} passed, {failed} failed, {remaining} skipped', '已停止: {passed} 通过, {failed} 失败, {remaining} 跳过'],
+  'batch.summary':               ['Batch complete: {total} commands — {passed} passed, {failed} failed', '批量执行完成: {total} 个命令 — {passed} 通过, {failed} 失败'],
+
+  // ── agent discovery ────────────────────────────────────────────
+  'doctor.discoveredAgent':      ['Agent {name} workspace found at {path} but agent is disabled. Run: wangchuan agent enable {name}', '智能体 {name} 工作区存在于 {path}，但该智能体已禁用。执行: wangchuan agent enable {name}'],
+  'status.discoveredAgent':      ['Agent {name} found at {path} but disabled. Run: wangchuan agent enable {name}', '智能体 {name} 存在于 {path}，但已禁用。执行: wangchuan agent enable {name}'],
 };
 
 /**
