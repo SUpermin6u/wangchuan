@@ -30,6 +30,8 @@ import { cmdHealth }     from '../src/commands/health.js';
 import { cmdSearch }     from '../src/commands/search.js';
 import { cmdConfigMgmt } from '../src/commands/config-mgmt.js';
 import { cmdChangelog }  from '../src/commands/changelog.js';
+import { cmdTag }        from '../src/commands/tag.js';
+import { cmdCleanup }    from '../src/commands/cleanup.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -267,6 +269,25 @@ program
   .option('-l, --limit <n>', t('cli.cmd.changelog.limit'), parseInt)
   .action(async (opts: { limit?: number }) => {
     await run(() => cmdChangelog({ limit: opts.limit ?? 5 }));
+  });
+
+// ── tag ──────────────────────────────────────────────────────
+program
+  .command('tag <action> [pattern] [tags...]')
+  .description(t('cli.cmd.tag'))
+  .action(async (action: string, pattern?: string, tags?: string[]) => {
+    await run(() => cmdTag({ action, pattern, tags: tags ?? [] }));
+  });
+
+// ── cleanup ──────────────────────────────────────────────────
+program
+  .command('cleanup')
+  .description(t('cli.cmd.cleanup'))
+  .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
+  .option('--auto', t('cli.cmd.cleanup.auto'), false)
+  .option('--days <n>', t('cli.cmd.cleanup.days'), parseInt)
+  .action(async (opts: { agent?: AgentName; auto?: boolean; days?: number }) => {
+    await run(() => cmdCleanup(opts));
   });
 
 // ── Error handler ───────────────────────────────────────────────

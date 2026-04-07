@@ -940,7 +940,7 @@ export const syncEngine = {
             }
           }
 
-          // ── Fallback: binary overwrite/skip prompt ──
+          // ── Fallback: interactive overwrite/skip/merge prompt ──
           (result.conflicts as string[]).push(entry.repoRel);
 
           if (batchDecision === 'skip_all') {
@@ -949,7 +949,9 @@ export const syncEngine = {
             continue;
           }
           if (batchDecision !== 'overwrite_all') {
-            const ans = await askConflict(entry.repoRel);
+            const localStr = localBuf.toString('utf-8');
+            const canMerge = isTextMergeable && remoteContent !== undefined;
+            const ans = await askConflict(entry.repoRel, localStr, remoteContent, canMerge);
             if (ans === 'skip' || ans === 'skip_all') {
               if (ans === 'skip_all') batchDecision = 'skip_all';
               logger.info(`  ↷ ${t('sync.skippedKeepLocal', { file: entry.repoRel })}`);
@@ -957,6 +959,23 @@ export const syncEngine = {
               continue;
             }
             if (ans === 'overwrite_all') batchDecision = 'overwrite_all';
+            if (ans === 'merge' && canMerge) {
+              // Manual merge attempt via three-way merge (with conflict markers)
+              const baseContent = await gitEngine.showFile(repoPath, 'HEAD~1', entry.repoRel);
+              const base = baseContent ?? '';
+              const mergeResult = threeWayMerge(base, localStr, remoteContent!);
+              fs.mkdirSync(path.dirname(entry.srcAbs), { recursive: true });
+              fs.writeFileSync(entry.srcAbs, mergeResult.merged, 'utf-8');
+              if (mergeResult.hasConflicts) {
+                logger.warn(`  ${t('merge.conflictsFound', { file: entry.repoRel })}`);
+              } else {
+                logger.info(`  ${t('merge.autoResolved', { file: entry.repoRel })}`);
+              }
+              (result.synced as string[]).push(entry.repoRel);
+              restoreIdx++;
+              logProgress(restoreIdx, restoreTotal, 'copy', entry.repoRel);
+              continue;
+            }
           }
         }
       }

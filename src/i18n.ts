@@ -195,7 +195,7 @@ const M: Msgs = {
   'prompt.conflict':        ['Conflict: {file}', '冲突: {file}'],
   'prompt.conflictDesc':    ['Local file exists and differs.', '本地文件已存在且内容不同。'],
   'prompt.conflictChoices': ['[o] Overwrite  [s] Skip  [A] Overwrite all  [S] Skip all', '[o] 覆盖  [s] 跳过  [A] 全部覆盖  [S] 全部跳过'],
-  'prompt.choose':          ['Choose [o/s/A/S]: ', '请选择 [o/s/A/S]: '],
+  'prompt.choose':          ['Choose [{choices}]: ', '请选择 [{choices}]: '],
 
   // ── migrate ─────────────────────────────────────────────────
   'migrate.incomplete':        ['Incomplete migration detected, rolling back from backup …', '检测到上次迁移未完成，正在回滚 …'],
@@ -538,6 +538,43 @@ const M: Msgs = {
   'changelog.empty':             ['No commits found in sync repo', '同步仓库中没有提交记录'],
   'changelog.firstCommit':       ['(initial commit)', '(初始提交)'],
   'changelog.shown':             ['Showing {count} recent commits', '显示最近 {count} 条提交'],
+
+  // ── tag command ───────────────────────────────────────────────
+  'cli.cmd.tag':               ['Manage file tags (add|remove|list|find)', '管理文件标签 (add|remove|list|find)'],
+  'tag.banner':                ['Wangchuan · Tags', '忘川 · 标签管理'],
+  'tag.addUsage':              ['Usage: wangchuan tag add <file-pattern> <tags...>', '用法: wangchuan tag add <文件模式> <标签...>'],
+  'tag.removeUsage':           ['Usage: wangchuan tag remove <file-pattern> <tags...>', '用法: wangchuan tag remove <文件模式> <标签...>'],
+  'tag.findUsage':             ['Usage: wangchuan tag find <tag>', '用法: wangchuan tag find <标签>'],
+  'tag.noMatch':               ['No files match pattern: {pattern}', '没有文件匹配模式: {pattern}'],
+  'tag.added':                 ['Tagged {count} files with: {tags}', '已为 {count} 个文件添加标签: {tags}'],
+  'tag.removed':               ['Removed tags from {count} files: {tags}', '已从 {count} 个文件移除标签: {tags}'],
+  'tag.empty':                 ['No tagged files', '暂无标签文件'],
+  'tag.listSummary':           ['{tags} tags across {files} files', '{tags} 个标签，{files} 个文件'],
+  'tag.findEmpty':             ['No files found with tag: {tag}', '未找到标签为 {tag} 的文件'],
+  'tag.unknownAction':         ['Unknown action: {action}. Use add|remove|list|find', '未知操作: {action}，请使用 add|remove|list|find'],
+
+  // ── cleanup command ───────────────────────────────────────────
+  'cli.cmd.cleanup':           ['Detect stale/unused memory entries and suggest cleanup', '检测过期/未使用的记忆条目并建议清理'],
+  'cli.cmd.cleanup.auto':      ['Auto-disable agents with all phantom files', '自动禁用所有文件缺失的智能体'],
+  'cli.cmd.cleanup.days':      ['Stale threshold in days (default: 90)', '过期阈值天数（默认: 90）'],
+  'cleanup.banner':            ['Wangchuan · Cleanup', '忘川 · 过期清理'],
+  'cleanup.filterAgent':       ['Filter agent: {agent}', '过滤智能体: {agent}'],
+  'cleanup.staleHeader':       ['Stale (>{days}d not modified)', '过期（>{days}天 未修改）'],
+  'cleanup.dormantHeader':     ['Dormant (long inactive)', '休眠（长期未活动）'],
+  'cleanup.phantomHeader':     ['Phantom (configured but missing)', '幽灵（已配置但文件不存在）'],
+  'cleanup.ok':                ['OK', '正常'],
+  'cleanup.stale':             ['stale', '过期'],
+  'cleanup.dormant':           ['dormant', '休眠'],
+  'cleanup.phantom':           ['phantom', '幽灵'],
+  'cleanup.summary':           ['Total: {total} files — {ok} ok, {stale} stale, {dormant} dormant, {phantom} phantom', '合计: {total} 个文件 — {ok} 正常, {stale} 过期, {dormant} 休眠, {phantom} 幽灵'],
+  'cleanup.autoDisabled':      ['Auto-disabled agent: {agent} (all files phantom)', '已自动禁用智能体: {agent}（所有文件缺失）'],
+  'cleanup.noAutoAction':      ['No agents to auto-disable', '没有需要自动禁用的智能体'],
+
+  // ── enhanced prompt ───────────────────────────────────────────
+  'prompt.sizeCompare':        ['local: {local} → remote: {remote}', '本地: {local} → 远端: {remote}'],
+  'prompt.showDiff':           ['Show full diff', '显示完整差异'],
+  'prompt.merge':              ['Attempt merge', '尝试合并'],
+  'prompt.moreChanges':        ['{count} more changes …', '还有 {count} 处变更 …'],
 };
 
 /**
