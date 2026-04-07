@@ -40,14 +40,102 @@ export function expandHome(p: string): string {
   return p;
 }
 
+// ── Ignore patterns (.wangchuanignore) ─────────────────────────────
+
+const IGNORE_FILE = path.join(os.homedir(), '.wangchuan', '.wangchuanignore');
+
+let cachedIgnorePatterns: string[] | undefined;
+
+/**
+ * Load ignore patterns from ~/.wangchuan/.wangchuanignore.
+ * One glob per line, '#' comments and empty lines are skipped.
+ */
+export function loadIgnorePatterns(): string[] {
+  if (cachedIgnorePatterns !== undefined) return cachedIgnorePatterns;
+  if (!fs.existsSync(IGNORE_FILE)) {
+    cachedIgnorePatterns = [];
+    return cachedIgnorePatterns;
+  }
+  const lines = fs.readFileSync(IGNORE_FILE, 'utf-8').split('\n');
+  cachedIgnorePatterns = lines
+    .map(l => l.trim())
+    .filter(l => l.length > 0 && !l.startsWith('#'));
+  return cachedIgnorePatterns;
+}
+
+/** Reset the cached ignore patterns (for testing) */
+export function resetIgnoreCache(): void {
+  cachedIgnorePatterns = undefined;
+}
+
+/**
+ * Check if a relative path matches any ignore pattern.
+ * Supports:
+ *   - Simple globs with `*` (matches anything except `/`)
+ *   - `**` matches any number of path segments (including zero)
+ *   - Basename-only patterns (no `/`) match against the filename
+ */
+export function matchesIgnore(relPath: string, patterns: readonly string[]): boolean {
+  const basename = path.basename(relPath);
+  // Normalize to forward slashes for matching
+  const normalized = relPath.split(path.sep).join('/');
+
+  for (const pattern of patterns) {
+    if (pattern.includes('/') || pattern.includes('**')) {
+      // Path pattern — match against the full relative path
+      if (globMatch(normalized, pattern)) return true;
+    } else {
+      // Basename-only pattern — match against filename
+      if (globMatch(basename, pattern)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Minimal glob matcher supporting `*` (any chars except `/`) and `**` (any path segments).
+ * Converts the glob to a regex for matching.
+ */
+function globMatch(str: string, pattern: string): boolean {
+  // Build regex from glob pattern
+  let regex = '^';
+  let i = 0;
+  while (i < pattern.length) {
+    if (pattern[i] === '*' && pattern[i + 1] === '*') {
+      // ** matches any path segments
+      if (pattern[i + 2] === '/') {
+        regex += '(?:.+/)?';
+        i += 3;
+      } else {
+        regex += '.*';
+        i += 2;
+      }
+    } else if (pattern[i] === '*') {
+      regex += '[^/]*';
+      i++;
+    } else if (pattern[i] === '?') {
+      regex += '[^/]';
+      i++;
+    } else {
+      // Escape regex special chars
+      regex += pattern[i]!.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+      i++;
+    }
+  }
+  regex += '$';
+  return new RegExp(regex).test(str);
+}
+
 function walkDir(dirAbs: string): string[] {
   const results: string[] = [];
   if (!fs.existsSync(dirAbs)) return results;
+  const ignorePatterns = loadIgnorePatterns();
   function walk(subPath: string): void {
     const full = path.join(dirAbs, subPath);
     if (fs.statSync(full).isDirectory()) {
       fs.readdirSync(full).forEach(f => walk(path.join(subPath, f)));
     } else {
+      if (ignorePatterns.length > 0 && matchesIgnore(subPath, ignorePatterns)) return;
       results.push(subPath);
     }
   }

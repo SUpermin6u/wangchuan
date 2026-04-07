@@ -22,6 +22,7 @@ import { cmdAgent }  from '../src/commands/agent.js';
 import { cmdKey }    from '../src/commands/key.js';
 import { cmdReport } from '../src/commands/report.js';
 import { cmdDoctor } from '../src/commands/doctor.js';
+import { cmdHistory } from '../src/commands/history.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -176,6 +177,16 @@ program
   .description(t('cli.cmd.doctor'))
   .action(async () => {
     await run(() => cmdDoctor());
+  });
+
+// ── history ─────────────────────────────────────────────────
+program
+  .command('history')
+  .description(t('cli.cmd.history'))
+  .option('-l, --limit <n>', t('cli.cmd.history.limit'), parseInt)
+  .option('--json', t('cli.cmd.history.json'), false)
+  .action(async (opts: { limit?: number; json?: boolean }) => {
+    await run(() => cmdHistory({ limit: opts.limit ?? 10, json: opts.json }));
   });
 
 // ── Error handler ───────────────────────────────────────────────

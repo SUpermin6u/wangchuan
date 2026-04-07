@@ -22,6 +22,7 @@ import { logger }      from '../utils/logger.js';
 import { t }           from '../i18n.js';
 import { AGENT_NAMES } from '../types.js';
 import { syncEngine }  from '../core/sync.js';
+import { loadIgnorePatterns } from '../core/sync.js';
 import chalk from 'chalk';
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
@@ -156,6 +157,14 @@ function checkIntegrity(localRepoPath: string): CheckResult {
   return PASS(t('doctor.integrityOk', { count: total }));
 }
 
+function checkIgnoreFile(): CheckResult {
+  const patterns = loadIgnorePatterns();
+  if (patterns.length > 0) {
+    return PASS(t('doctor.ignoreOk', { count: patterns.length }));
+  }
+  return WARN(t('doctor.ignoreNotFound'));
+}
+
 export async function cmdDoctor(): Promise<void> {
   logger.banner(t('doctor.banner'));
 
@@ -189,6 +198,9 @@ export async function cmdDoctor(): Promise<void> {
 
     // 8. Integrity
     results.push(checkIntegrity(cfg.localRepoPath));
+
+    // 9. Ignore file
+    results.push(checkIgnoreFile());
   }
 
   // Print results

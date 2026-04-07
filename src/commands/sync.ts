@@ -13,6 +13,7 @@ import { ensureMigrated }  from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
 import { syncLock }        from '../core/sync-lock.js';
+import { appendSyncEvent } from '../core/sync-history.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -167,6 +168,22 @@ async function runSync(
   }
   if (!pulled && !pushResult.committed) {
     logger.ok(t('sync.alreadyInSync'));
+  }
+
+  // Record sync history
+  const totalFiles = (pullResult?.synced.length ?? 0) + (pushResult.stageResult?.synced.length ?? 0);
+  const totalEncrypted = (pullResult?.decrypted.length ?? 0) + (pushResult.stageResult?.encrypted.length ?? 0);
+  if (pulled || pushResult.committed) {
+    appendSyncEvent({
+      timestamp:   new Date().toISOString(),
+      action:      'sync',
+      environment: cfg.environment ?? 'default',
+      agent:       agent,
+      fileCount:   totalFiles,
+      encrypted:   totalEncrypted,
+      sha:         pushResult.sha,
+      hostname,
+    });
   }
 
   return { pulled, pullResult, pushed: pushResult.committed, pushResult };

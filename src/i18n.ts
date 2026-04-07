@@ -392,6 +392,9 @@ const M: Msgs = {
 
   // ── doctor command ─────────────────────────────────────────────
   'cli.cmd.doctor':            ['Run health checks on the Wangchuan setup', '对忘川配置进行健康检查'],
+  'cli.cmd.history':           ['Show recent sync history', '显示最近的同步历史'],
+  'cli.cmd.history.limit':     ['Number of entries to show (default: 10)', '显示条数（默认: 10）'],
+  'cli.cmd.history.json':      ['Output as JSON', '以 JSON 格式输出'],
   'doctor.banner':             ['Wangchuan · Doctor', '忘川 · 健康检查'],
   'doctor.configOk':           ['Config file exists and is valid', '配置文件存在且有效'],
   'doctor.configMissing':      ['Config file not found: {path}', '配置文件未找到: {path}'],
@@ -414,6 +417,15 @@ const M: Msgs = {
   'doctor.integrityOk':        ['Integrity checksums match ({count} files)', '完整性校验通过 ({count} 个文件)'],
   'doctor.integrityMissing':   ['No integrity.json in repo', '仓库中无 integrity.json'],
   'doctor.integrityFailed':    ['{count} files failed integrity check', '{count} 个文件完整性校验失败'],
+  'doctor.ignoreOk':           ['.wangchuanignore loaded ({count} patterns)', '.wangchuanignore 已加载（{count} 条规则）'],
+  'doctor.ignoreNotFound':     ['.wangchuanignore not found (optional)', '.wangchuanignore 未找到（可选）'],
+
+  // ── history command ────────────────────────────────────────────
+  'history.banner':            ['Wangchuan · Sync History', '忘川 · 同步历史'],
+  'history.empty':             ['No sync history found', '暂无同步记录'],
+  'history.header':            ['Time                     Action  Agent     Files  Encrypted  Host', '时间                       操作    智能体    文件数  加密数     主机'],
+  'history.separator':         ['─────────────────────────────────────────────────────────────────', '─────────────────────────────────────────────────────────────────────'],
+
   'doctor.summary':            ['{pass} passed, {warn} warnings, {fail} failed', '{pass} 通过, {warn} 警告, {fail} 失败'],
 };
 
