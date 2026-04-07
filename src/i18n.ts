@@ -650,6 +650,19 @@ const M: Msgs = {
   'agentInfo.never':        ['never', '从未'],
   'agentInfo.totalLocal':   ['Total local', '本地合计'],
   'agentInfo.totalRepo':    ['Total repo', '仓库合计'],
+
+  // ── hooks ──────────────────────────────────────────────────────
+  'hooks.running':           ['Running {count} {type} hooks …', '执行 {count} 个 {type} 钩子 …'],
+  'hooks.success':           ['Hook OK: {cmd}', '钩子成功: {cmd}'],
+  'hooks.failed':            ['Hook failed (exit {code}): {cmd}', '钩子失败 (退出码 {code}): {cmd}'],
+
+  // ── init interactive ──────────────────────────────────────────
+  'init.promptRepo':         ['Enter git repo URL (SSH or HTTPS):', '请输入 Git 仓库地址（SSH 或 HTTPS）:'],
+  'init.repoRequired':       ['--repo is required (or run interactively in a terminal)', '需要 --repo 参数（或在终端中交互运行）'],
+
+  // ── completions ───────────────────────────────────────────────
+  'cli.cmd.completions':     ['Generate shell completion scripts (bash|zsh)', '生成 shell 补全脚本 (bash|zsh)'],
+  'completions.usage':       ['Usage: wangchuan completions bash|zsh', '用法: wangchuan completions bash|zsh'],
 };
 
 /**

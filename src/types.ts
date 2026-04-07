@@ -103,6 +103,12 @@ export interface WangchuanConfig {
   readonly environment?: string;
   /** Webhook endpoints for post-sync notifications */
   readonly webhooks?: readonly WebhookEntry[];
+  /** Post-sync hook commands to run after operations complete */
+  readonly hooks?: {
+    readonly postSync?: readonly string[];
+    readonly postPush?: readonly string[];
+    readonly postPull?: readonly string[];
+  };
 }
 
 // ─── Agent 过滤 ──────────────────────────────────────────────────
@@ -178,7 +184,7 @@ export interface CommitResult {
 // ─── 命令参数结构 ────────────────────────────────────────────────
 
 export interface InitOptions {
-  readonly repo: string;
+  readonly repo?: string;
   readonly force?: boolean;
   readonly key?: string;
 }

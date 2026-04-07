@@ -10,6 +10,7 @@ import { syncEngine }      from '../core/sync.js';
 import { syncLock }        from '../core/sync-lock.js';
 import { appendSyncEvent } from '../core/sync-history.js';
 import { fireWebhooks, buildWebhookPayload } from '../core/webhook.js';
+import { runHooks } from '../core/hooks.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -110,6 +111,9 @@ async function runPull(
   await fireWebhooks(cfg, 'pull', buildWebhookPayload(
     cfg, 'pull', result.synced.length,
   ));
+
+  // Run post-pull hooks
+  runHooks('postPull', cfg);
 
   return result;
 }

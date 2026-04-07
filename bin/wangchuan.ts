@@ -34,6 +34,7 @@ import { cmdTag }        from '../src/commands/tag.js';
 import { cmdCleanup }    from '../src/commands/cleanup.js';
 import { cmdTemplate }   from '../src/commands/template.js';
 import { cmdBatch }      from '../src/commands/batch.js';
+import { cmdCompletions } from '../src/commands/completions.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -61,10 +62,10 @@ program
 program
   .command('init')
   .description(t('cli.cmd.init'))
-  .requiredOption('-r, --repo <url>', t('cli.cmd.init.repo'))
+  .option('-r, --repo <url>', t('cli.cmd.init.repo'))
   .option('-k, --key <master-key>', t('cli.cmd.init.key'))
   .option('--force', t('cli.cmd.init.force'), false)
-  .action(async (opts: { repo: string; key?: string; force: boolean }) => {
+  .action(async (opts: { repo?: string; key?: string; force: boolean }) => {
     await run(() => cmdInit(opts));
   });
 
@@ -316,6 +317,14 @@ program
   .option('--continue-on-error', t('cli.cmd.batch.continueOnError'), false)
   .action(async (commands: string[], opts: { continueOnError?: boolean }) => {
     await run(() => cmdBatch({ commands, continueOnError: opts.continueOnError ?? false }));
+  });
+
+// ── completions ─────────────────────────────────────────────────
+program
+  .command('completions [shell]')
+  .description(t('cli.cmd.completions'))
+  .action(async (shell?: string) => {
+    await run(() => cmdCompletions(shell));
   });
 
 // ── Error handler ───────────────────────────────────────────────

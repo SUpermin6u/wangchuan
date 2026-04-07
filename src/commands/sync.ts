@@ -15,6 +15,7 @@ import { syncEngine }      from '../core/sync.js';
 import { syncLock }        from '../core/sync-lock.js';
 import { appendSyncEvent } from '../core/sync-history.js';
 import { fireWebhooks, buildWebhookPayload } from '../core/webhook.js';
+import { runHooks } from '../core/hooks.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -196,6 +197,9 @@ async function runSync(
     await fireWebhooks(cfg, 'sync', buildWebhookPayload(
       cfg, 'sync', totalFiles, pushResult.sha,
     ));
+
+    // Run post-sync hooks
+    runHooks('postSync', cfg);
   }
 
   return { pulled, pullResult, pushed: pushResult.committed, pushResult };

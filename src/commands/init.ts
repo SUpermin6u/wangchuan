@@ -19,8 +19,37 @@ import type { InitOptions, WangchuanConfig } from '../types.js';
 import ora from 'ora';
 import fs   from 'fs';
 import path from 'path';
+import readline from 'readline';
 
-export async function cmdInit({ repo, force = false, key }: InitOptions): Promise<WangchuanConfig> {
+/**
+ * Prompt the user for the git repo URL when --repo is not provided and stdin is a TTY.
+ */
+async function promptRepoUrl(): Promise<string> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve, reject) => {
+    rl.question(t('init.promptRepo') + ' ', (answer: string) => {
+      rl.close();
+      const url = answer.trim();
+      if (!url) {
+        reject(new Error(t('init.repoRequired')));
+        return;
+      }
+      resolve(url);
+    });
+  });
+}
+
+export async function cmdInit({ repo: repoArg, force = false, key }: InitOptions): Promise<WangchuanConfig> {
+  // If repo is not provided, prompt interactively (TTY only)
+  let repo: string;
+  if (repoArg) {
+    repo = repoArg;
+  } else if (process.stdin.isTTY) {
+    repo = await promptRepoUrl();
+  } else {
+    throw new Error(t('init.repoRequired'));
+  }
+
   logger.banner(t('init.banner'));
 
   if (!validator.isGitUrl(repo)) {
