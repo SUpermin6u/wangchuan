@@ -1,8 +1,8 @@
 /**
- * config-mgmt.ts — wangchuan config export/import command
+ * config-mgmt.ts — wangchuan config export/import/validate command
  *
  * Export the full wangchuan config (minus sensitive local-only fields) to a
- * portable JSON file, and import it on another machine.
+ * portable JSON file, import it on another machine, or deep-validate structure.
  */
 
 import fs   from 'fs';
@@ -13,7 +13,8 @@ import { validator }      from '../utils/validator.js';
 import { logger }         from '../utils/logger.js';
 import { t }              from '../i18n.js';
 import chalk              from 'chalk';
-import type { WangchuanConfig } from '../types.js';
+import { AGENT_NAMES }    from '../types.js';
+import type { WangchuanConfig, AgentProfile, AgentName } from '../types.js';
 
 export interface ConfigMgmtOptions {
   readonly action: string;
@@ -88,6 +89,152 @@ function importConfig(filePath: string): void {
   logger.ok(t('configMgmt.imported', { path: absPath }));
 }
 
+// ── Deep structural validation ─────────────────────────────────────
+
+interface ValidationResult {
+  readonly label: string;
+  readonly pass: boolean;
+  readonly detail?: string | undefined;
+}
+
+function checkAgentProfile(name: string, p: unknown): ValidationResult[] {
+  const results: ValidationResult[] = [];
+  const profile = p as Record<string, unknown>;
+
+  // enabled: boolean
+  if (typeof profile['enabled'] !== 'boolean') {
+    results.push({ label: t('configValidate.agentField', { agent: name, field: 'enabled' }), pass: false, detail: t('configValidate.expectedBoolean') });
+  } else {
+    results.push({ label: t('configValidate.agentField', { agent: name, field: 'enabled' }), pass: true });
+  }
+
+  // workspacePath: string
+  if (typeof profile['workspacePath'] !== 'string' || profile['workspacePath'] === '') {
+    results.push({ label: t('configValidate.agentField', { agent: name, field: 'workspacePath' }), pass: false, detail: t('configValidate.expectedNonEmptyString') });
+  } else {
+    results.push({ label: t('configValidate.agentField', { agent: name, field: 'workspacePath' }), pass: true });
+  }
+
+  // syncFiles: array with valid entries
+  const syncFiles = profile['syncFiles'];
+  if (!Array.isArray(syncFiles)) {
+    results.push({ label: t('configValidate.agentField', { agent: name, field: 'syncFiles' }), pass: false, detail: t('configValidate.expectedArray') });
+  } else {
+    let allValid = true;
+    for (let i = 0; i < syncFiles.length; i++) {
+      const sf = syncFiles[i] as Record<string, unknown>;
+      if (typeof sf['src'] !== 'string' || typeof sf['encrypt'] !== 'boolean') {
+        results.push({ label: t('configValidate.syncFileEntry', { agent: name, index: i }), pass: false, detail: t('configValidate.syncFileFormat') });
+        allValid = false;
+      }
+    }
+    if (allValid) {
+      results.push({ label: t('configValidate.agentField', { agent: name, field: `syncFiles (${syncFiles.length})` }), pass: true });
+    }
+  }
+
+  // jsonFields: optional array with valid entries
+  const jsonFields = profile['jsonFields'];
+  if (jsonFields !== undefined) {
+    if (!Array.isArray(jsonFields)) {
+      results.push({ label: t('configValidate.agentField', { agent: name, field: 'jsonFields' }), pass: false, detail: t('configValidate.expectedArray') });
+    } else {
+      let allValid = true;
+      for (let i = 0; i < jsonFields.length; i++) {
+        const jf = jsonFields[i] as Record<string, unknown>;
+        if (typeof jf['src'] !== 'string' || !Array.isArray(jf['fields']) || typeof jf['repoName'] !== 'string' || typeof jf['encrypt'] !== 'boolean') {
+          results.push({ label: t('configValidate.jsonFieldEntry', { agent: name, index: i }), pass: false, detail: t('configValidate.jsonFieldFormat') });
+          allValid = false;
+        }
+      }
+      if (allValid) {
+        results.push({ label: t('configValidate.agentField', { agent: name, field: `jsonFields (${jsonFields.length})` }), pass: true });
+      }
+    }
+  }
+
+  return results;
+}
+
+function validateConfig(): void {
+  let cfg = config.load();
+  validator.requireInit(cfg);
+  cfg = ensureMigrated(cfg);
+
+  const results: ValidationResult[] = [];
+  const profiles = cfg.profiles.default;
+
+  // 1. Validate each agent profile structure
+  for (const name of AGENT_NAMES) {
+    results.push(...checkAgentProfile(name, profiles[name]));
+  }
+
+  // 2. Validate shared config references
+  const shared = cfg.shared;
+  if (shared) {
+    // Check skills sources reference valid agents
+    for (const source of shared.skills.sources) {
+      const valid = (AGENT_NAMES as readonly string[]).includes(source.agent);
+      results.push({
+        label: t('configValidate.sharedSkillRef', { agent: source.agent }),
+        pass: valid,
+        detail: valid ? undefined : t('configValidate.unknownAgent', { agent: source.agent }),
+      });
+    }
+    // Check MCP sources reference valid agents
+    for (const source of shared.mcp.sources) {
+      const valid = (AGENT_NAMES as readonly string[]).includes(source.agent);
+      results.push({
+        label: t('configValidate.sharedMcpRef', { agent: source.agent }),
+        pass: valid,
+        detail: valid ? undefined : t('configValidate.unknownAgent', { agent: source.agent }),
+      });
+    }
+  }
+
+  // 3. Check duplicate repoNames across agents (would cause file overwrites)
+  const repoNameMap = new Map<string, string>(); // repoName → agent
+  let dupeFound = false;
+  for (const name of AGENT_NAMES) {
+    const p = profiles[name] as unknown as Record<string, unknown>;
+    const jsonFields = p['jsonFields'] as Array<Record<string, unknown>> | undefined;
+    if (!Array.isArray(jsonFields)) continue;
+    for (const jf of jsonFields) {
+      const rn = jf['repoName'] as string;
+      if (!rn) continue;
+      const existing = repoNameMap.get(rn);
+      if (existing && existing !== name) {
+        results.push({
+          label: t('configValidate.duplicateRepoName', { repoName: rn }),
+          pass: false,
+          detail: t('configValidate.duplicateDetail', { agent1: existing, agent2: name }),
+        });
+        dupeFound = true;
+      } else {
+        repoNameMap.set(rn, name);
+      }
+    }
+  }
+  if (!dupeFound) {
+    results.push({ label: t('configValidate.noDuplicateRepoNames'), pass: true });
+  }
+
+  // Output results
+  let passCount = 0;
+  let failCount = 0;
+  for (const r of results) {
+    if (r.pass) {
+      passCount++;
+      console.log(`  ${chalk.green('✓')} ${r.label}`);
+    } else {
+      failCount++;
+      console.log(`  ${chalk.red('✗')} ${r.label}${r.detail ? chalk.gray(` — ${r.detail}`) : ''}`);
+    }
+  }
+  console.log();
+  logger.info(t('configValidate.summary', { pass: passCount, fail: failCount }));
+}
+
 const DEFAULT_EXPORT_FILE = 'wangchuan-config-export.json';
 
 export async function cmdConfigMgmt({ action, file }: ConfigMgmtOptions): Promise<void> {
@@ -102,6 +249,9 @@ export async function cmdConfigMgmt({ action, file }: ConfigMgmtOptions): Promis
         throw new Error(t('configMgmt.importFileRequired'));
       }
       importConfig(file);
+      break;
+    case 'validate':
+      validateConfig();
       break;
     default:
       throw new Error(t('configMgmt.unknownAction', { action }));

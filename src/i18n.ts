@@ -285,7 +285,7 @@ const M: Msgs = {
   'cli.cmd.dryRun':       ['Preview changes without committing or pushing', '预览变更，不实际提交或推送'],
 
   // ── agent command ──────────────────────────────────────────
-  'cli.cmd.agent.desc':      ['Manage agents (list|enable|disable|set-path)', '管理智能体 (list|enable|disable|set-path)'],
+  'cli.cmd.agent.desc':      ['Manage agents (list|enable|disable|set-path|info)', '管理智能体 (list|enable|disable|set-path|info)'],
   'agent.banner':            ['Wangchuan · Agents', '忘川 · 智能体管理'],
   'agent.list.header':       ['Agents:', '智能体列表：'],
   'agent.enabled':           ['enabled', '已启用'],
@@ -294,7 +294,8 @@ const M: Msgs = {
   'agent.alreadyDisabled':   ['Agent {name} is already disabled', '智能体 {name} 已处于禁用状态'],
   'agent.nowEnabled':        ['Agent {name} enabled', '智能体 {name} 已启用'],
   'agent.nowDisabled':       ['Agent {name} disabled', '智能体 {name} 已禁用'],
-  'agent.unknownAction':     ['Unknown action: {action}. Use list|enable|disable|set-path', '未知操作: {action}，请使用 list|enable|disable|set-path'],
+  'agent.unknownAction':     ['Unknown action: {action}. Use list|enable|disable|set-path|info', '未知操作: {action}，请使用 list|enable|disable|set-path|info'],
+  'agent.unknownAction2':    ['Unknown action: {action}. Use list|enable|disable|set-path|info', '未知操作: {action}，请使用 list|enable|disable|set-path|info'],
   'agent.nameRequired':      ['Agent name is required', '需要指定智能体名称'],
   'agent.pathRequired':      ['Path is required for set-path. Usage: wangchuan agent set-path <name> <path>', 'set-path 需要指定路径。用法: wangchuan agent set-path <name> <path>'],
   'agent.pathSet':           ['Agent {name} workspace path set to {path}', '智能体 {name} 工作区路径已设置为 {path}'],
@@ -531,7 +532,7 @@ const M: Msgs = {
   'search.summary':            ['Found {hits} matches in {files} files', '找到 {hits} 处匹配，分布在 {files} 个文件中'],
 
   // ── config export/import command ────────────────────────────────
-  'cli.cmd.config':              ['Manage config (export|import)', '管理配置 (export|import)'],
+  'cli.cmd.config':              ['Manage config (export|import|validate)', '管理配置 (export|import|validate)'],
   'configMgmt.banner':           ['Wangchuan · Config', '忘川 · 配置管理'],
   'configMgmt.exported':         ['Config exported to {path}', '配置已导出到 {path}'],
   'configMgmt.exportHint':       ['Copy this file to another machine and run: wangchuan config import <file>', '将此文件复制到另一台机器并执行: wangchuan config import <file>'],
@@ -539,7 +540,7 @@ const M: Msgs = {
   'configMgmt.fileNotFound':     ['File not found: {path}', '文件不存在: {path}'],
   'configMgmt.invalidFile':      ['Invalid config file: {error}', '配置文件无效: {error}'],
   'configMgmt.importFileRequired': ['File path is required for import', 'import 操作需要指定文件路径'],
-  'configMgmt.unknownAction':    ['Unknown action: {action}. Use export|import', '未知操作: {action}，请使用 export|import'],
+  'configMgmt.unknownAction':    ['Unknown action: {action}. Use export|import|validate', '未知操作: {action}，请使用 export|import|validate'],
 
   // ── changelog command ───────────────────────────────────────────
   'cli.cmd.changelog':           ['Show sync changelog from git history', '显示 Git 历史中的同步变更日志'],
@@ -615,6 +616,40 @@ const M: Msgs = {
   // ── agent discovery ────────────────────────────────────────────
   'doctor.discoveredAgent':      ['Agent {name} workspace found at {path} but agent is disabled. Run: wangchuan agent enable {name}', '智能体 {name} 工作区存在于 {path}，但该智能体已禁用。执行: wangchuan agent enable {name}'],
   'status.discoveredAgent':      ['Agent {name} found at {path} but disabled. Run: wangchuan agent enable {name}', '智能体 {name} 存在于 {path}，但已禁用。执行: wangchuan agent enable {name}'],
+
+  // ── config validate ──────────────────────────────────────────
+  'configValidate.agentField':       ['{agent}.{field}', '{agent}.{field}'],
+  'configValidate.expectedBoolean':  ['expected boolean', '应为 boolean'],
+  'configValidate.expectedNonEmptyString': ['expected non-empty string', '应为非空字符串'],
+  'configValidate.expectedArray':    ['expected array', '应为数组'],
+  'configValidate.syncFileEntry':    ['{agent}.syncFiles[{index}]', '{agent}.syncFiles[{index}]'],
+  'configValidate.syncFileFormat':   ['must have src (string) and encrypt (boolean)', '需要 src (string) 和 encrypt (boolean)'],
+  'configValidate.jsonFieldEntry':   ['{agent}.jsonFields[{index}]', '{agent}.jsonFields[{index}]'],
+  'configValidate.jsonFieldFormat':  ['must have src, fields (array), repoName, encrypt', '需要 src, fields (array), repoName, encrypt'],
+  'configValidate.sharedSkillRef':   ['shared.skills.sources → {agent}', 'shared.skills.sources → {agent}'],
+  'configValidate.sharedMcpRef':     ['shared.mcp.sources → {agent}', 'shared.mcp.sources → {agent}'],
+  'configValidate.unknownAgent':     ['unknown agent: {agent}', '未知智能体: {agent}'],
+  'configValidate.duplicateRepoName': ['duplicate repoName: {repoName}', '重复的 repoName: {repoName}'],
+  'configValidate.duplicateDetail':  ['used by both {agent1} and {agent2}', '同时被 {agent1} 和 {agent2} 使用'],
+  'configValidate.noDuplicateRepoNames': ['no duplicate repoNames', '无重复的 repoName'],
+  'configValidate.summary':          ['{pass} passed, {fail} failed', '{pass} 通过, {fail} 失败'],
+
+  // ── agent info ──────────────────────────────────────────────
+  'agentInfo.name':         ['Agent', '智能体'],
+  'agentInfo.enabled':      ['Status', '状态'],
+  'agentInfo.workspace':    ['Workspace', '工作区'],
+  'agentInfo.syncFiles':    ['Sync Files', '同步文件'],
+  'agentInfo.syncDirs':     ['Sync Dirs', '同步目录'],
+  'agentInfo.jsonFields':   ['JSON Fields', 'JSON 字段'],
+  'agentInfo.local':        ['local', '本地'],
+  'agentInfo.repo':         ['repo', '仓库'],
+  'agentInfo.missing':      ['missing', '缺失'],
+  'agentInfo.notInRepo':    ['not in repo', '仓库中无'],
+  'agentInfo.fields':       ['fields', '字段'],
+  'agentInfo.lastSync':     ['Last sync', '上次同步'],
+  'agentInfo.never':        ['never', '从未'],
+  'agentInfo.totalLocal':   ['Total local', '本地合计'],
+  'agentInfo.totalRepo':    ['Total repo', '仓库合计'],
 };
 
 /**

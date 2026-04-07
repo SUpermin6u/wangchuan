@@ -71,6 +71,7 @@ program
 // ── pull ────────────────────────────────────────────────────────
 program
   .command('pull')
+  .alias('down')
   .description(t('cli.cmd.pull'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .option('-o, --only <patterns>', t('cli.cmd.only'), parseCommaSeparated)
@@ -82,6 +83,7 @@ program
 // ── push ────────────────────────────────────────────────────────
 program
   .command('push')
+  .alias('up')
   .description(t('cli.cmd.push'))
   .option('-m, --message <msg>', t('cli.cmd.push.msg'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
@@ -95,6 +97,7 @@ program
 // ── status ──────────────────────────────────────────────────────
 program
   .command('status')
+  .alias('st')
   .description(t('cli.cmd.status'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .action(async (opts: { agent?: AgentName }) => {
@@ -104,6 +107,7 @@ program
 // ── diff ────────────────────────────────────────────────────────
 program
   .command('diff')
+  .alias('d')
   .description(t('cli.cmd.diff'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .action(async (opts: { agent?: AgentName }) => {
@@ -113,6 +117,7 @@ program
 // ── list ────────────────────────────────────────────────────────
 program
   .command('list')
+  .alias('ls')
   .description(t('cli.cmd.list'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .action(async (opts: { agent?: AgentName }) => {
@@ -139,6 +144,7 @@ program
 // ── sync ────────────────────────────────────────────────────────
 program
   .command('sync')
+  .alias('s')
   .description(t('cli.cmd.sync'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
@@ -195,6 +201,7 @@ program
 // ── doctor ──────────────────────────────────────────────────
 program
   .command('doctor')
+  .alias('doc')
   .description(t('cli.cmd.doctor'))
   .option('--fix', t('cli.cmd.doctor.fix'), false)
   .action(async (opts: { fix?: boolean }) => {
@@ -204,6 +211,7 @@ program
 // ── history ─────────────────────────────────────────────────
 program
   .command('history')
+  .alias('hist')
   .description(t('cli.cmd.history'))
   .option('-l, --limit <n>', t('cli.cmd.history.limit'), parseInt)
   .option('--json', t('cli.cmd.history.json'), false)

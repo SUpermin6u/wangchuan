@@ -1,5 +1,5 @@
 /**
- * agent.ts — wangchuan agent enable/disable/list command
+ * agent.ts — wangchuan agent enable/disable/list/info command
  *
  * Allows users to quickly enable or disable agents via CLI
  * instead of manually editing config.json.
@@ -15,6 +15,7 @@ import { AGENT_NAMES }    from '../types.js';
 import type { AgentName, WangchuanConfig, AgentProfile } from '../types.js';
 import chalk from 'chalk';
 import fs from 'fs';
+import path from 'path';
 
 export interface AgentCommandOptions {
   readonly action: string;
@@ -77,6 +78,98 @@ function setAgentEnabled(cfg: WangchuanConfig, name: AgentName, enabled: boolean
   logger.ok(t(enabled ? 'agent.nowEnabled' : 'agent.nowDisabled', { name }));
 }
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileSizeOrNull(absPath: string): number | null {
+  try {
+    return fs.statSync(absPath).size;
+  } catch {
+    return null;
+  }
+}
+
+function agentInfo(cfg: WangchuanConfig, name: AgentName): void {
+  const profile = cfg.profiles.default[name];
+  const wsPath = syncEngine.expandHome(profile.workspacePath);
+  const wsExists = fs.existsSync(wsPath);
+  const repoPath = syncEngine.expandHome(cfg.localRepoPath);
+  const agentRepoDir = path.join(repoPath, 'agents', name);
+
+  // Header
+  console.log(chalk.bold(`  ${t('agentInfo.name')}: ${name}`));
+  console.log(`  ${t('agentInfo.enabled')}: ${profile.enabled ? chalk.green(t('agent.enabled')) : chalk.gray(t('agent.disabled'))}`);
+  console.log(`  ${t('agentInfo.workspace')}: ${wsPath} ${wsExists ? chalk.green('✔') : chalk.red('✗')}`);
+  console.log();
+
+  let totalLocalSize = 0;
+  let totalRepoSize = 0;
+
+  // syncFiles
+  if (profile.syncFiles.length > 0) {
+    console.log(chalk.bold(`  ${t('agentInfo.syncFiles')} (${profile.syncFiles.length}):`));
+    for (const sf of profile.syncFiles) {
+      const localAbs = path.join(wsPath, sf.src);
+      const localSize = fileSizeOrNull(localAbs);
+      const repoRel = `agents/${name}/${sf.src}${sf.encrypt ? '.enc' : ''}`;
+      const repoAbs = path.join(repoPath, repoRel);
+      const repoSize = fileSizeOrNull(repoAbs);
+      const localTag = localSize !== null ? chalk.green(formatSize(localSize)) : chalk.red(t('agentInfo.missing'));
+      const repoTag = repoSize !== null ? chalk.green(formatSize(repoSize)) : chalk.gray(t('agentInfo.notInRepo'));
+      const encTag = sf.encrypt ? chalk.yellow(' [enc]') : '';
+      console.log(`    ${sf.src}${encTag}  ${t('agentInfo.local')}: ${localTag}  ${t('agentInfo.repo')}: ${repoTag}`);
+      if (localSize !== null) totalLocalSize += localSize;
+      if (repoSize !== null) totalRepoSize += repoSize;
+    }
+    console.log();
+  }
+
+  // syncDirs
+  if (profile.syncDirs && profile.syncDirs.length > 0) {
+    console.log(chalk.bold(`  ${t('agentInfo.syncDirs')} (${profile.syncDirs.length}):`));
+    for (const sd of profile.syncDirs) {
+      const localAbs = path.join(wsPath, sd.src);
+      const exists = fs.existsSync(localAbs);
+      const encTag = sd.encrypt ? chalk.yellow(' [enc]') : '';
+      console.log(`    ${sd.src}${encTag}  ${exists ? chalk.green('✔') : chalk.red('✗')}`);
+    }
+    console.log();
+  }
+
+  // jsonFields
+  if (profile.jsonFields && profile.jsonFields.length > 0) {
+    console.log(chalk.bold(`  ${t('agentInfo.jsonFields')} (${profile.jsonFields.length}):`));
+    for (const jf of profile.jsonFields) {
+      const localAbs = path.join(wsPath, jf.src);
+      const localSize = fileSizeOrNull(localAbs);
+      const repoRel = `agents/${name}/${jf.repoName}${jf.encrypt ? '.enc' : ''}`;
+      const repoAbs = path.join(repoPath, repoRel);
+      const repoSize = fileSizeOrNull(repoAbs);
+      const localTag = localSize !== null ? chalk.green(formatSize(localSize)) : chalk.red(t('agentInfo.missing'));
+      const repoTag = repoSize !== null ? chalk.green(formatSize(repoSize)) : chalk.gray(t('agentInfo.notInRepo'));
+      console.log(`    ${jf.src} → ${jf.repoName}  ${t('agentInfo.fields')}: [${jf.fields.join(', ')}]`);
+      console.log(`      ${t('agentInfo.local')}: ${localTag}  ${t('agentInfo.repo')}: ${repoTag}`);
+      if (localSize !== null) totalLocalSize += localSize;
+      if (repoSize !== null) totalRepoSize += repoSize;
+    }
+    console.log();
+  }
+
+  // Last sync
+  const meta = syncEngine.readSyncMeta(repoPath);
+  if (meta) {
+    console.log(`  ${t('agentInfo.lastSync')}: ${meta.lastSyncAt} (${meta.hostname})`);
+  } else {
+    console.log(`  ${t('agentInfo.lastSync')}: ${chalk.gray(t('agentInfo.never'))}`);
+  }
+
+  // Total sizes
+  console.log(`  ${t('agentInfo.totalLocal')}: ${formatSize(totalLocalSize)}  ${t('agentInfo.totalRepo')}: ${formatSize(totalRepoSize)}`);
+}
+
 export async function cmdAgent({ action, name, path: agentPath }: AgentCommandOptions): Promise<void> {
   logger.banner(t('agent.banner'));
 
@@ -86,6 +179,17 @@ export async function cmdAgent({ action, name, path: agentPath }: AgentCommandOp
 
   if (action === 'list') {
     listAgents(cfg);
+    return;
+  }
+
+  if (action === 'info') {
+    if (!name) {
+      throw new Error(t('agent.nameRequired'));
+    }
+    if (!(AGENT_NAMES as readonly string[]).includes(name)) {
+      throw new Error(t('cli.invalidAgent', { val: name }));
+    }
+    agentInfo(cfg, name as AgentName);
     return;
   }
 
@@ -104,7 +208,7 @@ export async function cmdAgent({ action, name, path: agentPath }: AgentCommandOp
   }
 
   if (action !== 'enable' && action !== 'disable') {
-    throw new Error(t('agent.unknownAction', { action }));
+    throw new Error(t('agent.unknownAction2', { action }));
   }
 
   if (!name) {
