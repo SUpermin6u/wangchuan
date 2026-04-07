@@ -22,6 +22,8 @@ import { jsonField }    from './json-field.js';
 import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
 import { askConflict }  from '../utils/prompt.js';
+import { threeWayMerge } from './merge.js';
+import { gitEngine }    from './git.js';
 import { t }            from '../i18n.js';
 import chalk            from 'chalk';
 import type {
@@ -889,20 +891,56 @@ export const syncEngine = {
       if (fs.existsSync(entry.srcAbs)) {
         let isDiff = false;
         const localBuf = fs.readFileSync(entry.srcAbs);
+        let remoteContent: string | undefined;
         if (entry.encrypt) {
           try {
             const decrypted = cryptoEngine.decryptString(
               fs.readFileSync(srcRepo, 'utf-8').trim(), keyPath,
             );
             isDiff = localBuf.toString('utf-8') !== decrypted;
+            remoteContent = decrypted;
           } catch {
             isDiff = true;
           }
         } else {
-          isDiff = !localBuf.equals(fs.readFileSync(srcRepo));
+          const repoBuf = fs.readFileSync(srcRepo);
+          isDiff = !localBuf.equals(repoBuf);
+          remoteContent = repoBuf.toString('utf-8');
         }
 
         if (isDiff) {
+          // ── Three-way merge for non-encrypted plain text files ──
+          const isTextMergeable = !entry.encrypt &&
+            (entry.repoRel.endsWith('.md') || entry.repoRel.endsWith('.txt'));
+          if (isTextMergeable && remoteContent !== undefined) {
+            // Try to get the base version from git history (pre-pull version)
+            const baseContent = await gitEngine.showFile(repoPath, 'HEAD~1', entry.repoRel);
+            if (baseContent !== null) {
+              const localContent = localBuf.toString('utf-8');
+              const mergeResult = threeWayMerge(baseContent, localContent, remoteContent);
+              if (!mergeResult.hasConflicts) {
+                // Auto-resolved — write merged content
+                fs.mkdirSync(path.dirname(entry.srcAbs), { recursive: true });
+                fs.writeFileSync(entry.srcAbs, mergeResult.merged, 'utf-8');
+                logger.info(`  ${t('merge.autoResolved', { file: entry.repoRel })}`);
+                (result.synced as string[]).push(entry.repoRel);
+                restoreIdx++;
+                logProgress(restoreIdx, restoreTotal, 'copy', entry.repoRel);
+                continue;
+              }
+              // Has conflicts — write merged content with conflict markers
+              fs.mkdirSync(path.dirname(entry.srcAbs), { recursive: true });
+              fs.writeFileSync(entry.srcAbs, mergeResult.merged, 'utf-8');
+              logger.warn(`  ${t('merge.conflictsFound', { file: entry.repoRel })}`);
+              (result.conflicts as string[]).push(entry.repoRel);
+              (result.synced as string[]).push(entry.repoRel);
+              restoreIdx++;
+              logProgress(restoreIdx, restoreTotal, 'copy', entry.repoRel);
+              continue;
+            }
+          }
+
+          // ── Fallback: binary overwrite/skip prompt ──
           (result.conflicts as string[]).push(entry.repoRel);
 
           if (batchDecision === 'skip_all') {

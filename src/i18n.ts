@@ -437,6 +437,36 @@ const M: Msgs = {
   // ── push unchanged (incremental) ─────────────────────────────────
   'push.unchangedSummary':     ['({count} unchanged, skipped)', '（{count} 个未变更，已跳过）'],
 
+  // ── three-way merge ────────────────────────────────────────────────
+  'merge.autoResolved':        ['Auto-merged (no conflicts): {file}', '自动合并（无冲突）: {file}'],
+  'merge.conflictsFound':      ['Merge conflicts in {file} — edit to resolve markers', '合并冲突: {file} — 请编辑解决冲突标记'],
+  'merge.conflictMarkers':     ['Conflict markers inserted', '已插入冲突标记'],
+
+  // ── summary command ────────────────────────────────────────────────
+  'cli.cmd.summary':           ['Show memory footprint summary', '显示记忆占用摘要'],
+  'cli.cmd.summary.json':      ['Output as JSON', '以 JSON 格式输出'],
+  'summary.banner':            ['Wangchuan · Summary', '忘川 · 记忆摘要'],
+  'summary.agentsHeader':      ['Per-agent breakdown:', '智能体分布：'],
+  'summary.sharedHeader':      ['Shared resources:', '共享资源：'],
+  'summary.skills':            ['Skills', '技能'],
+  'summary.mcpServers':        ['MCP servers', 'MCP 服务'],
+  'summary.encryption':        ['Encryption:', '加密统计：'],
+  'summary.encrypted':         ['encrypted', '加密'],
+  'summary.plaintext':         ['plaintext', '明文'],
+  'summary.encryptedRatio':    ['encrypted', '加密率'],
+  'summary.totalSize':         ['Total size', '总大小'],
+  'summary.recentHeader':      ['Top 5 recently modified:', '最近修改的 5 个文件：'],
+
+  // ── setup command ──────────────────────────────────────────────────
+  'cli.cmd.setup':             ['Generate setup command for a new machine', '生成新机器初始化命令'],
+  'setup.banner':              ['Wangchuan · Setup', '忘川 · 迁移向导'],
+  'setup.repoLabel':           ['Repo:  ', '仓库：'],
+  'setup.keyLabel':            ['Key:   ', '密钥：'],
+  'setup.commandLabel':        ['Run this on the new machine:', '在新机器上执行以下命令：'],
+  'setup.keyNotFound':         ['Master key not found: {path}', '主密钥未找到: {path}'],
+  'setup.securityWarning':     ['Warning: this command contains your master key — do not share via insecure channels (chat, email, etc.)', '警告: 此命令包含主密钥 — 请勿通过不安全渠道传输（聊天、邮件等）'],
+  'setup.clipboardHint':       ['Copy the command above and paste it on the target machine', '复制上面的命令，粘贴到目标机器上执行'],
+
   // ── snapshot command ──────────────────────────────────────────────
   'cli.cmd.snapshot':          ['Manage sync snapshots (save|list|restore|delete)', '管理同步快照 (save|list|restore|delete)'],
   'cli.cmd.snapshot.limit':    ['Max snapshots to keep (default: 10)', '保留的最大快照数（默认: 10）'],

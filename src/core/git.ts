@@ -163,6 +163,19 @@ export const gitEngine = {
     logger.debug(`Switched to branch ${branch}`);
   },
 
+  /**
+   * Read a file's content from a specific git ref (e.g. 'HEAD~1').
+   * Returns null if the file or ref doesn't exist.
+   */
+  async showFile(localPath: string, ref: string, filePath: string): Promise<string | null> {
+    try {
+      const git = createGit(localPath);
+      return await git.show([`${ref}:${filePath}`]);
+    } catch {
+      return null;
+    }
+  },
+
   async deleteBranch(localPath: string, branch: string): Promise<void> {
     if (branch === 'main' || branch === 'master') {
       throw new Error(`Cannot delete protected branch: ${branch}`);

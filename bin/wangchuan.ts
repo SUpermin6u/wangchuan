@@ -24,6 +24,8 @@ import { cmdReport } from '../src/commands/report.js';
 import { cmdDoctor } from '../src/commands/doctor.js';
 import { cmdHistory } from '../src/commands/history.js';
 import { cmdSnapshot } from '../src/commands/snapshot.js';
+import { cmdSummary } from '../src/commands/summary.js';
+import { cmdSetup }   from '../src/commands/setup.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -207,6 +209,23 @@ program
   .option('-l, --limit <n>', t('cli.cmd.snapshot.limit'), parseInt)
   .action(async (action: string, name?: string, opts?: { limit?: number }) => {
     await run(() => cmdSnapshot({ action, name, maxSnapshots: opts?.limit }));
+  });
+
+// ── summary ─────────────────────────────────────────────────
+program
+  .command('summary')
+  .description(t('cli.cmd.summary'))
+  .option('--json', t('cli.cmd.summary.json'), false)
+  .action(async (opts: { json: boolean }) => {
+    await run(() => cmdSummary(opts));
+  });
+
+// ── setup ───────────────────────────────────────────────────
+program
+  .command('setup')
+  .description(t('cli.cmd.setup'))
+  .action(async () => {
+    await run(() => cmdSetup());
   });
 
 // ── Error handler ───────────────────────────────────────────────
