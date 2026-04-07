@@ -154,6 +154,8 @@ const M: Msgs = {
   'status.modifiedLabel':  ['modified', '修改'],
   'status.missingLabel':   ['missing', '缺失'],
   'status.diffFailed':     ['Diff analysis failed: {error}', '差异分析失败: {error}'],
+  'status.lockActive':     ['Sync in progress (PID: {pid}, started: {startedAt})', '同步进行中 (PID: {pid}, 开始于: {startedAt})'],
+  'status.lockStale':      ['Stale sync lock detected (PID {pid} is dead). Run `wangchuan doctor --fix` to clean up', '检测到过期同步锁 (PID {pid} 已终止)，执行 `wangchuan doctor --fix` 清理'],
   'status.inventory':      ['Config inventory ({count} items):', '配置文件清单（{count} 项）：'],
   'status.fieldLabel':     ['[field]', '[字段]'],
 
@@ -283,7 +285,7 @@ const M: Msgs = {
   'cli.cmd.dryRun':       ['Preview changes without committing or pushing', '预览变更，不实际提交或推送'],
 
   // ── agent command ──────────────────────────────────────────
-  'cli.cmd.agent.desc':      ['Manage agents (list|enable|disable)', '管理智能体 (list|enable|disable)'],
+  'cli.cmd.agent.desc':      ['Manage agents (list|enable|disable|set-path)', '管理智能体 (list|enable|disable|set-path)'],
   'agent.banner':            ['Wangchuan · Agents', '忘川 · 智能体管理'],
   'agent.list.header':       ['Agents:', '智能体列表：'],
   'agent.enabled':           ['enabled', '已启用'],
@@ -292,8 +294,11 @@ const M: Msgs = {
   'agent.alreadyDisabled':   ['Agent {name} is already disabled', '智能体 {name} 已处于禁用状态'],
   'agent.nowEnabled':        ['Agent {name} enabled', '智能体 {name} 已启用'],
   'agent.nowDisabled':       ['Agent {name} disabled', '智能体 {name} 已禁用'],
-  'agent.unknownAction':     ['Unknown action: {action}. Use list|enable|disable', '未知操作: {action}，请使用 list|enable|disable'],
-  'agent.nameRequired':      ['Agent name is required for enable/disable', 'enable/disable 操作需要指定智能体名称'],
+  'agent.unknownAction':     ['Unknown action: {action}. Use list|enable|disable|set-path', '未知操作: {action}，请使用 list|enable|disable|set-path'],
+  'agent.nameRequired':      ['Agent name is required', '需要指定智能体名称'],
+  'agent.pathRequired':      ['Path is required for set-path. Usage: wangchuan agent set-path <name> <path>', 'set-path 需要指定路径。用法: wangchuan agent set-path <name> <path>'],
+  'agent.pathSet':           ['Agent {name} workspace path set to {path}', '智能体 {name} 工作区路径已设置为 {path}'],
+  'agent.pathNotExist':      ['Warning: path does not exist yet: {path}', '警告: 路径尚不存在: {path}'],
 
   // ── conflict detection in status ──────────────────────────
   'status.conflictWarning':  ['Potential sync conflicts detected:', '检测到潜在同步冲突：'],
@@ -392,6 +397,7 @@ const M: Msgs = {
 
   // ── doctor command ─────────────────────────────────────────────
   'cli.cmd.doctor':            ['Run health checks on the Wangchuan setup', '对忘川配置进行健康检查'],
+  'cli.cmd.doctor.fix':        ['Auto-fix common issues', '自动修复常见问题'],
   'cli.cmd.history':           ['Show recent sync history', '显示最近的同步历史'],
   'cli.cmd.history.limit':     ['Number of entries to show (default: 10)', '显示条数（默认: 10）'],
   'cli.cmd.history.json':      ['Output as JSON', '以 JSON 格式输出'],
@@ -427,6 +433,11 @@ const M: Msgs = {
   'history.separator':         ['─────────────────────────────────────────────────────────────────', '─────────────────────────────────────────────────────────────────────'],
 
   'doctor.summary':            ['{pass} passed, {warn} warnings, {fail} failed', '{pass} 通过, {warn} 警告, {fail} 失败'],
+  'doctor.fixStaleLock':       ['Fixed: removed stale sync lock (PID {pid})', '已修复: 删除过期同步锁 (PID {pid})'],
+  'doctor.fixRepoClone':       ['Fixed: re-cloned repo to {path}', '已修复: 重新克隆仓库到 {path}'],
+  'doctor.fixRepoCloneFailed': ['Fix failed: could not clone repo — {error}', '修复失败: 无法克隆仓库 — {error}'],
+  'doctor.fixKeyPerms':        ['Fixed: set master key permissions to 0600', '已修复: 主密钥权限已设置为 0600'],
+  'doctor.fixAgentDir':        ['Fixed: created agent workspace directory {path}', '已修复: 已创建智能体工作区目录 {path}'],
 
   // ── filter (--only / --exclude) ─────────────────────────────────
   'cli.cmd.only':              ['Only sync files matching patterns (comma-separated)', '仅同步匹配的文件（逗号分隔）'],

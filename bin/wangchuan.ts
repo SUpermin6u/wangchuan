@@ -169,10 +169,10 @@ program
 
 // ── agent ───────────────────────────────────────────────────
 program
-  .command('agent <action> [name]')
+  .command('agent <action> [name] [path]')
   .description(t('cli.cmd.agent.desc'))
-  .action(async (action: string, name?: string) => {
-    await run(() => cmdAgent({ action, name }));
+  .action(async (action: string, name?: string, agentPath?: string) => {
+    await run(() => cmdAgent({ action, name, path: agentPath }));
   });
 
 // ── key ─────────────────────────────────────────────────────
@@ -196,8 +196,9 @@ program
 program
   .command('doctor')
   .description(t('cli.cmd.doctor'))
-  .action(async () => {
-    await run(() => cmdDoctor());
+  .option('--fix', t('cli.cmd.doctor.fix'), false)
+  .action(async (opts: { fix?: boolean }) => {
+    await run(() => cmdDoctor({ fix: opts.fix }));
   });
 
 // ── history ─────────────────────────────────────────────────

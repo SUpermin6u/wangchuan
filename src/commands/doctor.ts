@@ -16,6 +16,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
 import { config }      from '../core/config.js';
+import { resolveGitBranch } from '../core/config.js';
 import { gitEngine }   from '../core/git.js';
 import { syncLock }    from '../core/sync-lock.js';
 import { logger }      from '../utils/logger.js';
@@ -179,7 +180,11 @@ function checkIgnoreFile(): CheckResult {
   return WARN(t('doctor.ignoreNotFound'));
 }
 
-export async function cmdDoctor(): Promise<void> {
+export interface DoctorOptions {
+  readonly fix?: boolean | undefined;
+}
+
+export async function cmdDoctor({ fix }: DoctorOptions = {}): Promise<void> {
   logger.banner(t('doctor.banner'));
 
   const results: CheckResult[] = [];
@@ -199,16 +204,57 @@ export async function cmdDoctor(): Promise<void> {
 
   if (cfg) {
     // 4. Repo cloned
-    results.push(checkRepoCloned(cfg.localRepoPath));
+    const repoResult = checkRepoCloned(cfg.localRepoPath);
+    results.push(repoResult);
+
+    // --fix: re-clone if missing
+    if (fix && repoResult.status === 'fail') {
+      const repoPath = syncEngine.expandHome(cfg.localRepoPath);
+      try {
+        await gitEngine.cloneOrFetch(cfg.repo, repoPath, resolveGitBranch(cfg));
+        console.log(chalk.cyan(`  🔧 ${t('doctor.fixRepoClone', { path: repoPath })}`));
+      } catch (err) {
+        console.log(chalk.red(`  ✗ ${t('doctor.fixRepoCloneFailed', { error: (err as Error).message })}`));
+      }
+    }
 
     // 5. Remote access
     results.push(checkRemoteAccess(cfg.repo));
 
     // 6. Agent workspaces
-    results.push(...checkAgentWorkspaces(cfg));
+    const agentResults = checkAgentWorkspaces(cfg);
+    results.push(...agentResults);
+
+    // --fix: create missing agent workspace dirs
+    if (fix) {
+      const profiles = cfg.profiles.default;
+      for (const name of AGENT_NAMES) {
+        const p = profiles[name];
+        if (!p.enabled) continue;
+        const wsPath = syncEngine.expandHome(p.workspacePath);
+        if (!fs.existsSync(wsPath)) {
+          fs.mkdirSync(wsPath, { recursive: true });
+          console.log(chalk.cyan(`  🔧 ${t('doctor.fixAgentDir', { path: wsPath })}`));
+        }
+      }
+    }
 
     // 7. Sync lock
-    results.push(checkSyncLock());
+    const lockResult = checkSyncLock();
+    results.push(lockResult);
+
+    // --fix: remove stale sync lock
+    if (fix && lockResult.status === 'warn') {
+      const lock = syncLock.read();
+      if (lock) {
+        let alive: boolean;
+        try { process.kill(lock.pid, 0); alive = true; } catch { alive = false; }
+        if (!alive) {
+          syncLock.release();
+          console.log(chalk.cyan(`  🔧 ${t('doctor.fixStaleLock', { pid: lock.pid })}`));
+        }
+      }
+    }
 
     // 8. Integrity
     results.push(checkIntegrity(cfg.localRepoPath));
@@ -218,6 +264,23 @@ export async function cmdDoctor(): Promise<void> {
 
     // 10. Agent discovery (disabled agents with existing workspaces)
     results.push(...checkAgentDiscovery(cfg));
+  }
+
+  // --fix: fix key permissions
+  if (fix) {
+    const keyPath = config.paths.key;
+    if (fs.existsSync(keyPath)) {
+      try {
+        const stat = fs.statSync(keyPath);
+        const mode = stat.mode & 0o777;
+        if (mode !== 0o600) {
+          fs.chmodSync(keyPath, 0o600);
+          console.log(chalk.cyan(`  🔧 ${t('doctor.fixKeyPerms')}`));
+        }
+      } catch {
+        // Permission check may not work on some OS — skip
+      }
+    }
   }
 
   // Print results

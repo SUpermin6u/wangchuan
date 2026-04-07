@@ -8,6 +8,7 @@ import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }   from '../core/migrate.js';
 import { gitEngine }       from '../core/git.js';
 import { syncEngine }      from '../core/sync.js';
+import { syncLock }        from '../core/sync-lock.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -30,6 +31,20 @@ export async function cmdStatus({ agent }: StatusOptions = {}): Promise<void> {
   console.log(chalk.bold('  ' + t('status.env')) + chalk.magenta(cfg.environment ?? 'default'));
   if (agent) console.log(chalk.bold('  ' + t('status.agent')) + chalk.cyan(agent));
   console.log();
+
+  // ── Sync lock status ──────────────────────────────────────────
+  const lock = syncLock.read();
+  if (lock) {
+    let lockAlive: boolean;
+    try { process.kill(lock.pid, 0); lockAlive = true; } catch { lockAlive = false; }
+
+    if (lockAlive) {
+      console.log(chalk.yellow(`  ⚠ ${t('status.lockActive', { pid: lock.pid, startedAt: lock.startedAt })}`));
+    } else {
+      console.log(chalk.red(`  🔴 ${t('status.lockStale', { pid: lock.pid })}`));
+    }
+    console.log();
+  }
 
   // ── Recent commits ──────────────────────────────────────────────
   try {
