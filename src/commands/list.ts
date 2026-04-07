@@ -23,6 +23,7 @@ const TIER_LABELS: Record<SyncTier, string> = {
   codebuddy: 'CodeBuddy',
   workbuddy: 'WorkBuddy',
   cursor:    'Cursor',
+  codex:     'Codex',
   shared:    '', // filled dynamically via t()
 };
 

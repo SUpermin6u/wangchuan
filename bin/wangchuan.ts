@@ -3,7 +3,7 @@
  * wangchuan.ts — CLI entry
  *
  * Usage:
- *   wangchuan <command> [--agent openclaw|claude|gemini|codebuddy|workbuddy|cursor] [flags]
+ *   wangchuan <command> [--agent openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex] [flags]
  */
 
 import { Command } from 'commander';

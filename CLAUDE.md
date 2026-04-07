@@ -76,21 +76,24 @@ Uses Node.js built-in `node:test` framework; test files in `test/` loaded via ts
 
 ## Language Conventions (MANDATORY — check before every commit)
 
+**English-first principle**: All source code, comments, test descriptions, and AI-consumed files MUST be written in English. Chinese is ONLY allowed inside i18n message dictionary values.
+
 | Content type | Language rule | Examples |
 |---|---|---|
-| **AI-consumed files** | English only | `CLAUDE.md`, `skill/SKILL.md`, code comments, TSDoc |
-| **Human-consumed docs** | Bilingual (English + Chinese) | `README.md`, `REQUIREMENTS.md` |
+| **Source code** | English only — comments, TSDoc, variable names, test descriptions | All `src/**/*.ts`, `test/**/*.ts` |
+| **AI-consumed files** | English only | `CLAUDE.md`, `skill/SKILL.md` |
+| **Human-consumed docs** | Separate files per language: `README.md` (English), `README.zh-CN.md` (Chinese) | Root-level docs |
 | **CLI output messages** | i18n via `t()` — single language per user setting | All `src/commands/*.ts`, `src/utils/*.ts`, `src/core/*.ts` |
 
 Rules:
 
-1. **AI files = English only**: Skill definitions (`skill/SKILL.md`), agent instructions (`CLAUDE.md`), and all source code comments must be written in English. These files are consumed by AI agents and must not contain Chinese.
-2. **README = bilingual**: `README.md` and other human-facing documentation must provide both English and Chinese (中英对照).
-3. **CLI messages = i18n via `t()`**: Every user-facing string in CLI output must use `t('key')` or `t('key', { param })` from `src/i18n.ts`. Never hardcode bilingual inline strings like `'English / 中文'`. Add both English and Chinese entries to the message dictionary in `i18n.ts`.
+1. **English-first for all code**: All source code comments (block `/** */`, inline `//`), test `describe`/`it` strings, error messages, and TSDoc must be in English. No Chinese text in any `.ts` file except inside i18n dictionary values in `src/i18n.ts`.
+2. **Separate README per language**: `README.md` is English-only. `README.zh-CN.md` is Chinese-only. Do NOT mix languages in the same file. Link between them at the top: `[中文](README.zh-CN.md)` / `[English](README.md)`.
+3. **CLI messages = i18n via `t()`**: Every user-facing string in CLI output must use `t('key')` or `t('key', { param })` from `src/i18n.ts`. Never hardcode bilingual inline strings. Add both English and Chinese entries to the message dictionary.
 4. **Pre-commit check**: Before every commit, verify:
+   - `grep -rP '[\x{4e00}-\x{9fff}]' src/ test/ --include='*.ts' | grep -v 'i18n.ts'` returns empty
    - No Chinese text in `skill/SKILL.md` or project `CLAUDE.md`
-   - No hardcoded bilingual strings (`/ 中文` pattern) in any `src/**/*.ts` files — use `t()` instead
-   - Any new CLI message has a corresponding entry in `src/i18n.ts` message dictionary with both `[en, zh]` values
+   - Any new CLI message has a corresponding entry in `src/i18n.ts` with both `[en, zh]` values
 
 ## Release Checklist
 

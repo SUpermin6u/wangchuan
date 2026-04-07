@@ -1,8 +1,8 @@
 /**
- * config.ts — 全局配置管理
+ * config.ts — Global configuration management
  *
- * 配置文件：~/.wangchuan/config.json
- * 密钥文件：~/.wangchuan/master.key
+ * Config file: ~/.wangchuan/config.json
+ * Key file: ~/.wangchuan/master.key
  */
 
 import fs   from 'fs';
@@ -21,10 +21,10 @@ const EXAMPLE_PATH  = fileURLToPath(new URL('../../.wangchuan/config.example.jso
 
 export const CONFIG_VERSION = 2;
 
-/** 默认配置骨架 v2 — derived from agent definitions in src/agents/ */
+/** Default config skeleton v2 — derived from agent definitions in src/agents/ */
 const DEFAULT_PROFILES = buildDefaultProfiles();
 
-/** 共享层默认配置 — derived from agent definitions in src/agents/ */
+/** Shared tier default config — derived from agent definitions in src/agents/ */
 const DEFAULT_SHARED = buildDefaultShared();
 
 export const config = {
@@ -51,14 +51,14 @@ export const config = {
     return parsed as unknown as WangchuanConfig;
   },
 
-  /** 保存配置到磁盘 */
+  /** Save config to disk */
   save(cfg: WangchuanConfig): void {
     fs.mkdirSync(WANGCHUAN_DIR, { recursive: true });
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
     logger.debug(t('config.saved', { path: CONFIG_PATH }));
   },
 
-  /** 探测远程仓库的默认分支 */
+  /** Detect the default branch of a remote repository */
   async detectDefaultBranch(repo: string): Promise<string> {
     try {
       const { execSync } = await import('child_process');
@@ -72,7 +72,7 @@ export const config = {
     }
   },
 
-  /** 初始化目录和配置文件，返回新建的配置对象 */
+  /** Initialize directory and config file, return the new config object */
   async initialize(repo: string): Promise<WangchuanConfig> {
     fs.mkdirSync(WANGCHUAN_DIR, { recursive: true });
     const branch = await this.detectDefaultBranch(repo);
@@ -90,19 +90,19 @@ export const config = {
     return cfg;
   },
 
-  /** 浅合并两个配置（override 优先） */
+  /** Shallow merge two configs (override takes priority) */
   merge(base: WangchuanConfig, override: Partial<WangchuanConfig>): WangchuanConfig {
     return { ...base, ...override };
   },
 
-  /** 默认配置（迁移时使用） */
+  /** Defaults (used during migration) */
   defaults: {
     profiles: DEFAULT_PROFILES,
     shared:   DEFAULT_SHARED,
     version:  CONFIG_VERSION,
   },
 
-  /** 常用路径常量 */
+  /** Common path constants */
   paths: {
     dir:     WANGCHUAN_DIR,
     config:  CONFIG_PATH,

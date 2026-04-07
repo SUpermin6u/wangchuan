@@ -1,7 +1,7 @@
 /**
- * git.ts — simple-git 封装，提供幂等的 Git 操作
+ * git.ts — simple-git wrapper providing idempotent Git operations
  *
- * simple-git v3 在 ESM 下必须使用具名导入 { simpleGit } 而非默认导入。
+ * simple-git v3 requires named import { simpleGit } under ESM (not default import).
  */
 
 import { simpleGit } from 'simple-git';
@@ -21,12 +21,12 @@ function createGit(repoPath: string): SimpleGit {
 export const gitEngine = {
   async cloneOrFetch(remoteUrl: string, localPath: string, branch = 'main'): Promise<void> {
     if (fs.existsSync(path.join(localPath, '.git'))) {
-      logger.debug(`仓库已存在，执行 fetch: ${localPath}`);
+      logger.debug(`Repo exists, running fetch: ${localPath}`);
       const git = createGit(localPath);
       await git.fetch('origin', branch);
       await git.reset(['--hard', `origin/${branch}`]);
     } else {
-      logger.debug(`克隆仓库: ${remoteUrl} → ${localPath}`);
+      logger.debug(`Cloning repo: ${remoteUrl} → ${localPath}`);
       fs.mkdirSync(localPath, { recursive: true });
       await simpleGit().clone(remoteUrl, localPath, ['--branch', branch, '--single-branch']);
     }
@@ -46,16 +46,16 @@ export const gitEngine = {
     const status = await git.status();
 
     if (status.isClean()) {
-      logger.info('没有新的变更需要提交');
+      logger.info('No new changes to commit');
       return { committed: false, pushed: false };
     }
 
-    logger.debug(`暂存文件: ${status.staged.join(', ')}`);
+    logger.debug(`Staged files: ${status.staged.join(', ')}`);
     const commitResult = await git.commit(message);
     logger.debug(`commit: ${commitResult.commit}`);
 
     await git.push('origin', branch);
-    logger.debug(`已推送到 origin/${branch}`);
+    logger.debug(`Pushed to origin/${branch}`);
 
     return { committed: true, pushed: true, sha: commitResult.commit };
   },
@@ -76,9 +76,9 @@ export const gitEngine = {
   },
 
   async rollback(localPath: string): Promise<void> {
-    logger.warn('正在回滚最近一次 commit …');
+    logger.warn('Rolling back the last commit...');
     await createGit(localPath).reset(['--soft', 'HEAD~1']);
-    logger.warn('回滚完成，本地变更已保留在暂存区');
+    logger.warn('Rollback complete, local changes preserved in staging area');
   },
 
   /**

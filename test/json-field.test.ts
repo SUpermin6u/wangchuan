@@ -1,5 +1,5 @@
 /**
- * json-field.test.ts — JSON 字段提取/合并 单元测试
+ * json-field.test.ts — JSON field extraction/merge unit tests
  */
 
 import { describe, it } from 'node:test';
@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { jsonField } from '../src/core/json-field.js';
 
 describe('jsonField.extractFields', () => {
-  it('提取指定的顶层字段', () => {
+  it('extracts specified top-level fields', () => {
     const obj = {
       mcpServers: { playwright: { type: 'stdio' } },
       tipsHistory: { 'new-user': 3 },
@@ -17,58 +17,58 @@ describe('jsonField.extractFields', () => {
     assert.deepStrictEqual(result, { mcpServers: { playwright: { type: 'stdio' } } });
   });
 
-  it('提取多个字段', () => {
+  it('extracts multiple fields', () => {
     const obj = { security: { auth: 'gongfeng' }, model: { name: 'opus' }, ide: { seen: true } };
     const result = jsonField.extractFields(obj, ['security', 'model']);
     assert.deepStrictEqual(result, { security: { auth: 'gongfeng' }, model: { name: 'opus' } });
   });
 
-  it('字段不存在时忽略', () => {
+  it('ignores non-existent fields', () => {
     const obj = { a: 1 };
     const result = jsonField.extractFields(obj, ['a', 'nonExistent']);
     assert.deepStrictEqual(result, { a: 1 });
   });
 
-  it('空字段列表返回空对象', () => {
+  it('returns empty object for empty field list', () => {
     const result = jsonField.extractFields({ a: 1, b: 2 }, []);
     assert.deepStrictEqual(result, {});
   });
 });
 
 describe('jsonField.mergeFields', () => {
-  it('将 partial 合并到 target，保留其他字段', () => {
+  it('merges partial into target, preserving other fields', () => {
     const target = { a: 1, b: 2, c: 3 };
     const partial = { b: 99 };
     const result = jsonField.mergeFields(target, partial);
     assert.deepStrictEqual(result, { a: 1, b: 99, c: 3 });
   });
 
-  it('partial 中有新字段时添加到 target', () => {
+  it('adds new fields from partial to target', () => {
     const target = { a: 1 };
     const partial = { b: 2 };
     const result = jsonField.mergeFields(target, partial);
     assert.deepStrictEqual(result, { a: 1, b: 2 });
   });
 
-  it('target 为空时返回 partial', () => {
+  it('returns partial when target is empty', () => {
     const result = jsonField.mergeFields({}, { mcpServers: { gongfeng: {} } });
     assert.deepStrictEqual(result, { mcpServers: { gongfeng: {} } });
   });
 
-  it('extract 后 merge 回原对象不丢失其他字段', () => {
+  it('extract then merge-back preserves other fields', () => {
     const original = {
       mcpServers: { old: 'config' },
       tipsHistory: { tip1: 5 },
       numStartups: 10,
       projects: { '/tmp': { cost: 100 } },
     };
-    // 模拟 push: 提取 mcpServers
+    // Simulate push: extract mcpServers
     const extracted = jsonField.extractFields(original, ['mcpServers']);
-    // 模拟远端修改
+    // Simulate remote modification
     (extracted as Record<string, unknown>).mcpServers = { new: 'config' };
-    // 模拟 pull: merge 回原对象
+    // Simulate pull: merge back into original
     const merged = jsonField.mergeFields(original, extracted);
-    // mcpServers 被更新，其他字段保留
+    // mcpServers updated, other fields preserved
     assert.deepStrictEqual(merged, {
       mcpServers: { new: 'config' },
       tipsHistory: { tip1: 5 },

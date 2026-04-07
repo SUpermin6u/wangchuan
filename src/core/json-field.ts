@@ -1,13 +1,13 @@
 /**
- * json-field.ts — JSON 字段级提取与合并
+ * json-field.ts — JSON field-level extraction and merge
  *
- * 支持从大 JSON 文件中 pick 指定顶层字段进行同步，
- * pull 时 merge 回目标 JSON（不破坏其他字段）。
+ * Supports picking specified top-level fields from large JSON files for sync;
+ * merges fields back into target JSON on pull (without destroying other fields).
  */
 
 type JsonObject = Record<string, unknown>;
 
-/** 从对象中提取指定顶层字段 */
+/** Extract specified top-level fields from an object */
 export function extractFields(obj: JsonObject, fields: readonly string[]): JsonObject {
   const result: JsonObject = {};
   for (const f of fields) {
@@ -16,7 +16,7 @@ export function extractFields(obj: JsonObject, fields: readonly string[]): JsonO
   return result;
 }
 
-/** 将提取的字段 shallow merge 回目标对象（仅覆盖提取字段，保留其余） */
+/** Shallow merge extracted fields back into target object (only overwrites extracted fields, preserves the rest) */
 export function mergeFields(target: JsonObject, partial: JsonObject): JsonObject {
   return { ...target, ...partial };
 }

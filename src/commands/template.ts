@@ -33,7 +33,7 @@ const TEMPLATES: readonly Template[] = [
   {
     name:    'full',
     descKey: 'template.desc.full',
-    agents:  ['openclaw', 'claude', 'gemini', 'codebuddy', 'workbuddy', 'cursor'],
+    agents:  ['openclaw', 'claude', 'gemini', 'codebuddy', 'workbuddy', 'cursor', 'codex'],
   },
   {
     name:    'developer',

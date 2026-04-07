@@ -55,13 +55,13 @@ type Msgs = Record<string, readonly [string, string]>;
 const M: Msgs = {
   // ── CLI ──────────────────────────────────────────────────────
   'cli.description':     ['Wangchuan · AI Memory Sync System', '忘川 · AI 记忆同步系统'],
-  'cli.invalidAgent':    ['--agent must be openclaw | claude | gemini | codebuddy | workbuddy | cursor, got: {val}', '--agent 必须是 openclaw | claude | gemini | codebuddy | workbuddy | cursor，收到: {val}'],
+  'cli.invalidAgent':    ['--agent must be openclaw | claude | gemini | codebuddy | workbuddy | cursor | codex, got: {val}', '--agent 必须是 openclaw | claude | gemini | codebuddy | workbuddy | cursor | codex，收到: {val}'],
   'cli.cmd.init':        ['Initialize Wangchuan, configure repo and generate key', '初始化忘川，配置仓库并生成密钥'],
   'cli.cmd.init.repo':   ['Git repo URL (SSH or HTTPS)', 'Git 仓库地址'],
   'cli.cmd.init.key':    ['Import existing master key (hex string)', '导入已有的主密钥（十六进制字符串）'],
   'cli.cmd.init.force':  ['Force re-init (overwrite existing config)', '强制重新初始化'],
   'cli.cmd.pull':        ['Pull and restore configs from remote repo', '从远端仓库拉取并还原配置到本地'],
-  'cli.cmd.agent':       ['Filter by agent (openclaw|claude|gemini|codebuddy|workbuddy|cursor)', '只操作指定智能体 (openclaw|claude|gemini|codebuddy|workbuddy|cursor)'],
+  'cli.cmd.agent':       ['Filter by agent (openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex)', '只操作指定智能体 (openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex)'],
   'cli.cmd.push':        ['Encrypt and push local configs to remote repo', '将本地配置加密后推送到远端仓库'],
   'cli.cmd.push.msg':    ['Custom commit message', '自定义提交信息'],
   'cli.cmd.status':      ['Show sync status and workspace diff', '查看同步状态和工作区差异'],

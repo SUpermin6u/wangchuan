@@ -19,6 +19,7 @@ import { gemini }    from './gemini.js';
 import { codebuddy } from './codebuddy.js';
 import { workbuddy } from './workbuddy.js';
 import { cursor }    from './cursor.js';
+import { codex }     from './codex.js';
 
 /**
  * Ordered list of all agent definitions.
@@ -31,6 +32,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
   codebuddy,
   workbuddy,
   cursor,
+  codex,
 ] as const;
 
 /** Derive AGENT_NAMES tuple from definitions (keeps type safety) */

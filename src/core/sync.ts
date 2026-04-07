@@ -1,16 +1,16 @@
 /**
- * sync.ts — 同步引擎核心
+ * sync.ts — Core sync engine
  *
- * 三个方向：
- *   stageToRepo      工作区 → 本地仓库目录（推送前准备）
- *   restoreFromRepo  本地仓库目录 → 工作区（拉取后还原）
- *   diff             对比两侧，返回差异摘要
+ * Three directions:
+ *   stageToRepo      workspace → local repo directory (pre-push staging)
+ *   restoreFromRepo  local repo directory → workspace (post-pull restore)
+ *   diff             compare both sides, return diff summary
  *
- * 支持三层同步：
- *   shared   — 跨 agent 共享（skills、MCP 模板、共享记忆）
- *   agents/* — per-agent 跨环境同步
+ * Supports two-tier sync:
+ *   shared   — cross-agent sharing (skills, MCP templates, shared memory)
+ *   agents/* — per-agent cross-environment sync
  *
- * 所有方法支持可选的 agent 过滤参数，只操作指定智能体的文件。
+ * All methods accept an optional agent filter parameter to operate on a specific agent's files only.
  */
 
 import fs   from 'fs';
@@ -146,7 +146,7 @@ function walkDir(dirAbs: string): string[] {
   return results;
 }
 
-/** 按 repoRel 去重，保留第一个出现的条目 */
+/** Deduplicate by repoRel, keeping the first occurrence */
 function deduplicateEntries(entries: FileEntry[]): FileEntry[] {
   const seen = new Set<string>();
   return entries.filter(e => {
@@ -175,7 +175,7 @@ function logProgress(
 }
 
 /**
- * 为指定 agent profile 生成 syncFiles + syncDirs + jsonFields 条目
+ * Build syncFiles + syncDirs + jsonFields entries for a given agent profile.
  */
 function buildAgentEntries(
   name: AgentName,
@@ -218,7 +218,7 @@ function buildAgentEntries(
     }
   }
 
-  // jsonFields — 字段级 JSON 提取
+  // jsonFields — field-level JSON extraction
   for (const jf of (profile.jsonFields ?? [])) {
     const suffix = jf.encrypt ? '.enc' : '';
     entries.push({
@@ -238,7 +238,7 @@ function buildAgentEntries(
 }
 
 /**
- * 构建 shared tier 条目（skills、MCP 模板、共享文件）
+ * Build shared tier entries (skills, MCP templates, shared files).
  */
 function buildSharedEntries(
   cfg: WangchuanConfig,
@@ -249,7 +249,7 @@ function buildSharedEntries(
   if (!shared) return entries;
   const profiles = cfg.profiles.default;
 
-  // ── shared skills：多源汇聚 ────────────────────────────────
+  // ── shared skills: multi-source aggregation ────────────────
   for (const source of shared.skills.sources) {
     const p = profiles[source.agent];
     if (!p.enabled) continue;
@@ -260,7 +260,7 @@ function buildSharedEntries(
     if (!fs.existsSync(scanBase)) continue;
 
     for (const relFile of walkDir(scanBase)) {
-      // 跳过 .DS_Store 等系统文件
+      // Skip system files like .DS_Store
       if (path.basename(relFile).startsWith('.')) continue;
       entries.push({
         srcAbs:    path.join(wsPath, source.dir, relFile),
@@ -272,7 +272,7 @@ function buildSharedEntries(
     }
   }
 
-  // ── shared MCP：从各 agent 的 JSON 中提取 mcpServers ──────
+  // ── shared MCP: extract mcpServers from each agent's JSON ──
   for (const source of shared.mcp.sources) {
     const p = profiles[source.agent];
     if (!p.enabled) continue;
@@ -343,14 +343,14 @@ export function buildFileEntries(
   const entries: FileEntry[] = [];
   const profiles = cfg.profiles.default;
 
-  // per-agent 条目
+  // per-agent entries
   for (const name of AGENT_NAMES) {
     const p = profiles[name];
     if (!p.enabled || (agent && agent !== name)) continue;
     entries.push(...buildAgentEntries(name, p, repoDirBase));
   }
 
-  // shared 条目（--agent 过滤时不包含 shared，因为 shared 不属于任何单一 agent）
+  // shared entries (excluded when --agent filter is active, since shared belongs to no single agent)
   if (!agent) {
     entries.push(...buildSharedEntries(cfg, repoDirBase));
   }
@@ -359,16 +359,16 @@ export function buildFileEntries(
 }
 
 /**
- * 将 shared 内容（skills、MCP 配置）分发到各 agent 的本地目录。
- * push 前调用，确保各 agent 在推送前已获得最新共享资源。
+ * Distribute shared content (skills, MCP configs) to each agent's local directory.
+ * Called before push to ensure all agents have the latest shared resources.
  */
 function distributeShared(cfg: WangchuanConfig): void {
   const shared = cfg.shared;
   if (!shared) return;
   const profiles = cfg.profiles.default;
 
-  // ── 分发 skills：从每个 source 收集，只添加对方完全没有的新 skill ──
-  // 收集各 agent 当前拥有的 skill 集合
+  // ── Distribute skills: collect from each source, only add skills the target is missing ──
+  // Collect each agent's current skill set
   const agentSkills = new Map<string, Map<string, string>>(); // agent → relPath → absPath
   for (const source of shared.skills.sources) {
     const p = profiles[source.agent];
@@ -384,7 +384,7 @@ function distributeShared(cfg: WangchuanConfig): void {
     agentSkills.set(source.agent, skills);
   }
 
-  // 合并所有 agent 的 skill（去重，先出现者优先）
+  // Merge all agents' skills (deduplicate, first occurrence wins)
   const allSkills = new Map<string, string>();
   for (const skills of agentSkills.values()) {
     for (const [rel, abs] of skills) {
@@ -392,14 +392,14 @@ function distributeShared(cfg: WangchuanConfig): void {
     }
   }
 
-  // 分发：只把某 agent 缺少的 skill 复制过去（skill 存在于全局集合中）
+  // Distribute: only copy skills that a given agent is missing (present in global set)
   for (const source of shared.skills.sources) {
     const p = profiles[source.agent];
     if (!p.enabled) continue;
     const mySkills  = agentSkills.get(source.agent)!;
     const skillsDir = path.join(expandHome(p.workspacePath), source.dir);
     for (const [relFile, srcAbs] of allSkills) {
-      if (mySkills.has(relFile)) continue; // 已有，不覆盖
+      if (mySkills.has(relFile)) continue; // already exists, do not overwrite
       const dest = path.join(skillsDir, relFile);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(srcAbs, dest);
@@ -407,7 +407,7 @@ function distributeShared(cfg: WangchuanConfig): void {
     }
   }
 
-  // ── 分发 MCP 配置：从每个 source 提取，merge 到其他 agent ──
+  // ── Distribute MCP configs: extract from each source, merge into other agents ──
   const mergedMcp: Record<string, unknown> = {};
   for (const source of shared.mcp.sources) {
     const p = profiles[source.agent];
@@ -420,9 +420,9 @@ function distributeShared(cfg: WangchuanConfig): void {
       if (mcpField && typeof mcpField === 'object') {
         Object.assign(mergedMcp, mcpField);
       }
-    } catch { /* 忽略解析失败 */ }
+    } catch { /* ignore parse failures */ }
   }
-  // 写回到每个 source agent 的 MCP 配置（文件不存在时创建）
+  // Write back to each source agent's MCP config (create file if missing)
   if (Object.keys(mergedMcp).length > 0) {
     for (const source of shared.mcp.sources) {
       const p = profiles[source.agent];
@@ -434,7 +434,7 @@ function distributeShared(cfg: WangchuanConfig): void {
           json = JSON.parse(fs.readFileSync(srcPath, 'utf-8')) as Record<string, unknown>;
         }
         const currentMcp = (json[source.field] ?? {}) as Record<string, unknown>;
-        // 只添加本地没有的 MCP server，不覆盖已有配置
+        // Only add MCP servers not present locally; do not overwrite existing configs
         let changed = false;
         for (const [key, val] of Object.entries(mergedMcp)) {
           if (!(key in currentMcp)) {
@@ -448,14 +448,14 @@ function distributeShared(cfg: WangchuanConfig): void {
           fs.writeFileSync(srcPath, JSON.stringify(json, null, 2), 'utf-8');
           logger.debug(`  ${t('sync.distributeMcp', { agent: source.agent })}`);
         }
-      } catch { /* 忽略 */ }
+      } catch { /* ignore */ }
     }
   }
 }
 
 /**
- * 清理 repo 中的过期文件 — repo 有但当前 entries 中不包含的条目删除。
- * 仅清理 agents/ 和 shared/ 目录下的文件（不删 .git 等）。
+ * Prune stale files from repo — delete entries present in repo but absent from current entries.
+ * Only prunes files under agents/ and shared/ directories (does not touch .git etc.).
  */
 function pruneRepoStaleFiles(repoPath: string, entries: FileEntry[]): string[] {
   const activeRepoRels = new Set(entries.map(e => e.repoRel));
@@ -474,7 +474,7 @@ function pruneRepoStaleFiles(repoPath: string, entries: FileEntry[]): string[] {
         deleted.push(repoRel);
         logger.debug(`  ${t('sync.pruneStale', { file: repoRel })}`);
 
-        // 清理空目录
+        // Clean up empty directories
         let dir = path.dirname(abs);
         while (dir !== scanRoot && dir.startsWith(scanRoot)) {
           const remaining = fs.readdirSync(dir);
@@ -765,8 +765,8 @@ export const syncEngine = {
       (result.synced as string[]).push(entry.repoRel);
     }
 
-    // ── 清理 repo 中的过期文件（全量 push 时） ──────────────────
-    // 只用实际写入 repo 的条目做 prune，排除本地不存在的 skipped 条目
+    // ── Prune stale files from repo (full push only) ──────────────
+    // Only prune using entries actually written to repo, excluding skipped entries with missing local files
     if (!agent) {
       const syncedEntries = entries.filter(e => fs.existsSync(e.srcAbs));
       const pruned = pruneRepoStaleFiles(repoPath, syncedEntries);
@@ -804,8 +804,8 @@ export const syncEngine = {
     for (const entry of entries) {
       const srcRepo = path.join(repoPath, entry.repoRel);
       if (!fs.existsSync(srcRepo)) {
-        // repo 没有但本地有 → 记录为 localOnly
-        // jsonFields 条目：srcAbs 是完整 JSON（总是存在），需检查提取字段是否非空
+        // Not in repo but exists locally → mark as localOnly
+        // jsonFields entries: srcAbs is the full JSON (always exists), check if extracted fields are non-empty
         if (entry.jsonExtract) {
           try {
             const fullJson = JSON.parse(fs.readFileSync(entry.srcAbs, 'utf-8')) as Record<string, unknown>;
@@ -813,7 +813,7 @@ export const syncEngine = {
             if (Object.keys(extracted).length > 0) {
               (result.localOnly as string[]).push(entry.repoRel);
             }
-          } catch { /* JSON 解析失败则忽略 */ }
+          } catch { /* ignore JSON parse failures */ }
         } else if (fs.existsSync(entry.srcAbs)) {
           (result.localOnly as string[]).push(entry.repoRel);
         }
@@ -822,7 +822,7 @@ export const syncEngine = {
         continue;
       }
 
-      // ── JSON 字段级 merge-back ────────────────────────────────
+      // ── JSON field-level merge-back ────────────────────────────
       if (entry.jsonExtract) {
         let partialContent: string;
         if (entry.encrypt) {
@@ -834,7 +834,7 @@ export const syncEngine = {
         }
         const partial = JSON.parse(partialContent) as Record<string, unknown>;
 
-        // 读取本地完整 JSON，merge 进去（不破坏其他字段）
+        // Read local full JSON, merge into it (without destroying other fields)
         const targetPath = entry.jsonExtract.originalPath;
         let fullJson: Record<string, unknown> = {};
         if (fs.existsSync(targetPath)) {
@@ -844,13 +844,13 @@ export const syncEngine = {
         fs.mkdirSync(path.dirname(targetPath), { recursive: true });
         fs.writeFileSync(targetPath, JSON.stringify(merged, null, 2), 'utf-8');
 
-        // shared MCP 条目：同时分发到所有其他 agent
+        // shared MCP entry: also distribute to all other agents
         if (entry.agentName === 'shared' && cfg.shared) {
           for (const source of cfg.shared.mcp.sources) {
             const p = cfg.profiles.default[source.agent];
             if (!p.enabled) continue;
             const otherPath = path.join(expandHome(p.workspacePath), source.src);
-            if (otherPath === targetPath) continue; // 已处理
+            if (otherPath === targetPath) continue; // already handled
             let otherJson: Record<string, unknown> = {};
             if (fs.existsSync(otherPath)) {
               try { otherJson = JSON.parse(fs.readFileSync(otherPath, 'utf-8')) as Record<string, unknown>; } catch { /* */ }
@@ -868,7 +868,7 @@ export const syncEngine = {
         continue;
       }
 
-      // ── shared skills 分发到各 agent ──────────────────────────
+      // ── Distribute shared skills to all agents ─────────────────
       if (entry.agentName === 'shared' && entry.repoRel.startsWith('shared/skills/')) {
         const relInSkills = entry.repoRel.slice('shared/skills/'.length);
         const shared = cfg.shared;
@@ -887,7 +887,7 @@ export const syncEngine = {
         continue;
       }
 
-      // ── 冲突检测（整文件同步） ────────────────────────────────
+      // ── Conflict detection (whole-file sync) ──────────────────
       if (fs.existsSync(entry.srcAbs)) {
         let isDiff = false;
         const localBuf = fs.readFileSync(entry.srcAbs);
@@ -980,7 +980,7 @@ export const syncEngine = {
         }
       }
 
-      // ── 写入文件 ──────────────────────────────────────────────
+      // ── Write file ───────────────────────────────────────────
       fs.mkdirSync(path.dirname(entry.srcAbs), { recursive: true });
       if (entry.encrypt) {
         cryptoEngine.decryptFile(srcRepo, entry.srcAbs, keyPath);
@@ -1025,7 +1025,7 @@ export const syncEngine = {
       if (srcExists  && !repoExists) { (diff.added   as string[]).push(entry.repoRel); continue; }
       if (!srcExists && repoExists)  { (diff.missing  as string[]).push(entry.repoRel); continue; }
 
-      // JSON 字段提取时，比较提取后的内容
+      // For JSON field extraction, compare the extracted content
       if (entry.jsonExtract) {
         try {
           const fullJson = JSON.parse(fs.readFileSync(entry.srcAbs, 'utf-8')) as Record<string, unknown>;
@@ -1048,7 +1048,7 @@ export const syncEngine = {
         continue;
       }
 
-      // 整文件比较
+      // Whole-file comparison
       const srcBuf  = fs.readFileSync(entry.srcAbs);
       const repoBuf = fs.readFileSync(path.join(repoPath, entry.repoRel));
 

@@ -1,8 +1,8 @@
 /**
- * types.ts — 项目全局类型定义
+ * types.ts — Project-wide type definitions
  */
 
-// ─── 配置文件结构 ────────────────────────────────────────────────
+// ─── Config file structure ─────────────────────────────────────────
 
 export interface SyncFileEntry {
   readonly src: string;
@@ -14,18 +14,18 @@ export interface SyncDirEntry {
   readonly encrypt: boolean;
 }
 
-/** 从 JSON 文件提取指定顶层字段进行同步（替代整文件同步） */
+/** Extract specified top-level fields from a JSON file for sync (instead of whole-file sync) */
 export interface JsonFieldEntry {
-  /** 源 JSON 文件相对于 workspacePath 的路径 */
+  /** Path to the source JSON file relative to workspacePath */
   readonly src: string;
-  /** 要提取的顶层字段名列表 */
+  /** List of top-level field names to extract */
   readonly fields: readonly string[];
-  /** 提取后在 repo 中的文件名（不含路径前缀） */
+  /** Filename in repo for the extracted content (without path prefix) */
   readonly repoName: string;
   readonly encrypt: boolean;
 }
 
-/** 统一的智能体配置（替代原来三个独立 interface） */
+/** Unified agent profile (replaces the original three separate interfaces) */
 export interface AgentProfile {
   readonly enabled: boolean;
   readonly workspacePath: string;
@@ -41,27 +41,28 @@ export interface AgentProfiles {
   readonly codebuddy: AgentProfile;
   readonly workbuddy: AgentProfile;
   readonly cursor: AgentProfile;
+  readonly codex: AgentProfile;
 }
 
-// ─── Shared tier（跨 agent 共享） ───────────────────────────────
+// ─── Shared tier (cross-agent sharing) ──────────────────────────
 
-/** 共享 Skills 的来源 */
+/** Shared skills source */
 export interface SharedSkillSource {
   readonly agent: AgentName;
-  /** skills 目录相对于 workspacePath 的路径 */
+  /** Skills directory path relative to workspacePath */
   readonly dir: string;
 }
 
-/** 共享 MCP 配置来源 */
+/** Shared MCP config source */
 export interface SharedMcpSource {
   readonly agent: AgentName;
-  /** JSON 文件相对于 workspacePath 的路径 */
+  /** JSON file path relative to workspacePath */
   readonly src: string;
-  /** 从该文件中提取 MCP 配置的顶层字段名 */
+  /** Top-level field name to extract MCP config from */
   readonly field: string;
 }
 
-/** 共享文件条目（workspacePath 独立于 agent，需单独指定） */
+/** Shared file entry (workspacePath is independent of agent, must be specified separately) */
 export interface SharedSyncFileEntry {
   readonly src: string;
   readonly workspacePath: string;
@@ -90,14 +91,14 @@ export interface WangchuanConfig {
   readonly localRepoPath: string;
   readonly keyPath: string;
   readonly hostname: string;
-  /** 配置版本号，用于迁移检测 */
+  /** Config version number for migration detection */
   readonly version?: number;
   readonly profiles: {
     readonly default: AgentProfiles;
   };
-  /** 跨 agent 共享配置 */
+  /** Cross-agent shared config */
   readonly shared?: SharedConfig;
-  /** 显示语言 */
+  /** Display language */
   readonly lang?: 'zh' | 'en';
   /** Active environment name. 'default' or undefined → main branch; others → env/{name} */
   readonly environment?: string;
@@ -111,39 +112,39 @@ export interface WangchuanConfig {
   };
 }
 
-// ─── Agent 过滤 ──────────────────────────────────────────────────
+// ─── Agent filtering ─────────────────────────────────────────────
 
 /**
  * Canonical list of all supported agent names — single source of truth.
  * Derived from AGENT_DEFINITIONS in src/agents/. To add a new agent, create
  * a definition file in src/agents/ and register it in src/agents/index.ts.
  */
-export const AGENT_NAMES = ['openclaw', 'claude', 'gemini', 'codebuddy', 'workbuddy', 'cursor'] as const;
+export const AGENT_NAMES = ['openclaw', 'claude', 'gemini', 'codebuddy', 'workbuddy', 'cursor', 'codex'] as const;
 
-/** 支持过滤的智能体名称 */
+/** Agent name that supports filtering */
 export type AgentName = (typeof AGENT_NAMES)[number];
 
-/** 同步层级标识 */
+/** Sync tier identifier */
 export type SyncTier = AgentName | 'shared';
 
-/** 所有支持 --agent 过滤的命令共用此 mixin */
+/** Shared mixin for all commands supporting --agent filtering */
 export interface AgentOptions {
   readonly agent?: AgentName;
 }
 
-// ─── 同步引擎内部结构 ────────────────────────────────────────────
+// ─── Sync engine internal structures ─────────────────────────────
 
 export interface FileEntry {
   readonly srcAbs: string;
   readonly repoRel: string;
   readonly plainRel: string;
   readonly encrypt: boolean;
-  /** 所属层级（agent 名称 或 'shared'） */
+  /** Owning tier (agent name or 'shared') */
   readonly agentName: SyncTier;
-  /** 非空时表示此条目需要 JSON 字段级提取 */
+  /** When non-empty, indicates this entry requires JSON field-level extraction */
   readonly jsonExtract?: {
     readonly fields: readonly string[];
-    /** 原始完整 JSON 文件绝对路径（用于 pull 时 merge-back） */
+    /** Absolute path to the original full JSON file (used for merge-back on pull) */
     readonly originalPath: string;
   };
 }
@@ -163,7 +164,7 @@ export interface RestoreResult {
   readonly skipped: string[];
   readonly decrypted: string[];
   readonly conflicts: string[];
-  /** 本地存在但 repo 中没有的文件（可能需要 push 到云端） */
+  /** Files present locally but absent from repo (may need to be pushed) */
   readonly localOnly: string[];
 }
 
@@ -173,7 +174,7 @@ export interface DiffResult {
   readonly missing: string[];
 }
 
-// ─── Git 引擎返回结构 ────────────────────────────────────────────
+// ─── Git engine return structures ────────────────────────────────
 
 export interface CommitResult {
   readonly committed: boolean;
@@ -181,7 +182,7 @@ export interface CommitResult {
   readonly sha?: string;
 }
 
-// ─── 命令参数结构 ────────────────────────────────────────────────
+// ─── Command parameter structures ────────────────────────────────
 
 export interface InitOptions {
   readonly repo?: string;
