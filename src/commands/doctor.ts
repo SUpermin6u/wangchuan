@@ -21,6 +21,7 @@
  */
 
 import fs   from 'fs';
+import os   from 'os';
 import path from 'path';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
@@ -127,6 +128,26 @@ function checkAgentWorkspaces(cfg: WangchuanConfig): CheckResult[] {
     }
   }
   return results;
+}
+
+/** Detect alternative OpenClaw profiles (~/.openclaw-*) and hint the user */
+function checkOpenClawProfiles(cfg: WangchuanConfig, results: CheckResult[]): void {
+  const home = os.homedir();
+  let entries: string[];
+  try { entries = fs.readdirSync(home); } catch { return; }
+
+  const currentWs = syncEngine.expandHome(cfg.profiles.default.openclaw.workspacePath);
+  for (const name of entries) {
+    if (!name.startsWith('.openclaw-')) continue;
+    const profileName = name.slice('.openclaw-'.length);
+    const profileDir = path.join(home, name);
+    try {
+      if (!fs.statSync(profileDir).isDirectory()) continue;
+    } catch { continue; }
+    const wsDir = path.join(profileDir, 'workspace');
+    if (wsDir === currentWs) continue;
+    results.push(WARN(t('doctor.openclawProfiles', { name: profileName, path: profileDir })));
+  }
 }
 
 function checkSyncLock(): CheckResult {
@@ -422,6 +443,9 @@ export async function cmdDoctor(opts: DoctorOptions = {}): Promise<void> {
       config.save(updatedCfg);
       cfg = updatedCfg;
     }
+
+    // 7b. Detect alternative OpenClaw profiles (~/.openclaw-*)
+    checkOpenClawProfiles(cfg, results);
 
     // 8. Sync lock
     const lockResult = checkSyncLock();

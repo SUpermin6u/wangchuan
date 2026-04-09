@@ -55,7 +55,7 @@ wangchuan sync
 
 | 智能体 | 默认路径 | 同步内容 |
 |--------|---------|----------|
-| **OpenClaw** | `~/.openclaw/workspace/` | MEMORY.md（加密）、AGENTS.md、SOUL.md、IDENTITY.md、USER.md（加密）、memory/（加密） |
+| **OpenClaw** | `~/.openclaw/workspace/` | MEMORY.md（加密）、AGENTS.md、SOUL.md、TOOLS.md、IDENTITY.md、USER.md（加密）、HEARTBEAT.md、memory/（加密）、openclaw.json → agents/skills/ui（加密）、skills/ |
 | **Claude** | `~/.claude/` | CLAUDE.md、settings.json（加密）、`.claude.json` → mcpServers（加密） |
 | **Gemini** | `~/.gemini/` | `settings.internal.json` → security + model + general（加密） |
 | **CodeBuddy** | `~/.codebuddy/` | MEMORY.md（加密）、CODEBUDDY.md、mcp.json → mcpServers（加密）、settings.json → enabledPlugins（加密） |

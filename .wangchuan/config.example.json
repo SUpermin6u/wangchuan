@@ -12,14 +12,24 @@
         "enabled": true,
         "workspacePath": "~/.openclaw/workspace",
         "syncFiles": [
-          { "src": "MEMORY.md",   "encrypt": true  },
-          { "src": "AGENTS.md",   "encrypt": false },
-          { "src": "SOUL.md",     "encrypt": false },
-          { "src": "IDENTITY.md", "encrypt": false },
-          { "src": "USER.md",     "encrypt": true  }
+          { "src": "MEMORY.md",    "encrypt": true  },
+          { "src": "AGENTS.md",    "encrypt": false },
+          { "src": "SOUL.md",      "encrypt": false },
+          { "src": "TOOLS.md",     "encrypt": false },
+          { "src": "IDENTITY.md",  "encrypt": false },
+          { "src": "USER.md",      "encrypt": true  },
+          { "src": "HEARTBEAT.md", "encrypt": false }
         ],
         "syncDirs": [
           { "src": "memory/", "encrypt": true }
+        ],
+        "jsonFields": [
+          {
+            "src": "../openclaw.json",
+            "fields": ["agents", "skills", "ui"],
+            "repoName": "openclaw-config.json",
+            "encrypt": true
+          }
         ]
       },
       "claude": {

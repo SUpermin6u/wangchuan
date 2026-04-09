@@ -92,7 +92,7 @@ Supported by: `sync`, `status`, `watch`, `memory`.
 
 | Value | Description |
 |-------|-------------|
-| `openclaw`  | MEMORY.md (enc), AGENTS.md, SOUL.md, IDENTITY.md, USER.md (enc), memory/ dir (enc) |
+| `openclaw`  | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), HEARTBEAT.md, memory/ (enc), openclaw.json → agents/skills/ui (enc), skills/ |
 | `claude`    | CLAUDE.md, settings.json (enc), .claude.json → mcpServers (enc) |
 | `gemini`    | settings.internal.json → security + model + general (enc) |
 | `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |

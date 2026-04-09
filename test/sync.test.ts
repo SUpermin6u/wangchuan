@@ -46,8 +46,13 @@ function mkCfg(overrides?: Partial<WangchuanConfig>): WangchuanConfig {
           enabled: true,
           workspacePath: WS_OC,
           syncFiles: [
-            { src: 'MEMORY.md', encrypt: true },
-            { src: 'SOUL.md',   encrypt: false },
+            { src: 'MEMORY.md',    encrypt: true  },
+            { src: 'SOUL.md',      encrypt: false },
+            { src: 'TOOLS.md',     encrypt: false },
+            { src: 'HEARTBEAT.md', encrypt: false },
+          ],
+          jsonFields: [
+            { src: path.join('..', 'openclaw.json'), fields: ['agents', 'skills', 'ui'], repoName: 'openclaw-config.json', encrypt: true },
           ],
         },
         claude: {
@@ -160,6 +165,8 @@ function prepareEmptyMcpFiles(): void {
   writeFile(CB_MCP, '{"mcpServers":{}}');
   writeFile(path.join(WS_WB, 'mcp.json'), '{"mcpServers":{}}');
   writeFile(path.join(WS_CU, 'mcp.json'), '{"mcpServers":{}}');
+  // OpenClaw openclaw.json is one level up from workspacePath
+  writeFile(path.join(WS_OC, '..', 'openclaw.json'), '{"agents":{},"skills":{},"ui":{}}');
 }
 
 // ── Setup / Teardown ────────────────────────────────────────────────

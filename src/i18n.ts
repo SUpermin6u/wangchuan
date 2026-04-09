@@ -651,6 +651,7 @@ const M: Msgs = {
 
   // ── agent discovery ────────────────────────────────────────────
   'doctor.discoveredAgent':      ['Agent {name} workspace found at {path} but agent is disabled — auto-enabling', '智能体 {name} 工作区存在于 {path}，但该智能体已禁用 — 自动启用'],
+  'doctor.openclawProfiles':     ['Detected OpenClaw profile: {name} ({path}). Run `wangchuan agent set-path openclaw {path}/workspace` to sync this profile instead.', '检测到 OpenClaw 配置文件: {name} ({path})。执行 `wangchuan agent set-path openclaw {path}/workspace` 来同步该配置。'],
   'status.discoveredAgent':      ['Agent {name} found at {path} but disabled. Run `wangchuan doctor` to auto-enable', '智能体 {name} 存在于 {path}，但已禁用。执行 `wangchuan doctor` 自动启用'],
 
   // ── config validate ──────────────────────────────────────────

@@ -12,14 +12,25 @@ export const openclaw: AgentDefinition = {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.openclaw', 'workspace'),
     syncFiles: [
-      { src: 'MEMORY.md',   encrypt: true  },
-      { src: 'AGENTS.md',   encrypt: false },
-      { src: 'SOUL.md',     encrypt: false },
-      { src: 'IDENTITY.md', encrypt: false },
-      { src: 'USER.md',     encrypt: true  },
+      { src: 'MEMORY.md',    encrypt: true  },
+      { src: 'AGENTS.md',    encrypt: false },
+      { src: 'SOUL.md',      encrypt: false },
+      { src: 'TOOLS.md',     encrypt: false },
+      { src: 'IDENTITY.md',  encrypt: false },
+      { src: 'USER.md',      encrypt: true  },
+      { src: 'HEARTBEAT.md', encrypt: false },
     ],
     syncDirs: [
       { src: 'memory/', encrypt: true },
+    ],
+    jsonFields: [
+      // openclaw.json is at ~/.openclaw/ (one level up from workspace)
+      {
+        src: path.join('..', 'openclaw.json'),
+        fields: ['agents', 'skills', 'ui'],
+        repoName: 'openclaw-config.json',
+        encrypt: true,
+      },
     ],
   },
   sharedSkills: { dir: 'skills/' },
