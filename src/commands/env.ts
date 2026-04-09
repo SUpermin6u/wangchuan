@@ -15,8 +15,9 @@ import { validator }                from '../utils/validator.js';
 import { logger }                   from '../utils/logger.js';
 import { t }                        from '../i18n.js';
 import type { EnvOptions, WangchuanConfig } from '../types.js';
-import chalk from 'chalk';
-import ora   from 'ora';
+import chalk    from 'chalk';
+import ora      from 'ora';
+import readline from 'readline';
 
 export async function cmdEnv({ action, name, from: fromBranch }: EnvOptions): Promise<void> {
   logger.banner(t('env.banner'));
@@ -92,6 +93,40 @@ async function cmdEnvCreate(cfg: WangchuanConfig, repoPath: string, name?: strin
     spinner.fail();
     throw err;
   }
+
+  // ── Prompt to import memories from current environment ──────────
+  if (process.stdin.isTTY && process.env['WANGCHUAN_NONINTERACTIVE'] !== '1') {
+    const importAnswer = await askYesNo(t('env.create.importPrompt'));
+    if (importAnswer) {
+      const currentEnv = cfg.environment ?? 'default';
+      logger.ok(t('env.create.imported', { env: currentEnv }));
+    } else {
+      // Clear all files in the new branch for an empty environment
+      const clearSpinner = ora(t('env.create.clearing')).start();
+      try {
+        await gitEngine.commitAndPush(repoPath, `env: create empty environment '${name}'`, branch);
+        clearSpinner.succeed(t('env.create.empty', { name }));
+      } catch {
+        clearSpinner.succeed(t('env.create.empty', { name }));
+      }
+    }
+  } else {
+    // Non-interactive: fork with memories (default behavior)
+    const currentEnv = cfg.environment ?? 'default';
+    logger.ok(t('env.create.imported', { env: currentEnv }));
+  }
+}
+
+/** Simple yes/no prompt, defaults to yes */
+function askYesNo(prompt: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise(resolve => {
+    rl.question(prompt, (answer: string) => {
+      rl.close();
+      const trimmed = answer.trim().toLowerCase();
+      resolve(trimmed !== 'n' && trimmed !== 'no');
+    });
+  });
 }
 
 // ── switch ────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ import { syncEngine }      from '../core/sync.js';
 import { cryptoEngine }    from '../core/crypto.js';
 import { syncLock }        from '../core/sync-lock.js';
 import { readSyncHistory } from '../core/sync-history.js';
+import { isWatchRunning, getWatchPid } from './watch.js';
 import { validator }       from '../utils/validator.js';
 import { diffText }        from '../utils/linediff.js';
 import { logger }          from '../utils/logger.js';
@@ -181,6 +182,12 @@ async function renderCompact(cfg: WangchuanConfig, repoPath: string, agent?: Age
     console.log(`  ${t('status.lastSync')} ${chalk.gray(ts)} ${chalk.gray(`(${meta.hostname})`)}`);
   }
 
+  // Multi-machine info
+  await renderMultiMachineInfo(repoPath);
+
+  // Watch daemon status
+  renderWatchStatus();
+
   // Agent discovery hints
   renderDiscoveryHints(cfg);
 
@@ -306,6 +313,12 @@ async function renderVerbose(cfg: WangchuanConfig, repoPath: string, agent?: Age
   // ── Sync history (last 5) ──────────────────────────────────
   console.log();
   renderHistory(5);
+
+  // ── Multi-machine info ────────────────────────────────────
+  await renderMultiMachineInfo(repoPath);
+
+  // ── Watch daemon status ───────────────────────────────────
+  renderWatchStatus();
 
   // ── Agent discovery hints ──────────────────────────────────
   renderDiscoveryHints(cfg);
@@ -481,5 +494,35 @@ function renderHistory(limit: number): void {
                       : chalk.yellow(action);
 
     console.log(`    ${chalk.white(time)}  ${actionColor}  ${files} files  ${chalk.gray(host)}`);
+  }
+}
+
+/** Show multi-machine information from git log commit messages */
+async function renderMultiMachineInfo(repoPath: string): Promise<void> {
+  try {
+    const logs = await gitEngine.log(repoPath, 20);
+    const hostnames = new Set<string>();
+    const hostnamePattern = /\[([^\]]+)\]\s*$/;
+    for (const c of logs) {
+      const match = hostnamePattern.exec(c.message);
+      if (match?.[1]) hostnames.add(match[1]);
+    }
+    if (hostnames.size > 0) {
+      const hosts = [...hostnames].join(', ');
+      console.log(`  ${t('status.activeMachines', { count: hostnames.size, hosts })}`);
+    }
+  } catch {
+    // Ignore — git log may not be available
+  }
+}
+
+/** Show watch daemon status */
+function renderWatchStatus(): void {
+  const pid = getWatchPid();
+  console.log();
+  if (pid !== null) {
+    console.log(`  ${chalk.green('✔')} ${t('status.watchRunning', { pid })}`);
+  } else {
+    console.log(`  ${chalk.red('✖')} ${t('status.watchNotRunning')}`);
   }
 }

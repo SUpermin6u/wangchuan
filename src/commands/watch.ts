@@ -8,9 +8,12 @@
 
 import fs   from 'fs';
 import path from 'path';
+import os   from 'os';
 import { config }          from '../core/config.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import { syncEngine }      from '../core/sync.js';
+import { gitEngine }       from '../core/git.js';
+import { threeWayMerge }   from '../core/merge.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -21,6 +24,8 @@ import chalk from 'chalk';
 
 const DEFAULT_INTERVAL_MINUTES = 5;
 const DEBOUNCE_MS = 5_000;
+const WANGCHUAN_DIR = path.join(os.homedir(), '.wangchuan');
+const PID_FILE = path.join(WANGCHUAN_DIR, 'watch.pid');
 
 /**
  * Collect all absolute paths that should be watched for a given config.
@@ -47,13 +52,53 @@ function timestamp(): string {
   return new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
 }
 
+// ── PID file singleton ──────────────────────────────────────────
+
+function writePidFile(): void {
+  fs.mkdirSync(WANGCHUAN_DIR, { recursive: true });
+  fs.writeFileSync(PID_FILE, String(process.pid), 'utf-8');
+}
+
+function deletePidFile(): void {
+  if (fs.existsSync(PID_FILE)) fs.unlinkSync(PID_FILE);
+}
+
+/** Check if watch daemon is running (reads PID file + checks process) */
+export function isWatchRunning(): boolean {
+  return getWatchPid() !== null;
+}
+
+/** Return the PID of the running watch daemon, or null if not running */
+export function getWatchPid(): number | null {
+  if (!fs.existsSync(PID_FILE)) return null;
+  const pid = parseInt(fs.readFileSync(PID_FILE, 'utf-8').trim(), 10);
+  if (isNaN(pid)) return null;
+  try {
+    process.kill(pid, 0);
+    return pid;
+  } catch {
+    // Process is dead — clean up stale PID file
+    deletePidFile();
+    return null;
+  }
+}
+
 export async function cmdWatch({ agent, interval }: WatchOptions = {}): Promise<void> {
   logger.banner(t('watch.banner'));
 
-  let cfg = config.load();
-  validator.requireInit(cfg);
-  cfg = ensureMigrated(cfg);
+  // ── Singleton enforcement ────────────────────────────────────
+  const existingPid = getWatchPid();
+  if (existingPid !== null) {
+    logger.warn(t('watch.alreadyRunning', { pid: existingPid }));
+    return;
+  }
+  writePidFile();
 
+  let rawCfg = config.load();
+  validator.requireInit(rawCfg);
+  const cfg = ensureMigrated(rawCfg);
+
+  const repoPath = syncEngine.expandHome(cfg.localRepoPath);
   const intervalMinutes = interval ?? DEFAULT_INTERVAL_MINUTES;
   if (agent) logger.info(t('watch.filterAgent', { agent: chalk.cyan(agent) }));
   logger.info(t('watch.interval', { minutes: intervalMinutes }));
@@ -62,6 +107,7 @@ export async function cmdWatch({ agent, interval }: WatchOptions = {}): Promise<
 
   if (watchDirs.length === 0) {
     logger.warn(t('watch.noTargets'));
+    deletePidFile();
     return;
   }
 
@@ -78,7 +124,13 @@ export async function cmdWatch({ agent, interval }: WatchOptions = {}): Promise<
       logger.step(t('watch.triggerSync', { reason, time: timestamp() }));
       await cmdSync(agent ? { agent } : {});
     } catch (err) {
-      logger.error(t('watch.syncError', { error: (err as Error).message }));
+      // ── Smart conflict resolution for watch mode ───────────────
+      const errorMsg = (err as Error).message;
+      if (errorMsg.includes('conflict') || errorMsg.includes('冲突')) {
+        await handleWatchConflicts(cfg, repoPath, agent);
+      } else {
+        logger.error(t('watch.syncError', { error: errorMsg }));
+      }
     } finally {
       syncing = false;
     }
@@ -123,6 +175,7 @@ export async function cmdWatch({ agent, interval }: WatchOptions = {}): Promise<
     if (debounceTimer) clearTimeout(debounceTimer);
     clearInterval(pollInterval);
     for (const w of watchers) w.close();
+    deletePidFile();
     process.exit(0);
   }
 
@@ -134,4 +187,45 @@ export async function cmdWatch({ agent, interval }: WatchOptions = {}): Promise<
 
   // Run an initial sync immediately
   await triggerSync(t('watch.reasonInitial'));
+}
+
+/**
+ * Smart conflict resolution in watch mode (non-interactive).
+ * For .md/.txt files, attempt three-way merge. If merge succeeds
+ * without conflict markers, auto-push silently. If conflict markers
+ * remain, log a warning and skip push for that file.
+ */
+async function handleWatchConflicts(
+  cfg: WangchuanConfig,
+  repoPath: string,
+  agent?: AgentName,
+): Promise<void> {
+  const entries = syncEngine.buildFileEntries(cfg, undefined, agent);
+  const keyPath = syncEngine.expandHome(cfg.keyPath);
+
+  for (const entry of entries) {
+    if (!fs.existsSync(entry.srcAbs)) continue;
+    const repoAbs = path.join(repoPath, entry.repoRel);
+    if (!fs.existsSync(repoAbs)) continue;
+
+    const isTextMergeable = !entry.encrypt &&
+      (entry.repoRel.endsWith('.md') || entry.repoRel.endsWith('.txt'));
+    if (!isTextMergeable) continue;
+
+    const localContent = fs.readFileSync(entry.srcAbs, 'utf-8');
+    const repoContent = fs.readFileSync(repoAbs, 'utf-8');
+    if (localContent === repoContent) continue;
+
+    const baseContent = await gitEngine.showFile(repoPath, 'HEAD~1', entry.repoRel);
+    if (baseContent === null) continue;
+
+    const mergeResult = threeWayMerge(baseContent, localContent, repoContent);
+    if (!mergeResult.hasConflicts) {
+      fs.writeFileSync(entry.srcAbs, mergeResult.merged, 'utf-8');
+      logger.info(t('watch.conflictAutoMerged', { file: entry.repoRel }));
+    } else {
+      fs.writeFileSync(entry.srcAbs, mergeResult.merged, 'utf-8');
+      logger.warn(t('watch.conflictNeedsManual', { file: entry.repoRel }));
+    }
+  }
 }

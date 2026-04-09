@@ -166,6 +166,8 @@ export interface RestoreResult {
   readonly conflicts: string[];
   /** Files present locally but absent from repo (may need to be pushed) */
   readonly localOnly: string[];
+  /** Agents skipped because their workspace directory doesn't exist */
+  readonly skippedAgents: string[];
 }
 
 export interface DiffResult {
@@ -221,4 +223,11 @@ export interface EnvOptions {
   readonly action: string;
   readonly name: string | undefined;
   readonly from: string | undefined;
+}
+
+export interface MemoryOptions {
+  readonly action: string;
+  readonly args: readonly string[];
+  readonly agent?: AgentName | undefined;
+  readonly file?: string | undefined;
 }

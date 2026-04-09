@@ -149,6 +149,11 @@ async function runSync(
           encrypted: pullResult.decrypted.length,
         }));
       }
+      if (pullResult.skippedAgents.length > 0) {
+        logger.info(t('sync.skippedAgents', {
+          agents: pullResult.skippedAgents.join(', '),
+        }));
+      }
     } catch (err) {
       throw new Error(t('sync.restoreFailed', { error: (err as Error).message }));
     }

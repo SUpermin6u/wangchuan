@@ -788,9 +788,20 @@ export const syncEngine = {
     const repoPath = expandHome(cfg.localRepoPath);
     const keyPath  = expandHome(cfg.keyPath);
     const entries  = buildFileEntries(cfg, repoPath, agent, filter);
-    const result: RestoreResult = { synced: [], skipped: [], decrypted: [], conflicts: [], localOnly: [] };
+    const result: RestoreResult = { synced: [], skipped: [], decrypted: [], conflicts: [], localOnly: [], skippedAgents: [] };
     let restoreIdx = 0;
     const restoreTotal = entries.length;
+
+    // ── Detect skipped agents (workspace dir doesn't exist) ──────
+    const profiles = cfg.profiles.default;
+    for (const name of AGENT_NAMES) {
+      const p = profiles[name];
+      if (p.enabled || (agent && agent !== name)) continue;
+      const wsPath = expandHome(p.workspacePath);
+      if (!fs.existsSync(wsPath)) {
+        (result.skippedAgents as string[]).push(name);
+      }
+    }
 
     // ── Verify integrity checksums before restore ────────────────
     verifyIntegrity(repoPath);

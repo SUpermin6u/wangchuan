@@ -17,6 +17,20 @@ This skill MUST activate in these scenarios:
 3. **After modifying agent config files** — CLAUDE.md, settings.json, skills/, .claude.json
 4. **After learning something reusable** — New workflow patterns, user preferences, tool configurations
 
+## Auto-start Watch Daemon
+
+On skill activation, check if the watch daemon is running:
+```bash
+# Check if watch daemon PID file exists and process is alive
+if [ -f ~/.wangchuan/watch.pid ] && kill -0 $(cat ~/.wangchuan/watch.pid) 2>/dev/null; then
+  : # Watch daemon is running
+else
+  # Start watch daemon in background for continuous sync
+  nohup wangchuan watch > /dev/null 2>&1 &
+fi
+```
+This ensures continuous sync while the agent session is active.
+
 ## Self-Evolution Protocol
 
 At the end of each task session, evaluate whether the conversation produced any of these:

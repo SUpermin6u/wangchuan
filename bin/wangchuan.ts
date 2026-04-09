@@ -21,6 +21,8 @@ import { cmdSync }   from '../src/commands/sync.js';
 import { cmdEnv }    from '../src/commands/env.js';
 import { cmdDoctor } from '../src/commands/doctor.js';
 import { cmdLang }   from '../src/commands/lang.js';
+import { cmdWatch }  from '../src/commands/watch.js';
+import { cmdMemory } from '../src/commands/memory.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -91,6 +93,26 @@ program
   .option('--from <branch>', t('cli.cmd.env.from'))
   .action(async (action: string, name: string | undefined, opts: { from?: string }) => {
     await run(() => cmdEnv({ action, name, from: opts.from }));
+  });
+
+// ── watch ───────────────────────────────────────────────────────
+program
+  .command('watch')
+  .description(t('cli.cmd.watch'))
+  .option('-i, --interval <minutes>', t('cli.cmd.watch.interval'), parseFloat)
+  .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
+  .action(async (opts: { interval?: number; agent?: AgentName }) => {
+    await run(() => cmdWatch(opts));
+  });
+
+// ── memory ──────────────────────────────────────────────────────
+program
+  .command('memory <action> [args...]')
+  .description(t('cli.cmd.memory'))
+  .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
+  .option('--file <pattern>', t('cli.cmd.memory.file'))
+  .action(async (action: string, args: string[], opts: { agent?: AgentName; file?: string }) => {
+    await run(() => cmdMemory({ action, args, agent: opts.agent, file: opts.file }));
   });
 
 // ── lang ────────────────────────────────────────────────────────

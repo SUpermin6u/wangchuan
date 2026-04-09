@@ -277,6 +277,9 @@ const M: Msgs = {
   'watch.shutdown':        ['Shutting down watch daemon …', '正在停止监听 …'],
   'watch.started':         ['Watch daemon started', '监听守护进程已启动'],
   'watch.stopHint':        ['Press Ctrl+C to stop', '按 Ctrl+C 停止'],
+  'watch.alreadyRunning':  ['Watch daemon already running (PID {pid})', '监听守护进程已在运行 (PID {pid})'],
+  'watch.conflictAutoMerged':  ['Auto-merged conflict (no markers): {file}', '自动合并冲突（无冲突标记）: {file}'],
+  'watch.conflictNeedsManual': ['Conflict needs manual resolution: {file}', '冲突需手动解决: {file}'],
 
   // ── sync-meta ─────────────────────────────────────────────────
   'sync.meta.lastSync':   ['Last synced: {time} from {hostname} ({env})', '上次同步: {time}，来自 {hostname}（{env}）'],
@@ -677,6 +680,36 @@ const M: Msgs = {
   // ── completions ───────────────────────────────────────────────
   'cli.cmd.completions':     ['Generate shell completion scripts (bash|zsh)', '生成 shell 补全脚本 (bash|zsh)'],
   'completions.usage':       ['Usage: wangchuan completions bash|zsh', '用法: wangchuan completions bash|zsh'],
+
+  // ── memory command ──────────────────────────────────────────────
+  'cli.cmd.memory':            ['Browse and copy memory files across agents (list|show|copy|broadcast)', '浏览和跨智能体复制记忆文件 (list|show|copy|broadcast)'],
+  'cli.cmd.memory.file':       ['Filter by file name pattern (substring match)', '按文件名模式过滤（子串匹配）'],
+  'memory.banner':             ['Wangchuan · Memory', '忘川 · 记忆浏览'],
+  'memory.list.header':        ['Memory files:', '记忆文件：'],
+  'memory.list.empty':         ['No memory files found', '未找到记忆文件'],
+  'memory.list.agentHeader':   ['Agent: {agent}', '智能体: {agent}'],
+  'memory.show.notFound':      ['File not found: {agent}/{file}', '文件不存在: {agent}/{file}'],
+  'memory.show.header':        ['── {agent}/{file} ──', '── {agent}/{file} ──'],
+  'memory.copy.done':          ['Copied {count} files from {from} to {to}', '从 {from} 复制 {count} 个文件到 {to}'],
+  'memory.copy.overwrite':     ['Overwriting existing file: {file}', '覆盖已存在文件: {file}'],
+  'memory.copy.noFiles':       ['No files to copy', '没有可复制的文件'],
+  'memory.broadcast.done':     ['Broadcast {count} files from {from} to {agents}', '从 {from} 广播 {count} 个文件到 {agents}'],
+  'memory.unknownAction':      ['Unknown action: {action}. Use list|show|copy|broadcast', '未知操作: {action}，请使用 list|show|copy|broadcast'],
+  'memory.argsRequired':       ['Arguments required. Usage: wangchuan memory {action} <agent> [file]', '缺少参数。用法: wangchuan memory {action} <agent> [file]'],
+  'memory.sameAgent':          ['Source and target agents are the same', '源和目标智能体相同'],
+
+  // ── env create import ──────────────────────────────────────────
+  'env.create.importPrompt':   ['Import memories from current environment? [Y/n] ', '从当前环境导入记忆? [Y/n] '],
+  'env.create.imported':       ['Memories imported from \'{env}\' environment', '已从 \'{env}\' 环境导入记忆'],
+  'env.create.empty':          ['Created empty environment \'{name}\'', '已创建空白环境 \'{name}\''],
+  'env.create.clearing':       ['Clearing files for empty environment …', '正在清空文件以创建空白环境 …'],
+
+  // ── status enhancements ────────────────────────────────────────
+  'status.lastSyncFrom':       ['Last synced from: {hostname} at {time}', '上次同步来自: {hostname}，时间: {time}'],
+  'status.activeMachines':     ['Active machines: {count} ({hosts})', '活跃机器: {count} 台 ({hosts})'],
+  'status.watchRunning':       ['Watch daemon: running (PID {pid})', '监听守护进程: 运行中 (PID {pid})'],
+  'status.watchNotRunning':    ['Watch daemon: not running — run `wangchuan watch` to start', '监听守护进程: 未运行 — 执行 `wangchuan watch` 启动'],
+  'sync.skippedAgents':        ['Skipped agents (not installed): {agents}. Install them and run `wangchuan doctor` to enable.', '跳过的智能体（未安装）: {agents}。安装后执行 `wangchuan doctor` 启用。'],
 };
 
 /**
