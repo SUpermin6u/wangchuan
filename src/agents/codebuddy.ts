@@ -32,4 +32,5 @@ export const codebuddy: AgentDefinition = {
   },
   sharedSkills: { dir: 'skills/' },
   sharedMcp: { src: 'mcp.json', field: 'mcpServers' },
+  sharedAgents: { dir: 'agents/' },
 };

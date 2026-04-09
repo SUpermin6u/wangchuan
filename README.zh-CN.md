@@ -76,7 +76,8 @@ wangchuan sync
 - 每次同步前自动扫描泄露的 token
 
 ### 跨智能体共享
-- Skills 和 MCP 配置自动分发到所有智能体
+- Skills、MCP 配置和自定义子智能体自动分发到所有智能体
+- `agents/` 目录中的自定义子智能体通过 `shared/agents/` 在 Claude/Cursor/CodeBuddy/WorkBuddy 间同步
 - 删除传播 — 所有智能体都删除后自动从仓库清理
 - 已有条目不会被覆盖
 

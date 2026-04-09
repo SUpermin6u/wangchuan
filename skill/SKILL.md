@@ -100,7 +100,11 @@ Supported by: `sync`, `status`, `watch`, `memory`.
 | `cursor`    | rules/ dir, mcp.json → mcpServers (enc), cli-config.json → permissions + model + enabledPlugins (enc) |
 | `codex`     | AGENTS.md, instructions.md |
 
-When omitted, operates on all enabled agents plus the shared tier (skills/MCP/shared memory).
+When omitted, operates on all enabled agents plus the shared tier (skills/MCP/custom agents/shared memory).
+
+## Custom Sub-Agent Sync
+
+Custom sub-agents defined in the `agents/` directory of any supported agent (Claude, Cursor, CodeBuddy, WorkBuddy) are automatically synced across all agents via the shared tier (`shared/agents/`). The same deletion confirmation logic as skills applies — a custom agent is pruned from the repo only when all local agents have removed it.
 
 ## Prerequisites
 

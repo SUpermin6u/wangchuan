@@ -57,9 +57,14 @@ export function buildDefaultShared(): SharedConfig {
     .filter(d => d.sharedMcp)
     .map(d => ({ agent: d.name as never, src: d.sharedMcp!.src, field: d.sharedMcp!.field }));
 
+  const agentSources = AGENT_DEFINITIONS
+    .filter(d => d.sharedAgents)
+    .map(d => ({ agent: d.name as never, dir: d.sharedAgents!.dir }));
+
   return {
     skills:    { sources: skillSources },
     mcp:       { sources: mcpSources },
+    agents:    { sources: agentSources },
     syncFiles: [
       { src: 'memory/SHARED.md', workspacePath: '~/.openclaw/workspace', encrypt: true },
     ],

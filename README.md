@@ -76,7 +76,8 @@ Agent paths are customizable in `~/.wangchuan/config.json`.
 - Auto-scan for leaked tokens before every sync
 
 ### Cross-Agent Sharing
-- Skills and MCP configs auto-distributed to all agents
+- Skills, MCP configs, and custom sub-agents auto-distributed to all agents
+- Custom agents in `agents/` directories synced across Claude/Cursor/CodeBuddy/WorkBuddy via `shared/agents/`
 - Delete propagation — removed from all agents → pruned from repo
 - Existing entries preserved (no overwrite)
 

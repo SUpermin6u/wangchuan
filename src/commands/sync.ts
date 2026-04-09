@@ -126,9 +126,12 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
   try {
     const result = await runSync(cfg, repoPath, hostname, agent, dryRun, filter);
 
-    // ── Check for pending skill deletion propagation (requires user decision) ──
+    // ── Check for pending skill/agent deletion propagation (requires user decision) ──
     if (process.stdin.isTTY) {
-      await handlePendingSkillDeletions(cfg);
+      await handlePendingDeletions(cfg, 'skill', 'pending-skill-deletions.json',
+        (agent) => cfg.shared?.skills.sources.filter(s => s.agent === agent) ?? []);
+      await handlePendingDeletions(cfg, 'agent', 'pending-agent-deletions.json',
+        (agent) => cfg.shared?.agents?.sources.filter(s => s.agent === agent) ?? []);
     }
 
     return result;
@@ -138,11 +141,16 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
 }
 
 /**
- * Handle pending-skill-deletions.json: for each skill deleted from one agent,
- * ask user which other agents should also delete it.
+ * Handle pending deletion propagation for shared resources (skills or custom agents).
+ * For each resource deleted from one agent, ask user which other agents should also delete it.
  */
-async function handlePendingSkillDeletions(cfg: import('../types.js').WangchuanConfig): Promise<void> {
-  const pendingPath = path.join(os.homedir(), '.wangchuan', 'pending-skill-deletions.json');
+async function handlePendingDeletions(
+  cfg: import('../types.js').WangchuanConfig,
+  kind: 'skill' | 'agent',
+  pendingFilename: string,
+  getSources: (agent: string) => readonly { dir: string }[],
+): Promise<void> {
+  const pendingPath = path.join(os.homedir(), '.wangchuan', pendingFilename);
   if (!fs.existsSync(pendingPath)) return;
 
   let pending: { relFile: string; deletedFrom: string; presentIn: string[] }[];
@@ -151,13 +159,13 @@ async function handlePendingSkillDeletions(cfg: import('../types.js').WangchuanC
   } catch { return; }
   if (pending.length === 0) return;
 
-  // Group by skill file
-  const bySkill = new Map<string, { deletedFrom: string[]; presentIn: string[] }>();
+  // Group by file
+  const byFile = new Map<string, { deletedFrom: string[]; presentIn: string[] }>();
   for (const item of pending) {
-    if (!bySkill.has(item.relFile)) {
-      bySkill.set(item.relFile, { deletedFrom: [], presentIn: [...item.presentIn] });
+    if (!byFile.has(item.relFile)) {
+      byFile.set(item.relFile, { deletedFrom: [], presentIn: [...item.presentIn] });
     }
-    const entry = bySkill.get(item.relFile)!;
+    const entry = byFile.get(item.relFile)!;
     if (!entry.deletedFrom.includes(item.deletedFrom)) entry.deletedFrom.push(item.deletedFrom);
     for (const a of item.presentIn) {
       if (!entry.presentIn.includes(a)) entry.presentIn.push(a);
@@ -167,10 +175,16 @@ async function handlePendingSkillDeletions(cfg: import('../types.js').WangchuanC
   const rl = await import('readline');
   const profiles = cfg.profiles.default;
 
-  for (const [relFile, info] of bySkill) {
+  // Use kind-specific i18n keys (skill messages reused, agent messages follow same pattern)
+  const i18nDeletedFrom = kind === 'skill' ? 'sync.skillDeletedFrom' : 'sync.agentDeletedFrom';
+  const i18nStillIn     = kind === 'skill' ? 'sync.skillStillIn'     : 'sync.agentStillIn';
+  const i18nDeleted     = kind === 'skill' ? 'sync.skillDeletedFromAgent' : 'sync.agentDeletedFromAgent';
+  const i18nKept        = kind === 'skill' ? 'sync.skillDeleteKept'  : 'sync.agentDeleteKept';
+
+  for (const [relFile, info] of byFile) {
     console.log();
-    logger.warn(t('sync.skillDeletedFrom', { file: relFile, agents: info.deletedFrom.join(', ') }));
-    logger.info(t('sync.skillStillIn', { agents: info.presentIn.join(', ') }));
+    logger.warn(t(i18nDeletedFrom, { file: relFile, agents: info.deletedFrom.join(', ') }));
+    logger.info(t(i18nStillIn, { agents: info.presentIn.join(', ') }));
     console.log();
 
     // Build choices: [all] + each agent + [none]
@@ -193,10 +207,8 @@ async function handlePendingSkillDeletions(cfg: import('../types.js').WangchuanC
     let agentsToDelete: string[] = [];
 
     if (indices.includes(0)) {
-      // "all" selected
       agentsToDelete = [...info.presentIn];
     } else if (indices.includes(choices.length - 1)) {
-      // "none" selected
       agentsToDelete = [];
     } else {
       agentsToDelete = indices
@@ -208,18 +220,18 @@ async function handlePendingSkillDeletions(cfg: import('../types.js').WangchuanC
     for (const agentName of agentsToDelete) {
       const p = profiles[agentName as keyof typeof profiles];
       if (!p) continue;
-      const skillSources = cfg.shared?.skills.sources.filter(s => s.agent === agentName) ?? [];
-      for (const source of skillSources) {
-        const skillPath = path.join(syncEngine.expandHome(p.workspacePath), source.dir, relFile);
-        if (fs.existsSync(skillPath)) {
-          fs.unlinkSync(skillPath);
-          logger.ok(`  ${t('sync.skillDeletedFromAgent', { file: relFile, agent: agentName })}`);
+      const sources = getSources(agentName);
+      for (const source of sources) {
+        const filePath = path.join(syncEngine.expandHome(p.workspacePath), source.dir, relFile);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          logger.ok(`  ${t(i18nDeleted, { file: relFile, agent: agentName })}`);
         }
       }
     }
 
     if (agentsToDelete.length === 0) {
-      logger.info(t('sync.skillDeleteKept'));
+      logger.info(t(i18nKept));
     }
   }
 

@@ -69,12 +69,22 @@ export interface SharedSyncFileEntry {
   readonly encrypt: boolean;
 }
 
+/** Shared custom agent source (sub-agent .md files with YAML frontmatter) */
+export interface SharedAgentSource {
+  readonly agent: AgentName;
+  /** Agents directory path relative to workspacePath */
+  readonly dir: string;
+}
+
 export interface SharedConfig {
   readonly skills: {
     readonly sources: readonly SharedSkillSource[];
   };
   readonly mcp: {
     readonly sources: readonly SharedMcpSource[];
+  };
+  readonly agents: {
+    readonly sources: readonly SharedAgentSource[];
   };
   readonly syncFiles: readonly SharedSyncFileEntry[];
 }

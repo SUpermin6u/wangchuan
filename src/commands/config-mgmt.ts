@@ -190,6 +190,17 @@ function validateConfig(): void {
         detail: valid ? undefined : t('configValidate.unknownAgent', { agent: source.agent }),
       });
     }
+    // Check agents sources reference valid agents
+    if (shared.agents) {
+      for (const source of shared.agents.sources) {
+        const valid = (AGENT_NAMES as readonly string[]).includes(source.agent);
+        results.push({
+          label: t('configValidate.sharedAgentRef', { agent: source.agent }),
+          pass: valid,
+          detail: valid ? undefined : t('configValidate.unknownAgent', { agent: source.agent }),
+        });
+      }
+    }
   }
 
   // 3. Check duplicate repoNames across agents (would cause file overwrites)

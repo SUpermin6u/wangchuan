@@ -138,6 +138,14 @@
         { "agent": "cursor",    "src": "mcp.json",             "field": "mcpServers" }
       ]
     },
+    "agents": {
+      "sources": [
+        { "agent": "claude",    "dir": "agents/" },
+        { "agent": "codebuddy", "dir": "agents/" },
+        { "agent": "workbuddy", "dir": "agents/" },
+        { "agent": "cursor",    "dir": "agents/" }
+      ]
+    },
     "syncFiles": [
       { "src": "memory/SHARED.md", "workspacePath": "~/.openclaw/workspace", "encrypt": true }
     ]

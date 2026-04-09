@@ -130,6 +130,14 @@ function mkCfg(overrides?: Partial<WangchuanConfig>): WangchuanConfig {
           { agent: 'cursor',    src: 'mcp.json',             field: 'mcpServers' },
         ],
       },
+      agents: {
+        sources: [
+          { agent: 'claude',    dir: 'agents/' },
+          { agent: 'codebuddy', dir: 'agents/' },
+          { agent: 'workbuddy', dir: 'agents/' },
+          { agent: 'cursor',    dir: 'agents/' },
+        ],
+      },
       syncFiles: [],
     },
     ...overrides,
@@ -237,7 +245,7 @@ describe('stageToRepo → restoreFromRepo round-trip', () => {
     writeFile(path.join(WS_OC, 'MEMORY.md'), '# 记忆内容 v1');
     writeFile(path.join(WS_OC, 'SOUL.md'), '# 灵魂');
     writeFile(path.join(WS_CL, 'CLAUDE.md'), '# Claude 指令');
-    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, syncFiles: [] } });
+    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, agents: { sources: [] }, syncFiles: [] } });
 
     const pushResult = await syncEngine.stageToRepo(cfg);
     assert.ok(pushResult.synced.length >= 3);
@@ -277,7 +285,7 @@ describe('stageToRepo → restoreFromRepo round-trip', () => {
     };
     writeFile(path.join(WS_GE, 'settings.json'), JSON.stringify(geminiJson, null, 2));
 
-    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, syncFiles: [] } });
+    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, agents: { sources: [] }, syncFiles: [] } });
     await syncEngine.stageToRepo(cfg);
 
     // Repo: Claude mcpServers.json.enc should only contain mcpServers
@@ -626,7 +634,7 @@ describe('pull detects local-only files', () => {
     writeFile(path.join(WS_CL, '.claude.json'), '{"mcpServers":{}}');
     writeFile(path.join(WS_GE, 'settings.json'), '{"security":{},"model":{}}');
 
-    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, syncFiles: [] } });
+    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, agents: { sources: [] }, syncFiles: [] } });
     const result = await syncEngine.restoreFromRepo(cfg);
 
     // Should detect local-only files
@@ -655,7 +663,7 @@ describe('pull detects local-only files', () => {
     writeFile(path.join(WS_WB, 'mcp.json'), '{}');
     writeFile(path.join(WS_CU, 'mcp.json'), '{}');
 
-    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, syncFiles: [] } });
+    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, agents: { sources: [] }, syncFiles: [] } });
     const result = await syncEngine.restoreFromRepo(cfg);
 
     // .claude.json has no mcpServers field, should not be marked as localOnly
@@ -717,7 +725,7 @@ describe('JSON parse failure tolerance', () => {
     writeFile(path.join(WS_GE, 'settings.json'), '{"security":{},"model":{}}');
     writeFile(path.join(WS_OC, 'config', 'mcporter.json'), '{"mcpServers":{}}');
 
-    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, syncFiles: [] } });
+    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, agents: { sources: [] }, syncFiles: [] } });
     // Should not throw
     const result = await syncEngine.stageToRepo(cfg);
     assert.ok(

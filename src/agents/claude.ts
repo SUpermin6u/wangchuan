@@ -26,4 +26,5 @@ export const claude: AgentDefinition = {
   },
   sharedSkills: { dir: 'skills/' },
   sharedMcp: { src: '.claude.json', field: 'mcpServers' },
+  sharedAgents: { dir: 'agents/' },
 };

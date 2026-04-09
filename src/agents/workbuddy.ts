@@ -33,4 +33,5 @@ export const workbuddy: AgentDefinition = {
     ],
   },
   sharedMcp: { src: 'mcp.json', field: 'mcpServers' },
+  sharedAgents: { dir: 'agents/' },
 };

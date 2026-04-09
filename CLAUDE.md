@@ -23,7 +23,7 @@ ES Modules (`"type": "module"`), Node.js ≥ 18.19.0, strict TypeScript (`strict
 
 ### Two-Tier Repo Structure
 
-- `shared/` — Cross-agent shared resources (merged skills, shared MCP configs, shared memory SHARED.md)
+- `shared/` — Cross-agent shared resources (merged skills, shared MCP configs, custom agents, shared memory SHARED.md)
 - `agents/<name>/` — Per-agent cross-environment sync (MEMORY.md, CLAUDE.md, settings, etc.)
 
 Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
@@ -33,12 +33,13 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 - **Repo is the single source of truth**: on push, entries absent from all local agents are pruned from repo; on pull, entries absent from repo are not distributed
 - **Auto-share on add**: any agent adds a skill or MCP server → auto-distributed to all agents on push
 - **Delete propagation**: all agents delete a skill/MCP → pruned from repo on push → disappears on pull in other environments
-- **No overwrite**: when distributing skills/MCP, existing entries in the target agent are preserved
+- **Custom agent distribution**: custom sub-agents in `agents/` directories are auto-shared across Claude/Cursor/CodeBuddy/WorkBuddy via `shared/agents/`, with the same deletion confirmation as skills
+- **No overwrite**: when distributing skills/MCP/agents, existing entries in the target agent are preserved
 - **localOnly detection on pull**: files present locally but missing from repo trigger a push suggestion
 
 ### Core Engines (`src/core/`)
 
-- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven agents + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations.
+- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven agents + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP/custom agents to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations.
 - **json-field.ts** — JSON field-level extraction and merge. `extractFields` picks specified fields from a large JSON; `mergeFields` merges fields back without destroying other content. Used for `.claude.json` to sync only `mcpServers` while ignoring tipsHistory/projects etc.
 - **crypto.ts** — AES-256-GCM encryption. Ciphertext format: `[IV 12B][AuthTag 16B][CipherText] → Base64 → .enc`. Key stored at `~/.wangchuan/master.key` (0o600 permissions).
 - **git.ts** — simple-git wrapper. `cloneOrFetch` is idempotent; `commitAndPush` returns `{committed: false}` when nothing changed; `rollback` runs `git reset --soft HEAD~1` on failure.

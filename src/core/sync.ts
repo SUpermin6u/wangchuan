@@ -305,6 +305,30 @@ function buildSharedEntries(
     });
   }
 
+  // ── shared agents: multi-source aggregation (same pattern as skills) ──
+  if (shared.agents) {
+    for (const source of shared.agents.sources) {
+      const p = profiles[source.agent];
+      if (!p.enabled) continue;
+      const wsPath = expandHome(p.workspacePath);
+      const scanBase = repoDirBase
+        ? path.join(repoDirBase, 'shared', 'agents')
+        : path.join(wsPath, source.dir);
+      if (!fs.existsSync(scanBase)) continue;
+
+      for (const relFile of walkDir(scanBase)) {
+        if (path.basename(relFile).startsWith('.')) continue;
+        entries.push({
+          srcAbs:    path.join(wsPath, source.dir, relFile),
+          repoRel:   path.join('shared', 'agents', relFile),
+          plainRel:  path.join('shared', 'agents', relFile),
+          encrypt:   false,
+          agentName: 'shared',
+        });
+      }
+    }
+  }
+
   return entries;
 }
 
@@ -543,6 +567,102 @@ function distributeShared(cfg: WangchuanConfig): void {
           logger.debug(`  ${t('sync.distributeMcp', { agent: source.agent })}`);
         }
       } catch { /* ignore */ }
+    }
+  }
+
+  // ── Distribute custom agents: same pattern as skills ───────────
+  if (shared.agents && shared.agents.sources.length > 0) {
+    // Collect each agent's current custom agent files
+    const agentAgents = new Map<string, Map<string, string>>(); // agent → relPath → absPath
+    for (const source of shared.agents.sources) {
+      const p = profiles[source.agent];
+      if (!p.enabled) continue;
+      const agentsDir = path.join(expandHome(p.workspacePath), source.dir);
+      const agents = new Map<string, string>();
+      if (fs.existsSync(agentsDir)) {
+        for (const relFile of walkDir(agentsDir)) {
+          if (path.basename(relFile).startsWith('.')) continue;
+          agents.set(relFile, path.join(agentsDir, relFile));
+        }
+      }
+      agentAgents.set(source.agent, agents);
+    }
+
+    // Merge all agents' custom agent files — pick NEWEST version by mtime
+    const allAgentFiles = new Map<string, string>();
+    const allAgentMtimes = new Map<string, number>();
+    for (const agents of agentAgents.values()) {
+      for (const [rel, abs] of agents) {
+        try {
+          const mtime = fs.statSync(abs).mtimeMs;
+          if (!allAgentFiles.has(rel) || mtime > allAgentMtimes.get(rel)!) {
+            allAgentFiles.set(rel, abs);
+            allAgentMtimes.set(rel, mtime);
+          }
+        } catch {
+          if (!allAgentFiles.has(rel)) allAgentFiles.set(rel, abs);
+        }
+      }
+    }
+
+    // Build ownership map: relPath → set of agent names that have it
+    const agentHasFile = new Map<string, Set<string>>();
+    for (const [agentName, agents] of agentAgents) {
+      for (const rel of agents.keys()) {
+        if (!agentHasFile.has(rel)) agentHasFile.set(rel, new Set());
+        agentHasFile.get(rel)!.add(agentName);
+      }
+    }
+
+    // Distribute: only copy NEW agent files and UPDATE existing ones
+    for (const source of shared.agents.sources) {
+      const p = profiles[source.agent];
+      if (!p.enabled) continue;
+      const myAgents = agentAgents.get(source.agent) ?? new Map<string, string>();
+      const agentsDir = path.join(expandHome(p.workspacePath), source.dir);
+      for (const [relFile, srcAbs] of allAgentFiles) {
+        const dest = path.join(agentsDir, relFile);
+        const agentHasIt = myAgents.has(relFile);
+
+        if (!agentHasIt) {
+          // Check if genuinely NEW (only one source has it) vs intentionally deleted
+          const owners = agentHasFile.get(relFile);
+          if (owners && owners.size === 1 && !owners.has(source.agent)) {
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+            fs.copyFileSync(srcAbs, dest);
+            logger.debug(`  ${t('sync.distributeAgent', { file: relFile, agent: source.agent })}`);
+          }
+          continue;
+        }
+
+        // Agent already has this file — check if it needs updating
+        if (path.resolve(dest) === path.resolve(srcAbs)) continue;
+        try {
+          if (fs.readFileSync(dest).equals(fs.readFileSync(srcAbs))) continue;
+        } catch { /* fall through to copy */ }
+
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.copyFileSync(srcAbs, dest);
+        logger.debug(`  ${t('sync.distributeAgent', { file: relFile, agent: source.agent })}`);
+      }
+    }
+
+    // Record agent deletions that need user confirmation (same as skills)
+    const deletedAgentFiles: { relFile: string; deletedFrom: string; presentIn: string[] }[] = [];
+    for (const [relFile, owners] of agentHasFile) {
+      const allSourceAgents = shared.agents.sources.map(s => s.agent).filter(a => profiles[a].enabled);
+      const missingFrom = allSourceAgents.filter(a => !owners.has(a));
+      if (missingFrom.length > 0 && owners.size > 0) {
+        for (const agent of missingFrom) {
+          deletedAgentFiles.push({ relFile, deletedFrom: agent, presentIn: [...owners] });
+        }
+      }
+    }
+
+    if (deletedAgentFiles.length > 0) {
+      const pendingPath = path.join(os.homedir(), '.wangchuan', 'pending-agent-deletions.json');
+      fs.mkdirSync(path.dirname(pendingPath), { recursive: true });
+      fs.writeFileSync(pendingPath, JSON.stringify(deletedAgentFiles, null, 2), 'utf-8');
     }
   }
 }
@@ -1043,6 +1163,25 @@ export const syncEngine = {
             const p = cfg.profiles.default[source.agent];
             if (!p.enabled) continue;
             const dest = path.join(expandHome(p.workspacePath), source.dir, relInSkills);
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+            fs.copyFileSync(srcRepo, dest);
+          }
+        }
+        (result.synced as string[]).push(entry.repoRel);
+        restoreIdx++;
+        logProgress(restoreIdx, restoreTotal, 'copy', entry.repoRel);
+        continue;
+      }
+
+      // ── Distribute shared custom agents to all agents ──────────
+      if (entry.agentName === 'shared' && entry.repoRel.startsWith('shared/agents/')) {
+        const relInAgents = entry.repoRel.slice('shared/agents/'.length);
+        const shared = cfg.shared;
+        if (shared?.agents) {
+          for (const source of shared.agents.sources) {
+            const p = cfg.profiles.default[source.agent];
+            if (!p.enabled) continue;
+            const dest = path.join(expandHome(p.workspacePath), source.dir, relInAgents);
             fs.mkdirSync(path.dirname(dest), { recursive: true });
             fs.copyFileSync(srcRepo, dest);
           }

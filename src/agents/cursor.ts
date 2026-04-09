@@ -31,4 +31,5 @@ export const cursor: AgentDefinition = {
     ],
   },
   sharedMcp: { src: 'mcp.json', field: 'mcpServers' },
+  sharedAgents: { dir: 'agents/' },
 };

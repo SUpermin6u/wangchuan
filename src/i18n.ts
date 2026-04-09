@@ -221,6 +221,7 @@ const M: Msgs = {
 
   // ── sync (debug) ────────────────────────────────────────────
   'sync.distributeSkill':  ['distribute skill: {file} → {agent}', '分发 skill: {file} → {agent}'],
+  'sync.distributeAgent':  ['distribute agent: {file} → {agent}', '分发 agent: {file} → {agent}'],
   'sync.distributeMcp':    ['distribute MCP servers → {agent}', '分发 MCP servers → {agent}'],
   'sync.pruneStale':       ['repo prune stale: {file}', 'repo 清理过期文件: {file}'],
   'sync.pruneCandidate':   ['  will delete: {file}', '  待删除: {file}'],
@@ -237,6 +238,10 @@ const M: Msgs = {
   'sync.skillDeletePrompt':   ['Enter numbers (comma-separated), or "0" for all: ', '输入编号（逗号分隔），或输入 "0" 选择全部: '],
   'sync.skillDeletedFromAgent': ['Deleted {file} from {agent}', '已从 {agent} 删除 {file}'],
   'sync.skillDeleteKept':     ['Skill kept in all agents', '技能在所有 agent 中保留'],
+  'sync.agentDeletedFrom':    ['Agent definition "{file}" was deleted from: {agents}', 'Agent 定义 "{file}" 已从以下 agent 中删除: {agents}'],
+  'sync.agentStillIn':        ['Still present in: {agents}', '仍存在于: {agents}'],
+  'sync.agentDeletedFromAgent': ['Deleted {file} from {agent}', '已从 {agent} 删除 {file}'],
+  'sync.agentDeleteKept':     ['Agent definition kept in all agents', 'Agent 定义在所有 agent 中保留'],
   'sync.skipNotFound':     ['Skipping (not found): {path}', '跳过（不存在）: {path}'],
   'sync.skipJsonParse':    ['Skipping JSON field extraction (parse error): {path} — {error}', '跳过 JSON 字段提取（解析失败）: {path} — {error}'],
   'sync.sensitiveData':    ['Possible plaintext sensitive data detected: {path}', '检测到疑似明文敏感信息: {path}'],
@@ -659,6 +664,7 @@ const M: Msgs = {
   'configValidate.jsonFieldFormat':  ['must have src, fields (array), repoName, encrypt', '需要 src, fields (array), repoName, encrypt'],
   'configValidate.sharedSkillRef':   ['shared.skills.sources → {agent}', 'shared.skills.sources → {agent}'],
   'configValidate.sharedMcpRef':     ['shared.mcp.sources → {agent}', 'shared.mcp.sources → {agent}'],
+  'configValidate.sharedAgentRef':   ['shared.agents.sources → {agent}', 'shared.agents.sources → {agent}'],
   'configValidate.unknownAgent':     ['unknown agent: {agent}', '未知智能体: {agent}'],
   'configValidate.duplicateRepoName': ['duplicate repoName: {repoName}', '重复的 repoName: {repoName}'],
   'configValidate.duplicateDetail':  ['used by both {agent1} and {agent2}', '同时被 {agent1} 和 {agent2} 使用'],
