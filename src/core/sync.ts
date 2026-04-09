@@ -401,25 +401,90 @@ function distributeShared(cfg: WangchuanConfig): void {
     }
   }
 
-  // Distribute: copy skills that are missing OR outdated in each agent
+  // Detect skills that exist in some agents but were deleted from others.
+  // These are "pending delete propagations" — user must confirm which agents to delete from.
+  const deletedFromAgents: { relFile: string; deletedFrom: string; presentIn: string[] }[] = [];
   for (const source of shared.skills.sources) {
     const p = profiles[source.agent];
     if (!p.enabled) continue;
+    const mySkills = agentSkills.get(source.agent);
+    if (!mySkills) continue;
+    // Check skills that exist globally but this agent doesn't have
+    // → This agent might have intentionally deleted them
+    // We DON'T auto-copy them back (respect user's deletion)
+  }
+
+  // Build a set of skills each agent has
+  const agentHasSkill = new Map<string, Set<string>>(); // relPath → set of agent names that have it
+  for (const [agentName, skills] of agentSkills) {
+    for (const rel of skills.keys()) {
+      if (!agentHasSkill.has(rel)) agentHasSkill.set(rel, new Set());
+      agentHasSkill.get(rel)!.add(agentName);
+    }
+  }
+
+  // Distribute: only copy NEW skills and UPDATED existing skills.
+  // NEVER copy a skill back to an agent that doesn't have it — that agent may have deleted it.
+  // Only distribute to agents that ALREADY have the skill (update) or have NEVER seen it (new).
+  for (const source of shared.skills.sources) {
+    const p = profiles[source.agent];
+    if (!p.enabled) continue;
+    const mySkills = agentSkills.get(source.agent) ?? new Map<string, string>();
     const skillsDir = path.join(expandHome(p.workspacePath), source.dir);
     for (const [relFile, srcAbs] of allSkills) {
       const dest = path.join(skillsDir, relFile);
-      // Skip if the target file is the same as the source (same agent owns it)
-      if (fs.existsSync(dest) && path.resolve(dest) === path.resolve(srcAbs)) continue;
-      // Skip if target content is identical (no update needed)
-      if (fs.existsSync(dest)) {
-        try {
-          if (fs.readFileSync(dest).equals(fs.readFileSync(srcAbs))) continue;
-        } catch { /* fall through to copy */ }
+      const agentHasIt = mySkills.has(relFile);
+
+      if (!agentHasIt) {
+        // Agent doesn't have this skill. Check if it's a genuinely NEW skill
+        // (not present in repo yet) vs one the agent intentionally deleted.
+        // If the skill exists in repo shared/skills/, this agent previously had it
+        // and may have deleted it — DON'T copy back.
+        // If it's NOT in repo yet, it's brand new — copy it.
+        const repoSkillPath = path.join(expandHome(profiles[Object.keys(profiles)[0] as keyof typeof profiles]!.workspacePath), '..', '.wangchuan', 'repo', 'shared', 'skills', relFile);
+        // Simpler check: if the skill only exists in one agent (the source), it's new → distribute
+        const owners = agentHasSkill.get(relFile);
+        if (owners && owners.size === 1 && !owners.has(source.agent)) {
+          // Only one other agent has it, and not us — it's new from that agent, copy it
+          fs.mkdirSync(path.dirname(dest), { recursive: true });
+          fs.copyFileSync(srcAbs, dest);
+          logger.debug(`  ${t('sync.distributeSkill', { file: relFile, agent: source.agent })}`);
+        }
+        // If multiple agents have it but this one doesn't → user likely deleted it, skip
+        continue;
       }
+
+      // Agent already has this skill — check if it needs updating
+      if (path.resolve(dest) === path.resolve(srcAbs)) continue; // same file
+      try {
+        if (fs.readFileSync(dest).equals(fs.readFileSync(srcAbs))) continue; // same content
+      } catch { /* fall through to copy */ }
+
+      // Content differs — update with newest version
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(srcAbs, dest);
       logger.debug(`  ${t('sync.distributeSkill', { file: relFile, agent: source.agent })}`);
     }
+  }
+
+  // Record skill deletions that need user confirmation for cross-agent propagation
+  for (const [relFile, owners] of agentHasSkill) {
+    const allSourceAgents = shared.skills.sources.map(s => s.agent).filter(a => profiles[a].enabled);
+    const missingFrom = allSourceAgents.filter(a => !owners.has(a));
+    if (missingFrom.length > 0 && owners.size > 0) {
+      // Some agents deleted this skill, others still have it
+      // Record for user confirmation (handled by the command layer)
+      for (const agent of missingFrom) {
+        deletedFromAgents.push({ relFile, deletedFrom: agent, presentIn: [...owners] });
+      }
+    }
+  }
+
+  // Save deletion propagation requests if any
+  if (deletedFromAgents.length > 0) {
+    const pendingPath = path.join(os.homedir(), '.wangchuan', 'pending-skill-deletions.json');
+    fs.mkdirSync(path.dirname(pendingPath), { recursive: true });
+    fs.writeFileSync(pendingPath, JSON.stringify(deletedFromAgents, null, 2), 'utf-8');
   }
 
   // ── Distribute MCP configs: extract from each source, merge by newest mtime ──

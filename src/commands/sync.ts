@@ -124,10 +124,107 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
   // ── Acquire sync lock ─────────────────────────────────────────
   await syncLock.acquire(repoPath);
   try {
-    return await runSync(cfg, repoPath, hostname, agent, dryRun, filter);
+    const result = await runSync(cfg, repoPath, hostname, agent, dryRun, filter);
+
+    // ── Check for pending skill deletion propagation (requires user decision) ──
+    if (process.stdin.isTTY) {
+      await handlePendingSkillDeletions(cfg);
+    }
+
+    return result;
   } finally {
     syncLock.release();
   }
+}
+
+/**
+ * Handle pending-skill-deletions.json: for each skill deleted from one agent,
+ * ask user which other agents should also delete it.
+ */
+async function handlePendingSkillDeletions(cfg: import('../types.js').WangchuanConfig): Promise<void> {
+  const pendingPath = path.join(os.homedir(), '.wangchuan', 'pending-skill-deletions.json');
+  if (!fs.existsSync(pendingPath)) return;
+
+  let pending: { relFile: string; deletedFrom: string; presentIn: string[] }[];
+  try {
+    pending = JSON.parse(fs.readFileSync(pendingPath, 'utf-8')) as typeof pending;
+  } catch { return; }
+  if (pending.length === 0) return;
+
+  // Group by skill file
+  const bySkill = new Map<string, { deletedFrom: string[]; presentIn: string[] }>();
+  for (const item of pending) {
+    if (!bySkill.has(item.relFile)) {
+      bySkill.set(item.relFile, { deletedFrom: [], presentIn: [...item.presentIn] });
+    }
+    const entry = bySkill.get(item.relFile)!;
+    if (!entry.deletedFrom.includes(item.deletedFrom)) entry.deletedFrom.push(item.deletedFrom);
+    for (const a of item.presentIn) {
+      if (!entry.presentIn.includes(a)) entry.presentIn.push(a);
+    }
+  }
+
+  const rl = await import('readline');
+  const profiles = cfg.profiles.default;
+
+  for (const [relFile, info] of bySkill) {
+    console.log();
+    logger.warn(t('sync.skillDeletedFrom', { file: relFile, agents: info.deletedFrom.join(', ') }));
+    logger.info(t('sync.skillStillIn', { agents: info.presentIn.join(', ') }));
+    console.log();
+
+    // Build choices: [all] + each agent + [none]
+    const choices = ['all', ...info.presentIn, 'none'];
+    logger.info(t('sync.skillDeleteChoices'));
+    for (let i = 0; i < choices.length; i++) {
+      const label = choices[i] === 'all' ? `[${i}] all (${t('sync.skillDeleteAll')})` :
+                    choices[i] === 'none' ? `[${i}] none (${t('sync.skillDeleteNone')})` :
+                    `[${i}] ${choices[i]}`;
+      console.log(`  ${label}`);
+    }
+
+    const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await new Promise<string>(resolve => {
+      iface.question(t('sync.skillDeletePrompt'), (ans: string) => { iface.close(); resolve(ans.trim()); });
+    });
+
+    // Parse selection
+    const indices = answer.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n));
+    let agentsToDelete: string[] = [];
+
+    if (indices.includes(0)) {
+      // "all" selected
+      agentsToDelete = [...info.presentIn];
+    } else if (indices.includes(choices.length - 1)) {
+      // "none" selected
+      agentsToDelete = [];
+    } else {
+      agentsToDelete = indices
+        .filter(i => i > 0 && i < choices.length - 1)
+        .map(i => choices[i]!);
+    }
+
+    // Execute deletions
+    for (const agentName of agentsToDelete) {
+      const p = profiles[agentName as keyof typeof profiles];
+      if (!p) continue;
+      const skillSources = cfg.shared?.skills.sources.filter(s => s.agent === agentName) ?? [];
+      for (const source of skillSources) {
+        const skillPath = path.join(syncEngine.expandHome(p.workspacePath), source.dir, relFile);
+        if (fs.existsSync(skillPath)) {
+          fs.unlinkSync(skillPath);
+          logger.ok(`  ${t('sync.skillDeletedFromAgent', { file: relFile, agent: agentName })}`);
+        }
+      }
+    }
+
+    if (agentsToDelete.length === 0) {
+      logger.info(t('sync.skillDeleteKept'));
+    }
+  }
+
+  // Clean up pending file
+  fs.unlinkSync(pendingPath);
 }
 
 async function runSync(
