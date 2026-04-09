@@ -108,13 +108,40 @@ Rules:
    - No Chinese text in `skill/SKILL.md` or project `CLAUDE.md`
    - Any new CLI message has a corresponding entry in `src/i18n.ts` with both `[en, zh]` values
 
-## Release Checklist
+## Documentation Sync Rules (IRON LAW — zero tolerance)
 
-Execute in order before every release:
+**Every code change that adds, removes, or modifies a command, flag, agent, or user-visible behavior MUST update ALL of the following files IN THE SAME COMMIT:**
 
-1. **Privacy check**: Verify no tokens, API keys, or passwords are leaked in code or configs
-2. **Update docs**: Keep `CLAUDE.md`, `README.md`, `REQUIREMENTS.md`, `skill/SKILL.md` in sync with code changes
-3. **Bump version**: Update `package.json` version (semver: breaking → major, feature → minor, bugfix → patch)
+| File | What to update |
+|------|---------------|
+| `skill/SKILL.md` | Command reference, flags, agent list, invocation examples |
+| `CLAUDE.md` | Commands table, architecture description, agent count |
+| `README.md` | Commands table, features, quick start, agent list (English) |
+| `README.zh-CN.md` | Same as README.md but in Chinese |
+| `REQUIREMENTS.md` | If sync scope or agent config changed |
+| `.wangchuan/config.example.json` | If agent profiles or shared config changed |
+
+**This is NOT a "do it later" task. If you change code and don't update docs in the same commit, you are shipping a bug.**
+
+Pre-commit verification:
+```bash
+# Check that skill/SKILL.md lists all registered commands
+grep -c 'wangchuan ' skill/SKILL.md
+# Cross-reference with bin/wangchuan.ts command count
+grep -c "\.command(" bin/wangchuan.ts
+# These two numbers must be consistent
+```
+
+## Release Checklist (MANDATORY — execute in order)
+
+Every release MUST complete ALL steps. Skipping any step is a release blocker.
+
+1. **Docs sync verification**: Confirm `skill/SKILL.md`, `CLAUDE.md`, `README.md`, `README.zh-CN.md`, `REQUIREMENTS.md` all reflect current code. Run the pre-commit verification above.
+2. **Privacy check**: Verify no tokens, API keys, or passwords leaked in code or configs
+3. **Language check**: `grep -rP '[\x{4e00}-\x{9fff}]' src/ test/ --include='*.ts' | grep -v 'i18n.ts'` returns empty (except test data strings)
 4. **Typecheck + test**: `npm run typecheck && npm test` — all must pass
-5. **Commit & push**: git commit + push
-6. **Publish to npm**: `npm publish`
+5. **Bump version**: Update `package.json` version AND `bin/wangchuan.ts` `.version()` (semver: breaking → major, feature → minor, bugfix → patch)
+6. **Build**: `npm run build`
+7. **Commit**: git add + commit (include all doc files + version bump)
+8. **Push**: git push origin main
+9. **Publish**: `npm publish --registry https://registry.npmjs.org`
