@@ -55,7 +55,7 @@ wangchuan sync
 
 | Agent | Default Path | Synced Content |
 |-------|-------------|----------------|
-| **OpenClaw** | `~/.openclaw/workspace/` | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), HEARTBEAT.md, memory/ (enc), openclaw.json → agents/skills/ui (enc), skills/ |
+| **OpenClaw** | `~/.openclaw/workspace/` | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), HEARTBEAT.md, BOOTSTRAP.md, memory/ (enc), openclaw.json → agents/skills/ui (enc), skills/ |
 | **Claude** | `~/.claude/` | CLAUDE.md, settings.json (enc), `.claude.json` → mcpServers (enc) |
 | **Gemini** | `~/.gemini/` | `settings.internal.json` → security + model + general (enc) |
 | **CodeBuddy** | `~/.codebuddy/` | MEMORY.md (enc), CODEBUDDY.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |

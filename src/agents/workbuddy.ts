@@ -12,10 +12,11 @@ export const workbuddy: AgentDefinition = {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.workbuddy'),
     syncFiles: [
-      { src: 'MEMORY.md',   encrypt: true  },
-      { src: 'IDENTITY.md', encrypt: false },
-      { src: 'SOUL.md',     encrypt: false },
-      { src: 'USER.md',     encrypt: true  },
+      { src: 'MEMORY.md',    encrypt: true  },
+      { src: 'IDENTITY.md',  encrypt: false },
+      { src: 'SOUL.md',      encrypt: false },
+      { src: 'USER.md',      encrypt: true  },
+      { src: 'BOOTSTRAP.md', encrypt: false },  // Agent bootstrap/onboarding instructions
     ],
     jsonFields: [
       {

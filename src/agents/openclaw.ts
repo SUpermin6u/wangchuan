@@ -12,13 +12,14 @@ export const openclaw: AgentDefinition = {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.openclaw', 'workspace'),
     syncFiles: [
-      { src: 'MEMORY.md',    encrypt: true  },
-      { src: 'AGENTS.md',    encrypt: false },
-      { src: 'SOUL.md',      encrypt: false },
-      { src: 'TOOLS.md',     encrypt: false },
-      { src: 'IDENTITY.md',  encrypt: false },
-      { src: 'USER.md',      encrypt: true  },
-      { src: 'HEARTBEAT.md', encrypt: false },
+      { src: 'MEMORY.md',     encrypt: true  },
+      { src: 'AGENTS.md',     encrypt: false },
+      { src: 'SOUL.md',       encrypt: false },
+      { src: 'TOOLS.md',      encrypt: false },
+      { src: 'IDENTITY.md',   encrypt: false },
+      { src: 'USER.md',       encrypt: true  },
+      { src: 'HEARTBEAT.md',  encrypt: false },
+      { src: 'BOOTSTRAP.md',  encrypt: false },  // Agent bootstrap/onboarding instructions
     ],
     syncDirs: [
       { src: 'memory/', encrypt: true },

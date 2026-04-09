@@ -92,11 +92,11 @@ Supported by: `sync`, `status`, `watch`, `memory`.
 
 | Value | Description |
 |-------|-------------|
-| `openclaw`  | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), HEARTBEAT.md, memory/ (enc), openclaw.json → agents/skills/ui (enc), skills/ |
+| `openclaw`  | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), HEARTBEAT.md, BOOTSTRAP.md, memory/ (enc), openclaw.json → agents/skills/ui (enc), skills/ |
 | `claude`    | CLAUDE.md, settings.json (enc), .claude.json → mcpServers (enc) |
 | `gemini`    | settings.internal.json → security + model + general (enc) |
 | `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
-| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
+| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), BOOTSTRAP.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
 | `cursor`    | rules/ dir, mcp.json → mcpServers (enc), cli-config.json → permissions + model + enabledPlugins (enc) |
 | `codex`     | AGENTS.md, instructions.md |
 
