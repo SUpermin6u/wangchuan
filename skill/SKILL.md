@@ -7,13 +7,17 @@ OpenClaw Skill wrapper for the Wangchuan AI memory sync system. Invoke directly 
 ## Command Reference
 
 ```
-wangchuan sync     [--agent <name>] [-n]       Smart bidirectional sync (the ONE daily command)
-wangchuan status   [--agent <name>] [-v]       Show sync state at a glance (-v for full detail)
-wangchuan doctor   [--key-export|--key-rotate|--setup]  Diagnose + auto-fix issues
-wangchuan env      list|create|switch|current|delete    Multi-environment management
-wangchuan lang     [zh|en]                     Switch CLI display language
-wangchuan init     --repo <git-url>            First-time init (one-time)
+wangchuan init     [--repo <url>] [--key <path>]           One-time setup (interactive if no --repo)
+wangchuan sync     [-a, --agent <name>] [-n, --dry-run]    Smart bidirectional sync (THE daily command)
+wangchuan status   [-v, --verbose]                         One-screen summary + health score
+wangchuan watch    [-i, --interval <min>]                  Background daemon for continuous sync
+wangchuan doctor   [--key-export|--key-rotate|--setup]     Diagnose + auto-fix everything
+wangchuan memory   list|show|copy|broadcast                Browse/copy memories between agents
+wangchuan env      list|create|switch|current|delete       Multi-environment management
+wangchuan lang     [zh|en]                                 Switch CLI display language
 ```
+
+Aliases: `sync` → `s`, `status` → `st`
 
 ## Invocation Examples
 
@@ -34,6 +38,14 @@ wangchuan init     --repo <git-url>            First-time init (one-time)
 > Create a work environment
 
 > Switch to work environment
+
+> Start continuous background sync
+
+> List memories from all agents
+
+> Copy openclaw memory to claude
+
+> Broadcast a memory to all agents
 
 > Switch to English output
 
@@ -56,6 +68,11 @@ wangchuan init     --repo <git-url>            First-time init (one-time)
 - Pulls remote changes if any, then pushes local changes
 - Shows compact summary with files synced count
 
+### watch
+- Runs as a background daemon with configurable interval
+- Auto-syncs on detected file changes
+- PID file at `~/.wangchuan/watch.pid`
+
 ### doctor
 - Auto-fixes all common issues (no --fix needed)
 - Auto-discovers installed agents and enables them
@@ -63,9 +80,15 @@ wangchuan init     --repo <git-url>            First-time init (one-time)
 - `--key-export` / `--key-rotate` for key management
 - `--setup` generates migration one-liner
 
+### memory
+- `list` — show all agent memories with summaries
+- `show <agent>` — display full memory content
+- `copy <from> <to>` — copy memory between agents
+- `broadcast <agent>` — distribute memory to all agents
+
 ## --agent Filter
 
-All commands support `--agent` to filter by agent.
+Supported by: `sync`, `status`, `watch`, `memory`.
 
 | Value | Description |
 |-------|-------------|

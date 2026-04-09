@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Wangchuan (忘川)** — AI memory sync system. A TypeScript CLI tool that encrypts and syncs AI agent (Claude/Gemini/OpenClaw) configs and memories via a Git repo, enabling cross-environment migration and one-click restore.
+**Wangchuan (忘川)** — AI memory sync system. A TypeScript CLI tool that encrypts and syncs AI agent configs and memories via a Git repo, enabling cross-environment migration and one-click restore. Supports 7 agents: OpenClaw, Claude, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
 
 ## Build & Dev Commands
 
 ```bash
 npm run build        # tsc → dist/ (postbuild auto chmod +x)
-npm run dev          # Run directly via tsx, no build needed: npm run dev -- pull --agent claude
+npm run dev          # Run directly via tsx, no build needed: npm run dev -- sync --agent claude
 npm run test         # Run all tests (crypto + json-field + sync)
 npm run typecheck    # tsc --noEmit type checking
 ```
@@ -38,7 +38,7 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Core Engines (`src/core/`)
 
-- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all three agents + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations.
+- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven agents + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations.
 - **json-field.ts** — JSON field-level extraction and merge. `extractFields` picks specified fields from a large JSON; `mergeFields` merges fields back without destroying other content. Used for `.claude.json` to sync only `mcpServers` while ignoring tipsHistory/projects etc.
 - **crypto.ts** — AES-256-GCM encryption. Ciphertext format: `[IV 12B][AuthTag 16B][CipherText] → Base64 → .enc`. Key stored at `~/.wangchuan/master.key` (0o600 permissions).
 - **git.ts** — simple-git wrapper. `cloneOrFetch` is idempotent; `commitAndPush` returns `{committed: false}` when nothing changed; `rollback` runs `git reset --soft HEAD~1` on failure.
@@ -47,18 +47,20 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Commands (`src/commands/`)
 
-Six user-facing commands: `init`, `sync`, `status`, `doctor`, `env`, `lang`.
+Eight user-facing commands: `init`, `sync`, `status`, `watch`, `doctor`, `memory`, `env`, `lang`.
 
-| Command | Purpose | Key flags |
-|---------|---------|-----------|
-| `init` | One-time setup (interactive if no --repo) | `--repo`, `--key`, `--force` |
-| `sync` | Smart bidirectional sync (the ONE daily command) | `-a, --agent`, `-n, --dry-run` |
-| `status` | Show sync state at a glance | `-a, --agent`, `-v, --verbose` |
-| `doctor` | Diagnose + auto-fix all issues | `--key-rotate`, `--key-export`, `--setup` |
-| `env` | Multi-environment management | `list\|create\|switch\|current\|delete` |
-| `lang` | Switch display language | `zh\|en` |
+| Command | Aliases | Purpose | Key flags |
+|---------|---------|---------|-----------|
+| `init` | — | One-time setup (interactive if no --repo) | `--repo`, `--key`, `--force` |
+| `sync` | `s` | Smart bidirectional sync (THE daily command) | `-a, --agent`, `-n, --dry-run` |
+| `status` | `st` | One-screen summary + health score | `-v, --verbose` |
+| `watch` | — | Background daemon for continuous sync | `-i, --interval <min>` |
+| `doctor` | — | Diagnose + auto-fix all issues | `--key-rotate`, `--key-export`, `--setup` |
+| `memory` | — | Browse/copy memories between agents | `list\|show\|copy\|broadcast` |
+| `env` | — | Multi-environment management | `list\|create\|switch\|current\|delete` |
+| `lang` | — | Switch display language | `zh\|en` |
 
-Many internal modules still exist (push.ts, pull.ts, list.ts, diff.ts, health.ts, etc.) and are called internally by the user-facing commands — they are NOT registered as CLI commands.
+Many internal modules still exist (push.ts, pull.ts, diff.ts, health.ts, etc.) and are called internally by the user-facing commands — they are NOT registered as CLI commands.
 
 ### i18n (`src/i18n.ts`)
 

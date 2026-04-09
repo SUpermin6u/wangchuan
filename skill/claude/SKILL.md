@@ -55,20 +55,30 @@ DO update for:
 - New tool integrations or workflow automations
 - Corrections to existing memory/skills (fixing outdated info)
 
-## Commands — Just 6
+## Commands — All 8
 
 ```bash
 # The ONE daily command — smart bidirectional sync
-wangchuan sync
+wangchuan sync                     # alias: s
 
 # Check sync state at a glance
-wangchuan status
+wangchuan status                   # alias: st
 
 # Full detail (file list, diff, history, health)
 wangchuan status -v
 
+# Background daemon for continuous sync
+wangchuan watch
+wangchuan watch -i 10              # custom interval in minutes
+
 # Diagnose + auto-fix everything
 wangchuan doctor
+
+# Browse and copy memories between agents
+wangchuan memory list
+wangchuan memory show openclaw
+wangchuan memory copy openclaw claude
+wangchuan memory broadcast claude
 
 # Filter to specific agent
 wangchuan sync --agent claude
@@ -77,6 +87,9 @@ wangchuan sync --agent claude
 wangchuan env list
 wangchuan env create work
 wangchuan env switch work
+
+# Switch display language
+wangchuan lang zh
 ```
 
 ## Current Sync Status
