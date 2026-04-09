@@ -93,7 +93,13 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
 
   const filter = (only?.length || exclude?.length) ? { only, exclude } : undefined;
 
-  // ── Check for pending deletions from previous non-interactive sync ──
+  // ── Check for pending distributions from previous sync (requires user decision) ──
+    if (process.stdin.isTTY) {
+      const { processPendingDistributions } = await import('../core/sync.js');
+      await processPendingDistributions(cfg);
+    }
+
+    // ── Check for pending deletions from previous non-interactive sync ──
   if (process.stdin.isTTY) {
     const { loadPendingDeletions, clearPendingDeletions } = await import('../core/sync.js');
     const pending = loadPendingDeletions();
@@ -126,117 +132,16 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
   try {
     const result = await runSync(cfg, repoPath, hostname, agent, dryRun, filter);
 
-    // ── Check for pending skill/agent deletion propagation (requires user decision) ──
+    // ── Check for pending distributions after push (requires user decision) ──
     if (process.stdin.isTTY) {
-      await handlePendingDeletions(cfg, 'skill', 'pending-skill-deletions.json',
-        (agent) => cfg.shared?.skills.sources.filter(s => s.agent === agent) ?? []);
-      await handlePendingDeletions(cfg, 'agent', 'pending-agent-deletions.json',
-        (agent) => cfg.shared?.agents?.sources.filter(s => s.agent === agent) ?? []);
+      const { processPendingDistributions } = await import('../core/sync.js');
+      await processPendingDistributions(cfg);
     }
 
     return result;
   } finally {
     syncLock.release();
   }
-}
-
-/**
- * Handle pending deletion propagation for shared resources (skills or custom agents).
- * For each resource deleted from one agent, ask user which other agents should also delete it.
- */
-async function handlePendingDeletions(
-  cfg: import('../types.js').WangchuanConfig,
-  kind: 'skill' | 'agent',
-  pendingFilename: string,
-  getSources: (agent: string) => readonly { dir: string }[],
-): Promise<void> {
-  const pendingPath = path.join(os.homedir(), '.wangchuan', pendingFilename);
-  if (!fs.existsSync(pendingPath)) return;
-
-  let pending: { relFile: string; deletedFrom: string; presentIn: string[] }[];
-  try {
-    pending = JSON.parse(fs.readFileSync(pendingPath, 'utf-8')) as typeof pending;
-  } catch { return; }
-  if (pending.length === 0) return;
-
-  // Group by file
-  const byFile = new Map<string, { deletedFrom: string[]; presentIn: string[] }>();
-  for (const item of pending) {
-    if (!byFile.has(item.relFile)) {
-      byFile.set(item.relFile, { deletedFrom: [], presentIn: [...item.presentIn] });
-    }
-    const entry = byFile.get(item.relFile)!;
-    if (!entry.deletedFrom.includes(item.deletedFrom)) entry.deletedFrom.push(item.deletedFrom);
-    for (const a of item.presentIn) {
-      if (!entry.presentIn.includes(a)) entry.presentIn.push(a);
-    }
-  }
-
-  const rl = await import('readline');
-  const profiles = cfg.profiles.default;
-
-  // Use kind-specific i18n keys (skill messages reused, agent messages follow same pattern)
-  const i18nDeletedFrom = kind === 'skill' ? 'sync.skillDeletedFrom' : 'sync.agentDeletedFrom';
-  const i18nStillIn     = kind === 'skill' ? 'sync.skillStillIn'     : 'sync.agentStillIn';
-  const i18nDeleted     = kind === 'skill' ? 'sync.skillDeletedFromAgent' : 'sync.agentDeletedFromAgent';
-  const i18nKept        = kind === 'skill' ? 'sync.skillDeleteKept'  : 'sync.agentDeleteKept';
-
-  for (const [relFile, info] of byFile) {
-    console.log();
-    logger.warn(t(i18nDeletedFrom, { file: relFile, agents: info.deletedFrom.join(', ') }));
-    logger.info(t(i18nStillIn, { agents: info.presentIn.join(', ') }));
-    console.log();
-
-    // Build choices: [all] + each agent + [none]
-    const choices = ['all', ...info.presentIn, 'none'];
-    logger.info(t('sync.skillDeleteChoices'));
-    for (let i = 0; i < choices.length; i++) {
-      const label = choices[i] === 'all' ? `[${i}] all (${t('sync.skillDeleteAll')})` :
-                    choices[i] === 'none' ? `[${i}] none (${t('sync.skillDeleteNone')})` :
-                    `[${i}] ${choices[i]}`;
-      console.log(`  ${label}`);
-    }
-
-    const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
-    const answer = await new Promise<string>(resolve => {
-      iface.question(t('sync.skillDeletePrompt'), (ans: string) => { iface.close(); resolve(ans.trim()); });
-    });
-
-    // Parse selection
-    const indices = answer.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n));
-    let agentsToDelete: string[] = [];
-
-    if (indices.includes(0)) {
-      agentsToDelete = [...info.presentIn];
-    } else if (indices.includes(choices.length - 1)) {
-      agentsToDelete = [];
-    } else {
-      agentsToDelete = indices
-        .filter(i => i > 0 && i < choices.length - 1)
-        .map(i => choices[i]!);
-    }
-
-    // Execute deletions
-    for (const agentName of agentsToDelete) {
-      const p = profiles[agentName as keyof typeof profiles];
-      if (!p) continue;
-      const sources = getSources(agentName);
-      for (const source of sources) {
-        const filePath = path.join(syncEngine.expandHome(p.workspacePath), source.dir, relFile);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-          logger.ok(`  ${t(i18nDeleted, { file: relFile, agent: agentName })}`);
-        }
-      }
-    }
-
-    if (agentsToDelete.length === 0) {
-      logger.info(t(i18nKept));
-    }
-  }
-
-  // Clean up pending file
-  fs.unlinkSync(pendingPath);
 }
 
 async function runSync(

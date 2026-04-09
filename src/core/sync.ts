@@ -35,6 +35,7 @@ import type {
   AgentName,
   AgentProfile,
   FilterOptions,
+  PendingDistribution,
 } from '../types.js';
 import { AGENT_NAMES } from '../types.js';
 
@@ -383,135 +384,134 @@ export function buildFileEntries(
 }
 
 /**
- * Distribute shared content (skills, MCP configs) to each agent's local directory.
- * Called before push to ensure all agents have the latest shared resources.
+ * Distribute shared content (skills, MCP configs, custom agents) to each agent's local directory.
+ * Skills and custom agents: collect pending distributions for user confirmation (no files written).
+ * MCP configs: distributed automatically (low-risk config merges).
+ * Called before push to prepare cross-agent sharing.
  */
 function distributeShared(cfg: WangchuanConfig): void {
   const shared = cfg.shared;
   if (!shared) return;
   const profiles = cfg.profiles.default;
+  const pendingItems: PendingDistribution[] = [];
 
-  // ── Distribute skills: collect from each source, only add skills the target is missing ──
-  // Collect each agent's current skill set
-  const agentSkills = new Map<string, Map<string, string>>(); // agent → relPath → absPath
-  for (const source of shared.skills.sources) {
-    const p = profiles[source.agent];
-    if (!p.enabled) continue;
-    const skillsDir = path.join(expandHome(p.workspacePath), source.dir);
-    const skills = new Map<string, string>();
-    if (fs.existsSync(skillsDir)) {
-      for (const relFile of walkDir(skillsDir)) {
-        if (path.basename(relFile).startsWith('.')) continue;
-        skills.set(relFile, path.join(skillsDir, relFile));
-      }
-    }
-    agentSkills.set(source.agent, skills);
-  }
-
-  // Merge all agents' skills — for each relPath, pick the NEWEST version (latest mtime)
-  const allSkills = new Map<string, string>(); // relPath → absPath (newest)
-  const allSkillMtimes = new Map<string, number>(); // relPath → mtime ms
-  for (const skills of agentSkills.values()) {
-    for (const [rel, abs] of skills) {
-      try {
-        const mtime = fs.statSync(abs).mtimeMs;
-        if (!allSkills.has(rel) || mtime > allSkillMtimes.get(rel)!) {
-          allSkills.set(rel, abs);
-          allSkillMtimes.set(rel, mtime);
+  // ── Skills: collect pending distributions (no file writes) ──────
+  {
+    // Collect each agent's current skill set
+    const agentSkills = new Map<string, Map<string, string>>(); // agent → relPath → absPath
+    for (const source of shared.skills.sources) {
+      const p = profiles[source.agent];
+      if (!p.enabled) continue;
+      const skillsDir = path.join(expandHome(p.workspacePath), source.dir);
+      const skills = new Map<string, string>();
+      if (fs.existsSync(skillsDir)) {
+        for (const relFile of walkDir(skillsDir)) {
+          if (path.basename(relFile).startsWith('.')) continue;
+          skills.set(relFile, path.join(skillsDir, relFile));
         }
-      } catch {
-        if (!allSkills.has(rel)) allSkills.set(rel, abs);
       }
+      agentSkills.set(source.agent, skills);
     }
-  }
 
-  // Detect skills that exist in some agents but were deleted from others.
-  // These are "pending delete propagations" — user must confirm which agents to delete from.
-  const deletedFromAgents: { relFile: string; deletedFrom: string; presentIn: string[] }[] = [];
-  for (const source of shared.skills.sources) {
-    const p = profiles[source.agent];
-    if (!p.enabled) continue;
-    const mySkills = agentSkills.get(source.agent);
-    if (!mySkills) continue;
-    // Check skills that exist globally but this agent doesn't have
-    // → This agent might have intentionally deleted them
-    // We DON'T auto-copy them back (respect user's deletion)
-  }
-
-  // Build a set of skills each agent has
-  const agentHasSkill = new Map<string, Set<string>>(); // relPath → set of agent names that have it
-  for (const [agentName, skills] of agentSkills) {
-    for (const rel of skills.keys()) {
-      if (!agentHasSkill.has(rel)) agentHasSkill.set(rel, new Set());
-      agentHasSkill.get(rel)!.add(agentName);
-    }
-  }
-
-  // Distribute: only copy NEW skills and UPDATED existing skills.
-  // NEVER copy a skill back to an agent that doesn't have it — that agent may have deleted it.
-  // Only distribute to agents that ALREADY have the skill (update) or have NEVER seen it (new).
-  for (const source of shared.skills.sources) {
-    const p = profiles[source.agent];
-    if (!p.enabled) continue;
-    const mySkills = agentSkills.get(source.agent) ?? new Map<string, string>();
-    const skillsDir = path.join(expandHome(p.workspacePath), source.dir);
-    for (const [relFile, srcAbs] of allSkills) {
-      const dest = path.join(skillsDir, relFile);
-      const agentHasIt = mySkills.has(relFile);
-
-      if (!agentHasIt) {
-        // Agent doesn't have this skill. Check if it's a genuinely NEW skill
-        // (not present in repo yet) vs one the agent intentionally deleted.
-        // If the skill exists in repo shared/skills/, this agent previously had it
-        // and may have deleted it — DON'T copy back.
-        // If it's NOT in repo yet, it's brand new — copy it.
-        const repoSkillPath = path.join(expandHome(profiles[Object.keys(profiles)[0] as keyof typeof profiles]!.workspacePath), '..', '.wangchuan', 'repo', 'shared', 'skills', relFile);
-        // Simpler check: if the skill only exists in one agent (the source), it's new → distribute
-        const owners = agentHasSkill.get(relFile);
-        if (owners && owners.size === 1 && !owners.has(source.agent)) {
-          // Only one other agent has it, and not us — it's new from that agent, copy it
-          fs.mkdirSync(path.dirname(dest), { recursive: true });
-          fs.copyFileSync(srcAbs, dest);
-          logger.debug(`  ${t('sync.distributeSkill', { file: relFile, agent: source.agent })}`);
+    // Merge all agents' skills — for each relPath, pick the NEWEST version (latest mtime)
+    const allSkills = new Map<string, string>(); // relPath → absPath (newest)
+    const allSkillMtimes = new Map<string, number>();
+    const allSkillOwner = new Map<string, string>(); // relPath → agent name that owns newest
+    for (const [agentName, skills] of agentSkills) {
+      for (const [rel, abs] of skills) {
+        try {
+          const mtime = fs.statSync(abs).mtimeMs;
+          if (!allSkills.has(rel) || mtime > allSkillMtimes.get(rel)!) {
+            allSkills.set(rel, abs);
+            allSkillMtimes.set(rel, mtime);
+            allSkillOwner.set(rel, agentName);
+          }
+        } catch {
+          if (!allSkills.has(rel)) {
+            allSkills.set(rel, abs);
+            allSkillOwner.set(rel, agentName);
+          }
         }
-        // If multiple agents have it but this one doesn't → user likely deleted it, skip
-        continue;
       }
-
-      // Agent already has this skill — check if it needs updating
-      if (path.resolve(dest) === path.resolve(srcAbs)) continue; // same file
-      try {
-        if (fs.readFileSync(dest).equals(fs.readFileSync(srcAbs))) continue; // same content
-      } catch { /* fall through to copy */ }
-
-      // Content differs — update with newest version
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.copyFileSync(srcAbs, dest);
-      logger.debug(`  ${t('sync.distributeSkill', { file: relFile, agent: source.agent })}`);
     }
-  }
 
-  // Record skill deletions that need user confirmation for cross-agent propagation
-  for (const [relFile, owners] of agentHasSkill) {
+    // Build ownership map: relPath → set of agent names that have it
+    const agentHasSkill = new Map<string, Set<string>>();
+    for (const [agentName, skills] of agentSkills) {
+      for (const rel of skills.keys()) {
+        if (!agentHasSkill.has(rel)) agentHasSkill.set(rel, new Set());
+        agentHasSkill.get(rel)!.add(agentName);
+      }
+    }
+
     const allSourceAgents = shared.skills.sources.map(s => s.agent).filter(a => profiles[a].enabled);
-    const missingFrom = allSourceAgents.filter(a => !owners.has(a));
-    if (missingFrom.length > 0 && owners.size > 0) {
-      // Some agents deleted this skill, others still have it
-      // Record for user confirmation (handled by the command layer)
-      for (const agent of missingFrom) {
-        deletedFromAgents.push({ relFile, deletedFrom: agent, presentIn: [...owners] });
+
+    // Detect pending distributions for each skill
+    for (const [relFile, srcAbs] of allSkills) {
+      const owners = agentHasSkill.get(relFile) ?? new Set<string>();
+      const sourceAgent = allSkillOwner.get(relFile) ?? '';
+
+      for (const targetAgent of allSourceAgents) {
+        if (targetAgent === sourceAgent) continue;
+        const targetHasIt = owners.has(targetAgent);
+        const targetSkillsDir = path.join(expandHome(profiles[targetAgent]!.workspacePath),
+          shared.skills.sources.find(s => s.agent === targetAgent)!.dir);
+        const targetPath = path.join(targetSkillsDir, relFile);
+
+        if (!targetHasIt) {
+          // Target doesn't have this skill.
+          // If only one agent has it → genuinely new skill → "add" pending
+          // If multiple agents have it but this one doesn't → likely deleted → "delete" pending
+          if (owners.size === 1) {
+            pendingItems.push({
+              kind: 'skill',
+              action: 'add',
+              relFile,
+              sourceAgent,
+              targetAgents: [targetAgent],
+              sourceAbs: srcAbs,
+            });
+          }
+          // Multi-owner missing case handled in the delete detection loop below
+        } else {
+          // Target has it — check if content differs (needs update)
+          if (path.resolve(targetPath) === path.resolve(srcAbs)) continue;
+          try {
+            if (fs.readFileSync(targetPath).equals(fs.readFileSync(srcAbs))) continue;
+          } catch { /* fall through */ }
+          pendingItems.push({
+            kind: 'skill',
+            action: 'update',
+            relFile,
+            sourceAgent,
+            targetAgents: [targetAgent],
+            sourceAbs: srcAbs,
+          });
+        }
+      }
+    }
+
+    // Detect delete cases: skill missing from some agents but present in multiple others
+    for (const [relFile, owners] of agentHasSkill) {
+      const missingFrom = allSourceAgents.filter(a => !owners.has(a));
+      if (missingFrom.length > 0 && owners.size > 1) {
+        const srcAgent = [...owners][0]!;
+        const srcAbs = agentSkills.get(srcAgent)?.get(relFile) ?? '';
+        for (const target of missingFrom) {
+          pendingItems.push({
+            kind: 'skill',
+            action: 'delete',
+            relFile,
+            sourceAgent: srcAgent,
+            targetAgents: [target],
+            sourceAbs: srcAbs,
+          });
+        }
       }
     }
   }
 
-  // Save deletion propagation requests if any
-  if (deletedFromAgents.length > 0) {
-    const pendingPath = path.join(os.homedir(), '.wangchuan', 'pending-skill-deletions.json');
-    fs.mkdirSync(path.dirname(pendingPath), { recursive: true });
-    fs.writeFileSync(pendingPath, JSON.stringify(deletedFromAgents, null, 2), 'utf-8');
-  }
-
-  // ── Distribute MCP configs: extract from each source, merge by newest mtime ──
+  // ── Distribute MCP configs: automatic (unchanged) ──────────────
   const mergedMcp: Record<string, unknown> = {};
   const mcpMtimes: Record<string, number> = {}; // server key → mtime of source file
   for (const source of shared.mcp.sources) {
@@ -555,7 +555,6 @@ function distributeShared(cfg: WangchuanConfig): void {
             changed = true;
           } else if (JSON.stringify(currentMcp[key]) !== JSON.stringify(val)) {
             // Existing server with updated config — take the newer version
-            // (mergedMcp is built by iterating sources in order, last write wins)
             currentMcp[key] = val;
             changed = true;
           }
@@ -570,7 +569,7 @@ function distributeShared(cfg: WangchuanConfig): void {
     }
   }
 
-  // ── Distribute custom agents: same pattern as skills ───────────
+  // ── Custom agents: collect pending distributions (no file writes) ──
   if (shared.agents && shared.agents.sources.length > 0) {
     // Collect each agent's current custom agent files
     const agentAgents = new Map<string, Map<string, string>>(); // agent → relPath → absPath
@@ -591,16 +590,21 @@ function distributeShared(cfg: WangchuanConfig): void {
     // Merge all agents' custom agent files — pick NEWEST version by mtime
     const allAgentFiles = new Map<string, string>();
     const allAgentMtimes = new Map<string, number>();
-    for (const agents of agentAgents.values()) {
+    const allAgentOwner = new Map<string, string>();
+    for (const [agentName, agents] of agentAgents) {
       for (const [rel, abs] of agents) {
         try {
           const mtime = fs.statSync(abs).mtimeMs;
           if (!allAgentFiles.has(rel) || mtime > allAgentMtimes.get(rel)!) {
             allAgentFiles.set(rel, abs);
             allAgentMtimes.set(rel, mtime);
+            allAgentOwner.set(rel, agentName);
           }
         } catch {
-          if (!allAgentFiles.has(rel)) allAgentFiles.set(rel, abs);
+          if (!allAgentFiles.has(rel)) {
+            allAgentFiles.set(rel, abs);
+            allAgentOwner.set(rel, agentName);
+          }
         }
       }
     }
@@ -614,56 +618,74 @@ function distributeShared(cfg: WangchuanConfig): void {
       }
     }
 
-    // Distribute: only copy NEW agent files and UPDATE existing ones
-    for (const source of shared.agents.sources) {
-      const p = profiles[source.agent];
-      if (!p.enabled) continue;
-      const myAgents = agentAgents.get(source.agent) ?? new Map<string, string>();
-      const agentsDir = path.join(expandHome(p.workspacePath), source.dir);
-      for (const [relFile, srcAbs] of allAgentFiles) {
-        const dest = path.join(agentsDir, relFile);
-        const agentHasIt = myAgents.has(relFile);
+    const allSourceAgents = shared.agents.sources.map(s => s.agent).filter(a => profiles[a].enabled);
 
-        if (!agentHasIt) {
-          // Check if genuinely NEW (only one source has it) vs intentionally deleted
-          const owners = agentHasFile.get(relFile);
-          if (owners && owners.size === 1 && !owners.has(source.agent)) {
-            fs.mkdirSync(path.dirname(dest), { recursive: true });
-            fs.copyFileSync(srcAbs, dest);
-            logger.debug(`  ${t('sync.distributeAgent', { file: relFile, agent: source.agent })}`);
+    // Detect pending distributions for each custom agent file
+    for (const [relFile, srcAbs] of allAgentFiles) {
+      const owners = agentHasFile.get(relFile) ?? new Set<string>();
+      const sourceAgent = allAgentOwner.get(relFile) ?? '';
+
+      for (const targetAgent of allSourceAgents) {
+        if (targetAgent === sourceAgent) continue;
+        const targetHasIt = owners.has(targetAgent);
+        const targetAgentsDir = path.join(expandHome(profiles[targetAgent]!.workspacePath),
+          shared.agents.sources.find(s => s.agent === targetAgent)!.dir);
+        const targetPath = path.join(targetAgentsDir, relFile);
+
+        if (!targetHasIt) {
+          // Only create add if genuinely new (single owner)
+          if (owners.size === 1) {
+            pendingItems.push({
+              kind: 'agent',
+              action: 'add',
+              relFile,
+              sourceAgent,
+              targetAgents: [targetAgent],
+              sourceAbs: srcAbs,
+            });
           }
-          continue;
+        } else {
+          if (path.resolve(targetPath) === path.resolve(srcAbs)) continue;
+          try {
+            if (fs.readFileSync(targetPath).equals(fs.readFileSync(srcAbs))) continue;
+          } catch { /* fall through */ }
+          pendingItems.push({
+            kind: 'agent',
+            action: 'update',
+            relFile,
+            sourceAgent,
+            targetAgents: [targetAgent],
+            sourceAbs: srcAbs,
+          });
         }
-
-        // Agent already has this file — check if it needs updating
-        if (path.resolve(dest) === path.resolve(srcAbs)) continue;
-        try {
-          if (fs.readFileSync(dest).equals(fs.readFileSync(srcAbs))) continue;
-        } catch { /* fall through to copy */ }
-
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        fs.copyFileSync(srcAbs, dest);
-        logger.debug(`  ${t('sync.distributeAgent', { file: relFile, agent: source.agent })}`);
       }
     }
 
-    // Record agent deletions that need user confirmation (same as skills)
-    const deletedAgentFiles: { relFile: string; deletedFrom: string; presentIn: string[] }[] = [];
+    // Detect delete cases
     for (const [relFile, owners] of agentHasFile) {
-      const allSourceAgents = shared.agents.sources.map(s => s.agent).filter(a => profiles[a].enabled);
       const missingFrom = allSourceAgents.filter(a => !owners.has(a));
-      if (missingFrom.length > 0 && owners.size > 0) {
-        for (const agent of missingFrom) {
-          deletedAgentFiles.push({ relFile, deletedFrom: agent, presentIn: [...owners] });
+      if (missingFrom.length > 0 && owners.size > 1) {
+        const srcAgent = [...owners][0]!;
+        const srcAbs = agentAgents.get(srcAgent)?.get(relFile) ?? '';
+        for (const target of missingFrom) {
+          pendingItems.push({
+            kind: 'agent',
+            action: 'delete',
+            relFile,
+            sourceAgent: srcAgent,
+            targetAgents: [target],
+            sourceAbs: srcAbs,
+          });
         }
       }
     }
+  }
 
-    if (deletedAgentFiles.length > 0) {
-      const pendingPath = path.join(os.homedir(), '.wangchuan', 'pending-agent-deletions.json');
-      fs.mkdirSync(path.dirname(pendingPath), { recursive: true });
-      fs.writeFileSync(pendingPath, JSON.stringify(deletedAgentFiles, null, 2), 'utf-8');
-    }
+  // ── Write pending distributions if any ──────────────────────────
+  if (pendingItems.length > 0) {
+    // Merge same-kind/same-action/same-relFile items by combining targetAgents
+    const merged = mergePendingItems(pendingItems);
+    savePendingDistributions(merged);
   }
 }
 
@@ -717,6 +739,7 @@ export function deleteStaleFiles(repoPath: string, staleFiles: string[]): void {
 }
 
 const PENDING_DELETIONS_PATH = path.join(os.homedir(), '.wangchuan', 'pending-deletions.json');
+const PENDING_DISTRIBUTIONS_PATH = path.join(os.homedir(), '.wangchuan', 'pending-distributions.json');
 
 /** Save pending deletions for later user confirmation */
 function savePendingDeletions(files: string[]): void {
@@ -737,6 +760,175 @@ export function loadPendingDeletions(): string[] {
 /** Clear pending deletions after confirmation */
 export function clearPendingDeletions(): void {
   try { if (fs.existsSync(PENDING_DELETIONS_PATH)) fs.unlinkSync(PENDING_DELETIONS_PATH); } catch { /* */ }
+}
+
+/** Merge pending distribution items with same kind/action/relFile by combining targetAgents */
+function mergePendingItems(items: PendingDistribution[]): PendingDistribution[] {
+  const map = new Map<string, PendingDistribution & { targetAgents: string[] }>();
+  for (const item of items) {
+    const key = `${item.kind}:${item.action}:${item.relFile}:${item.sourceAgent}`;
+    const existing = map.get(key);
+    if (existing) {
+      for (const t of item.targetAgents) {
+        if (!existing.targetAgents.includes(t)) existing.targetAgents.push(t);
+      }
+    } else {
+      map.set(key, { ...item, targetAgents: [...item.targetAgents] });
+    }
+  }
+  return [...map.values()];
+}
+
+/** Save pending distributions for user confirmation */
+function savePendingDistributions(items: readonly PendingDistribution[]): void {
+  fs.mkdirSync(path.dirname(PENDING_DISTRIBUTIONS_PATH), { recursive: true });
+  fs.writeFileSync(PENDING_DISTRIBUTIONS_PATH, JSON.stringify(items, null, 2), 'utf-8');
+}
+
+/** Load pending distributions */
+export function loadPendingDistributions(): PendingDistribution[] {
+  try {
+    if (!fs.existsSync(PENDING_DISTRIBUTIONS_PATH)) return [];
+    return JSON.parse(fs.readFileSync(PENDING_DISTRIBUTIONS_PATH, 'utf-8')) as PendingDistribution[];
+  } catch { return []; }
+}
+
+/** Clear pending distributions after processing */
+export function clearPendingDistributions(): void {
+  try { if (fs.existsSync(PENDING_DISTRIBUTIONS_PATH)) fs.unlinkSync(PENDING_DISTRIBUTIONS_PATH); } catch { /* */ }
+}
+
+/**
+ * Process pending distributions interactively.
+ * Groups by relFile, prompts user for each, executes the chosen actions.
+ */
+export async function processPendingDistributions(cfg: WangchuanConfig): Promise<void> {
+  const pending = loadPendingDistributions();
+  if (pending.length === 0) return;
+
+  const profiles = cfg.profiles.default;
+  const shared = cfg.shared;
+  if (!shared) { clearPendingDistributions(); return; }
+
+  // Group by kind + relFile
+  const grouped = new Map<string, PendingDistribution[]>();
+  for (const item of pending) {
+    const key = `${item.kind}:${item.relFile}`;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(item);
+  }
+
+  logger.info(t('sync.pendingDistributions', { count: pending.length }));
+
+  const rl = await import('readline');
+
+  for (const [, items] of grouped) {
+    const first = items[0]!;
+    // Collect all unique target agents across all actions for this file
+    const allTargets = [...new Set(items.flatMap(i => [...i.targetAgents]))];
+
+    console.log();
+    logger.info(t('sync.distItem', {
+      kind: first.kind,
+      action: first.action,
+      file: first.relFile,
+      source: first.sourceAgent,
+    }));
+    logger.info(t('sync.distPrompt'));
+
+    // Build choices
+    const choices: string[] = [];
+    choices.push(`[0] ${t('sync.distAll')} (${allTargets.join(', ')})`);
+    for (let i = 0; i < allTargets.length; i++) {
+      choices.push(`[${i + 1}] ${allTargets[i]}`);
+    }
+    choices.push(`[${allTargets.length + 1}] ${t('sync.distNone')}`);
+    for (const c of choices) console.log(`  ${c}`);
+
+    const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await new Promise<string>(resolve => {
+      iface.question(t('sync.distInputPrompt'), (ans: string) => { iface.close(); resolve(ans.trim()); });
+    });
+
+    // Parse selection
+    const indices = answer.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n));
+    let selectedAgents: string[] = [];
+
+    if (indices.includes(0)) {
+      selectedAgents = [...allTargets];
+    } else if (indices.includes(allTargets.length + 1)) {
+      selectedAgents = [];
+    } else {
+      selectedAgents = indices
+        .filter(i => i > 0 && i <= allTargets.length)
+        .map(i => allTargets[i - 1]!)
+        .filter((a): a is string => a !== undefined);
+    }
+
+    // Execute the distribution for selected agents
+    for (const targetAgent of selectedAgents) {
+      for (const item of items) {
+        if (!item.targetAgents.includes(targetAgent)) continue;
+        executeDistribution(item, targetAgent, cfg);
+      }
+    }
+
+    if (selectedAgents.length === 0) {
+      logger.info(t('sync.distSkipped'));
+    }
+  }
+
+  clearPendingDistributions();
+}
+
+/** Execute a single distribution action for a target agent */
+function executeDistribution(
+  item: PendingDistribution,
+  targetAgent: string,
+  cfg: WangchuanConfig,
+): void {
+  const profiles = cfg.profiles.default;
+  const shared = cfg.shared;
+  if (!shared) return;
+
+  const p = profiles[targetAgent as keyof typeof profiles];
+  if (!p) return;
+
+  // Resolve target directory based on kind
+  let targetDir: string;
+  if (item.kind === 'skill') {
+    const source = shared.skills.sources.find(s => s.agent === targetAgent);
+    if (!source) return;
+    targetDir = path.join(expandHome(p.workspacePath), source.dir);
+  } else {
+    const source = shared.agents?.sources.find(s => s.agent === targetAgent);
+    if (!source) return;
+    targetDir = path.join(expandHome(p.workspacePath), source.dir);
+  }
+
+  const targetPath = path.join(targetDir, item.relFile);
+
+  if (item.action === 'delete') {
+    if (fs.existsSync(targetPath)) {
+      fs.unlinkSync(targetPath);
+      // Clean up empty parent dirs
+      let dir = path.dirname(targetPath);
+      while (dir !== targetDir && dir.startsWith(targetDir)) {
+        try {
+          const remaining = fs.readdirSync(dir);
+          if (remaining.length === 0) { fs.rmdirSync(dir); dir = path.dirname(dir); }
+          else break;
+        } catch { break; }
+      }
+      logger.ok(`  ${t('sync.distApplied', { action: 'delete', file: item.relFile, agent: targetAgent })}`);
+    }
+  } else {
+    // add or update — copy the source file
+    if (!fs.existsSync(item.sourceAbs)) return;
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.copyFileSync(item.sourceAbs, targetPath);
+    logger.ok(`  ${t('sync.distApplied', { action: item.action, file: item.relFile, agent: targetAgent })}`);
+  }
 }
 
 /** Sync metadata stored in repo root */
@@ -929,6 +1121,9 @@ export const syncEngine = {
   loadPendingDeletions,
   clearPendingDeletions,
   deleteStaleFiles,
+  loadPendingDistributions,
+  clearPendingDistributions,
+  processPendingDistributions,
 
   /**
    * Push: distribute shared content to all agents, then collect files to repo.

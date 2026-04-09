@@ -142,6 +142,24 @@ export interface AgentOptions {
   readonly agent?: AgentName;
 }
 
+// ─── Pending distribution (cross-agent change confirmation) ──────
+
+/** A pending cross-agent distribution item awaiting user confirmation */
+export interface PendingDistribution {
+  /** Resource type */
+  readonly kind: 'skill' | 'agent';
+  /** What happened */
+  readonly action: 'add' | 'update' | 'delete';
+  /** Relative file path within the resource dir (e.g. "my-skill/SKILL.md") */
+  readonly relFile: string;
+  /** Which agent the change originated from */
+  readonly sourceAgent: string;
+  /** Which agents COULD receive this change */
+  readonly targetAgents: readonly string[];
+  /** Absolute path to source file (for add/update actions) */
+  readonly sourceAbs: string;
+}
+
 // ─── Sync engine internal structures ─────────────────────────────
 
 export interface FileEntry {
