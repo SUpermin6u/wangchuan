@@ -1,30 +1,44 @@
 /**
- * doctor.ts — wangchuan doctor command
+ * doctor.ts — wangchuan doctor command (enhanced)
  *
- * Validates the entire Wangchuan setup and reports issues:
+ * All-in-one diagnostic and fix tool. Always auto-fixes (no --fix needed).
+ *
+ * Checks:
  *   - config.json exists and is valid
  *   - master.key exists with correct permissions (0o600)
  *   - git is available and repo is cloned
- *   - SSH key can access the remote repo (git ls-remote, timeout 10s)
+ *   - SSH key can access the remote repo
  *   - each enabled agent's workspace directory exists
+ *   - auto-discover disabled agents with existing workspaces → auto-enable
  *   - no stale sync-lock.json
- *   - integrity.json checksums match repo files
+ *   - integrity.json checksums match
+ *   - stale/phantom file warnings (from cleanup logic)
+ *
+ * Flags:
+ *   --key-rotate  Rotate the master encryption key
+ *   --key-export  Print the master key hex for migration
+ *   --setup       Show one-liner init command for a new machine
  */
 
 import fs   from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
-import { config }      from '../core/config.js';
+import { config }          from '../core/config.js';
 import { resolveGitBranch } from '../core/config.js';
-import { gitEngine }   from '../core/git.js';
-import { syncLock }    from '../core/sync-lock.js';
-import { logger }      from '../utils/logger.js';
-import { t }           from '../i18n.js';
-import { AGENT_NAMES } from '../types.js';
-import { syncEngine }  from '../core/sync.js';
+import { gitEngine }       from '../core/git.js';
+import { cryptoEngine }    from '../core/crypto.js';
+import { syncLock }        from '../core/sync-lock.js';
+import { logger }          from '../utils/logger.js';
+import { t }               from '../i18n.js';
+import { AGENT_NAMES }     from '../types.js';
+import { syncEngine }      from '../core/sync.js';
 import { loadIgnorePatterns } from '../core/sync.js';
+import { ensureMigrated }  from '../core/migrate.js';
+import { validator }        from '../utils/validator.js';
+import type { AgentName, AgentProfile, WangchuanConfig, FileEntry } from '../types.js';
 import chalk from 'chalk';
+import ora   from 'ora';
 
 type CheckStatus = 'pass' | 'warn' | 'fail';
 
@@ -42,6 +56,8 @@ const ICONS: Record<CheckStatus, string> = {
   warn: chalk.yellow('\u26A0'),
   fail: chalk.red('\u2717'),
 };
+
+// ── Individual checks ──────────────────────────────────────────
 
 function checkConfig(): CheckResult {
   try {
@@ -64,9 +80,7 @@ function checkMasterKey(): CheckResult {
     if (mode !== 0o600) {
       return WARN(t('doctor.keyBadPerms', { path: keyPath }));
     }
-  } catch {
-    // On some OS (Windows) permission check may not work — treat as OK
-  }
+  } catch { /* On some OS permission check may not work */ }
   return PASS(t('doctor.keyOk'));
 }
 
@@ -99,7 +113,7 @@ function checkRemoteAccess(repo: string): CheckResult {
   }
 }
 
-function checkAgentWorkspaces(cfg: import('../types.js').WangchuanConfig): CheckResult[] {
+function checkAgentWorkspaces(cfg: WangchuanConfig): CheckResult[] {
   const results: CheckResult[] = [];
   const profiles = cfg.profiles.default;
   for (const name of AGENT_NAMES) {
@@ -110,20 +124,6 @@ function checkAgentWorkspaces(cfg: import('../types.js').WangchuanConfig): Check
       results.push(PASS(t('doctor.agentOk', { name, path: wsPath })));
     } else {
       results.push(WARN(t('doctor.agentMissing', { name, path: wsPath })));
-    }
-  }
-  return results;
-}
-
-function checkAgentDiscovery(cfg: import('../types.js').WangchuanConfig): CheckResult[] {
-  const results: CheckResult[] = [];
-  const profiles = cfg.profiles.default;
-  for (const name of AGENT_NAMES) {
-    const p = profiles[name];
-    if (p.enabled) continue;
-    const wsPath = syncEngine.expandHome(p.workspacePath);
-    if (fs.existsSync(wsPath)) {
-      results.push(WARN(t('doctor.discoveredAgent', { name, path: wsPath })));
     }
   }
   return results;
@@ -151,13 +151,10 @@ function checkIntegrity(localRepoPath: string): CheckResult {
   let manifest: { checksums: Record<string, string> };
   try {
     manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as typeof manifest;
-  } catch {
-    return WARN(t('doctor.integrityMissing'));
-  }
+  } catch { return WARN(t('doctor.integrityMissing')); }
 
   const total = Object.keys(manifest.checksums).length;
   let mismatched = 0;
-
   for (const [repoRel, expectedHash] of Object.entries(manifest.checksums)) {
     const absPath = path.join(repoPath, repoRel);
     if (!fs.existsSync(absPath)) continue;
@@ -180,12 +177,186 @@ function checkIgnoreFile(): CheckResult {
   return WARN(t('doctor.ignoreNotFound'));
 }
 
-export interface DoctorOptions {
-  readonly fix?: boolean | undefined;
+// ── Stale/phantom file scan (from cleanup.ts) ──────────────────
+
+type FileStatus = 'ok' | 'stale' | 'dormant' | 'phantom';
+
+function classifyFiles(entries: readonly FileEntry[], staleDays = 90): { stale: string[]; dormant: string[]; phantom: string[] } {
+  const stale: string[] = [];
+  const dormant: string[] = [];
+  const phantom: string[] = [];
+
+  for (const entry of entries) {
+    if (!fs.existsSync(entry.srcAbs)) {
+      phantom.push(entry.repoRel);
+      continue;
+    }
+    const stat = fs.statSync(entry.srcAbs);
+    const ageDays = Math.floor((Date.now() - stat.mtimeMs) / (1000 * 60 * 60 * 24));
+    if (ageDays >= staleDays * 2) {
+      dormant.push(entry.repoRel);
+    } else if (ageDays >= staleDays) {
+      stale.push(entry.repoRel);
+    }
+  }
+
+  return { stale, dormant, phantom };
 }
 
-export async function cmdDoctor({ fix }: DoctorOptions = {}): Promise<void> {
+// ── Key management helpers (from key.ts) ────────────────────────
+
+function walkDir(dirAbs: string): string[] {
+  const results: string[] = [];
+  if (!fs.existsSync(dirAbs)) return results;
+  function walk(subPath: string): void {
+    const full = path.join(dirAbs, subPath);
+    if (fs.statSync(full).isDirectory()) {
+      fs.readdirSync(full).forEach(f => walk(path.join(subPath, f)));
+    } else {
+      results.push(subPath);
+    }
+  }
+  fs.readdirSync(dirAbs).forEach(f => walk(f));
+  return results;
+}
+
+function findEncFiles(repoPath: string): string[] {
+  const encFiles: string[] = [];
+  for (const topDir of ['agents', 'shared']) {
+    const scanRoot = path.join(repoPath, topDir);
+    if (!fs.existsSync(scanRoot)) continue;
+    for (const relFile of walkDir(scanRoot)) {
+      if (relFile.endsWith('.enc')) {
+        encFiles.push(path.join(topDir, relFile));
+      }
+    }
+  }
+  return encFiles;
+}
+
+async function handleKeyRotate(cfg: WangchuanConfig): Promise<void> {
+  const repoPath = syncEngine.expandHome(cfg.localRepoPath);
+  const keyPath  = syncEngine.expandHome(cfg.keyPath);
+
+  const encFiles = findEncFiles(repoPath);
+  if (encFiles.length === 0) {
+    logger.info(t('key.rotate.noFiles'));
+    return;
+  }
+
+  const spinner = ora(t('key.rotate.start')).start();
+  const oldKeyHex = fs.readFileSync(keyPath, 'utf-8').trim();
+
+  spinner.text = t('key.rotate.decrypting', { count: encFiles.length });
+  const decryptedContents = new Map<string, string>();
+  for (const relFile of encFiles) {
+    const absPath = path.join(repoPath, relFile);
+    const encrypted = fs.readFileSync(absPath, 'utf-8').trim();
+    const decrypted = cryptoEngine.decryptString(encrypted, keyPath);
+    decryptedContents.set(relFile, decrypted);
+  }
+
+  const newKey = cryptoEngine.generateKey(keyPath);
+
+  spinner.text = t('key.rotate.reencrypting');
+  try {
+    for (const [relFile, plaintext] of decryptedContents) {
+      const absPath = path.join(repoPath, relFile);
+      const reEncrypted = cryptoEngine.encryptString(plaintext, keyPath);
+      fs.writeFileSync(absPath, reEncrypted, 'utf-8');
+    }
+  } catch (err) {
+    fs.writeFileSync(keyPath, oldKeyHex, { mode: 0o600, encoding: 'utf-8' });
+    spinner.fail(t('key.rotate.failed', { error: (err as Error).message }));
+    logger.warn(t('key.rotate.rolledBack'));
+    return;
+  }
+
+  try {
+    await gitEngine.commitAndPush(repoPath, 'security: rotate master key', resolveGitBranch(cfg));
+  } catch (err) {
+    fs.writeFileSync(keyPath, oldKeyHex, { mode: 0o600, encoding: 'utf-8' });
+    for (const [relFile, plaintext] of decryptedContents) {
+      const absPath = path.join(repoPath, relFile);
+      const reEncrypted = cryptoEngine.encryptString(plaintext, keyPath);
+      fs.writeFileSync(absPath, reEncrypted, 'utf-8');
+    }
+    spinner.fail(t('key.rotate.failed', { error: (err as Error).message }));
+    logger.warn(t('key.rotate.rolledBack'));
+    return;
+  }
+
+  spinner.succeed(t('key.rotate.complete', { count: encFiles.length }));
+}
+
+function handleKeyExport(cfg: WangchuanConfig): void {
+  const keyPath = syncEngine.expandHome(cfg.keyPath);
+  const hex = fs.readFileSync(keyPath, 'utf-8').trim();
+  logger.info(t('key.export.hex', { hex }));
+  logger.warn(t('key.export.warning'));
+}
+
+function handleSetup(cfg: WangchuanConfig): void {
+  const keyPath = syncEngine.expandHome(cfg.keyPath);
+  if (!fs.existsSync(keyPath)) {
+    throw new Error(t('setup.keyNotFound', { path: keyPath }));
+  }
+
+  const keyHex = fs.readFileSync(keyPath, 'utf-8').trim();
+  const repo = cfg.repo;
+
+  console.log(chalk.bold(`  ${t('setup.repoLabel')}`) + chalk.cyan(repo));
+  console.log(chalk.bold(`  ${t('setup.keyLabel')}`) + chalk.gray(keyHex.slice(0, 8) + '…' + keyHex.slice(-8)));
+  console.log();
+
+  const command = `npx wangchuan init --repo ${repo} --key ${keyHex}`;
+  console.log(chalk.bold(`  ${t('setup.commandLabel')}`));
+  console.log();
+  console.log(`  ${chalk.green(command)}`);
+  console.log();
+
+  logger.warn(t('setup.securityWarning'));
+  console.log();
+  logger.info(t('setup.clipboardHint'));
+}
+
+// ── Doctor options ──────────────────────────────────────────────
+
+export interface DoctorOptions {
+  readonly keyRotate?: boolean | undefined;
+  readonly keyExport?: boolean | undefined;
+  readonly setup?: boolean | undefined;
+}
+
+// ── Main command ────────────────────────────────────────────────
+
+export async function cmdDoctor(opts: DoctorOptions = {}): Promise<void> {
   logger.banner(t('doctor.banner'));
+
+  // Load config for subcommands that need it
+  let cfg: WangchuanConfig | null = null;
+  try { cfg = config.load(); } catch { /* reported in checks below */ }
+
+  if (cfg) {
+    validator.requireInit(cfg);
+    cfg = ensureMigrated(cfg);
+  }
+
+  // ── Handle --key-rotate, --key-export, --setup subcommands ──
+  if (opts.keyRotate && cfg) {
+    await handleKeyRotate(cfg);
+    return;
+  }
+  if (opts.keyExport && cfg) {
+    handleKeyExport(cfg);
+    return;
+  }
+  if (opts.setup && cfg) {
+    handleSetup(cfg);
+    return;
+  }
+
+  // ── Run all checks + auto-fix ──────────────────────────────
 
   const results: CheckResult[] = [];
 
@@ -198,17 +369,13 @@ export async function cmdDoctor({ fix }: DoctorOptions = {}): Promise<void> {
   // 3. Git
   results.push(await checkGit());
 
-  // Load config for further checks (if available)
-  let cfg: import('../types.js').WangchuanConfig | null = null;
-  try { cfg = config.load(); } catch { /* already reported above */ }
-
   if (cfg) {
     // 4. Repo cloned
     const repoResult = checkRepoCloned(cfg.localRepoPath);
     results.push(repoResult);
 
-    // --fix: re-clone if missing
-    if (fix && repoResult.status === 'fail') {
+    // Auto-fix: re-clone if missing
+    if (repoResult.status === 'fail') {
       const repoPath = syncEngine.expandHome(cfg.localRepoPath);
       try {
         await gitEngine.cloneOrFetch(cfg.repo, repoPath, resolveGitBranch(cfg));
@@ -222,29 +389,46 @@ export async function cmdDoctor({ fix }: DoctorOptions = {}): Promise<void> {
     results.push(checkRemoteAccess(cfg.repo));
 
     // 6. Agent workspaces
-    const agentResults = checkAgentWorkspaces(cfg);
-    results.push(...agentResults);
+    results.push(...checkAgentWorkspaces(cfg));
 
-    // --fix: create missing agent workspace dirs
-    if (fix) {
-      const profiles = cfg.profiles.default;
-      for (const name of AGENT_NAMES) {
-        const p = profiles[name];
-        if (!p.enabled) continue;
-        const wsPath = syncEngine.expandHome(p.workspacePath);
-        if (!fs.existsSync(wsPath)) {
-          fs.mkdirSync(wsPath, { recursive: true });
-          console.log(chalk.cyan(`  🔧 ${t('doctor.fixAgentDir', { path: wsPath })}`));
-        }
+    // Auto-fix: create missing agent workspace dirs
+    const profiles = cfg.profiles.default;
+    for (const name of AGENT_NAMES) {
+      const p = profiles[name];
+      if (!p.enabled) continue;
+      const wsPath = syncEngine.expandHome(p.workspacePath);
+      if (!fs.existsSync(wsPath)) {
+        fs.mkdirSync(wsPath, { recursive: true });
+        console.log(chalk.cyan(`  🔧 ${t('doctor.fixAgentDir', { path: wsPath })}`));
       }
     }
 
-    // 7. Sync lock
+    // 7. Auto-discover disabled agents with existing workspaces → auto-enable
+    let updatedCfg = cfg;
+    for (const name of AGENT_NAMES) {
+      const p = profiles[name];
+      if (p.enabled) continue;
+      const wsPath = syncEngine.expandHome(p.workspacePath);
+      if (fs.existsSync(wsPath)) {
+        results.push(WARN(t('doctor.discoveredAgent', { name, path: wsPath })));
+        // Auto-enable
+        const updatedProfile: AgentProfile = { ...updatedCfg.profiles.default[name], enabled: true };
+        const updatedProfiles = { ...updatedCfg.profiles.default, [name]: updatedProfile };
+        updatedCfg = { ...updatedCfg, profiles: { default: updatedProfiles } };
+        console.log(chalk.cyan(`  🔧 ${t('doctor.fixAgentEnabled', { name })}`));
+      }
+    }
+    if (updatedCfg !== cfg) {
+      config.save(updatedCfg);
+      cfg = updatedCfg;
+    }
+
+    // 8. Sync lock
     const lockResult = checkSyncLock();
     results.push(lockResult);
 
-    // --fix: remove stale sync lock
-    if (fix && lockResult.status === 'warn') {
+    // Auto-fix: remove stale sync lock
+    if (lockResult.status === 'warn') {
       const lock = syncLock.read();
       if (lock) {
         let alive: boolean;
@@ -256,31 +440,40 @@ export async function cmdDoctor({ fix }: DoctorOptions = {}): Promise<void> {
       }
     }
 
-    // 8. Integrity
+    // 9. Integrity
     results.push(checkIntegrity(cfg.localRepoPath));
 
-    // 9. Ignore file
+    // 10. Ignore file
     results.push(checkIgnoreFile());
 
-    // 10. Agent discovery (disabled agents with existing workspaces)
-    results.push(...checkAgentDiscovery(cfg));
+    // 11. Stale/phantom file scan
+    const allEntries = syncEngine.buildFileEntries(cfg);
+    const { stale, dormant, phantom } = classifyFiles(allEntries);
+    if (phantom.length > 0) {
+      results.push(WARN(t('doctor.phantomFiles', { count: phantom.length })));
+    }
+    if (dormant.length > 0) {
+      results.push(WARN(t('doctor.dormantFiles', { count: dormant.length })));
+    }
+    if (stale.length > 0) {
+      results.push(WARN(t('doctor.staleFiles', { count: stale.length })));
+    }
+    if (stale.length === 0 && dormant.length === 0 && phantom.length === 0) {
+      results.push(PASS(t('doctor.filesHealthy')));
+    }
   }
 
-  // --fix: fix key permissions
-  if (fix) {
-    const keyPath = config.paths.key;
-    if (fs.existsSync(keyPath)) {
-      try {
-        const stat = fs.statSync(keyPath);
-        const mode = stat.mode & 0o777;
-        if (mode !== 0o600) {
-          fs.chmodSync(keyPath, 0o600);
-          console.log(chalk.cyan(`  🔧 ${t('doctor.fixKeyPerms')}`));
-        }
-      } catch {
-        // Permission check may not work on some OS — skip
+  // Auto-fix: fix key permissions
+  const keyPath = config.paths.key;
+  if (fs.existsSync(keyPath)) {
+    try {
+      const stat = fs.statSync(keyPath);
+      const mode = stat.mode & 0o777;
+      if (mode !== 0o600) {
+        fs.chmodSync(keyPath, 0o600);
+        console.log(chalk.cyan(`  🔧 ${t('doctor.fixKeyPerms')}`));
       }
-    }
+    } catch { /* Permission check may not work on some OS */ }
   }
 
   // Print results

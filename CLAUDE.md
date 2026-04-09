@@ -47,7 +47,18 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Commands (`src/commands/`)
 
-Eight commands: `init`, `pull`, `push`, `status`, `diff`, `list`, `dump`, `lang`. All support `--agent openclaw|claude|gemini` filtering (except `lang`). Every command (except `init` and `lang`) calls `ensureMigrated()` after `config.load()` to ensure config is up to date.
+Six user-facing commands: `init`, `sync`, `status`, `doctor`, `env`, `lang`.
+
+| Command | Purpose | Key flags |
+|---------|---------|-----------|
+| `init` | One-time setup (interactive if no --repo) | `--repo`, `--key`, `--force` |
+| `sync` | Smart bidirectional sync (the ONE daily command) | `-a, --agent`, `-n, --dry-run` |
+| `status` | Show sync state at a glance | `-a, --agent`, `-v, --verbose` |
+| `doctor` | Diagnose + auto-fix all issues | `--key-rotate`, `--key-export`, `--setup` |
+| `env` | Multi-environment management | `list\|create\|switch\|current\|delete` |
+| `lang` | Switch display language | `zh\|en` |
+
+Many internal modules still exist (push.ts, pull.ts, list.ts, diff.ts, health.ts, etc.) and are called internally by the user-facing commands — they are NOT registered as CLI commands.
 
 ### i18n (`src/i18n.ts`)
 

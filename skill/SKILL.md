@@ -7,75 +7,61 @@ OpenClaw Skill wrapper for the Wangchuan AI memory sync system. Invoke directly 
 ## Command Reference
 
 ```
-wangchuan list   [--agent openclaw|claude|gemini]     List managed configs
-wangchuan status [--agent openclaw|claude|gemini]     Show sync status & diff summary
-wangchuan diff   [--agent openclaw|claude|gemini]     Show line-level file diff
-wangchuan pull   [--agent openclaw|claude|gemini]     Pull & restore from repo
-wangchuan push   [--agent <name>] [-m "<msg>"]        Encrypt & push to repo
-wangchuan sync   [--agent openclaw|claude|gemini]     Smart bidirectional sync (pull if needed, then push)
-wangchuan watch  [--agent <name>] [-i <minutes>]      Watch for file changes and auto-sync (daemon)
-wangchuan dump   [--agent openclaw|claude|gemini]     Plaintext snapshot to temp dir
-wangchuan lang   [zh|en]                              Switch CLI display language
-wangchuan init   --repo <git-url>                     First-time init
-wangchuan env    list                                 List all environments
-wangchuan env    current                              Show active environment
-wangchuan env    create <name> [--from <branch>]      Create new environment (git branch)
-wangchuan env    switch <name>                        Switch to environment
-wangchuan env    delete <name>                        Delete environment branch
-wangchuan agent  list                                 List all agents with enabled/disabled status
-wangchuan agent  enable <name>                        Enable an agent for sync
-wangchuan agent  disable <name>                       Disable an agent from sync
+wangchuan sync     [--agent <name>] [-n]       Smart bidirectional sync (the ONE daily command)
+wangchuan status   [--agent <name>] [-v]       Show sync state at a glance (-v for full detail)
+wangchuan doctor   [--key-export|--key-rotate|--setup]  Diagnose + auto-fix issues
+wangchuan env      list|create|switch|current|delete    Multi-environment management
+wangchuan lang     [zh|en]                     Switch CLI display language
+wangchuan init     --repo <git-url>            First-time init (one-time)
 ```
 
 ## Invocation Examples
 
-> List all files managed by Wangchuan
+> Sync my AI memories
 
-> Check Wangchuan sync status
+> Check sync status
 
-> Show diff for openclaw only
+> Show full sync status with file list and diff
 
-> Pull the latest AI memories to local
+> Sync claude configs only
 
-> Pull openclaw configs only
+> Run a health check and fix any issues
 
-> Push my MEMORY.md changes with note "update project memory"
+> Export my master key for migration
 
-> Push claude configs only
+> Generate a setup command for my new laptop
 
-> Smart sync — pull remote changes first, then push local
+> Create a work environment
 
-> Sync openclaw only
-
-> Start watching for file changes and auto-sync
-
-> Watch with 10-minute poll interval
-
-> Generate a plaintext dump so I can inspect
+> Switch to work environment
 
 > Switch to English output
 
-> Switch back to Chinese
-
 ## Output Guide
 
-### list
-- `✔ local  ✔ repo` — Present on both sides, in sync
-- `✔ local  · repo` — Local only, not yet pushed
-- `✖ local  ✔ repo` — In repo but missing locally, run pull
-- `[enc]` — Encrypted (AES-256-GCM)
-- `[field]` — JSON field-level extraction (only syncs specified fields)
+### status (default)
+- Health score bar (0-100)
+- Changed files count since last sync
+- Last sync timestamp
+- Hint: `wangchuan sync` to update
 
-### diff
-- `+` green lines — Local additions
-- `-` red lines — Removed locally
-- Gray lines — Context (unchanged)
-- `[enc]` — Encrypted files auto-decrypted for comparison
+### status --verbose
+- Full file inventory with local/repo presence
+- Line-level diff for changed files
+- Recent sync history
+- Per-agent health breakdown
 
-### push / pull
-- `[encrypted]` / `[decrypted]` — Processed with AES-256-GCM
-- `[pruned]` — Stale files removed from repo (delete propagation)
-- `⚠ local-only` — Local-only files detected, suggest push
+### sync
+- Auto-creates safety snapshot before syncing
+- Pulls remote changes if any, then pushes local changes
+- Shows compact summary with files synced count
+
+### doctor
+- Auto-fixes all common issues (no --fix needed)
+- Auto-discovers installed agents and enables them
+- Detects stale/phantom files
+- `--key-export` / `--key-rotate` for key management
+- `--setup` generates migration one-liner
 
 ## --agent Filter
 
@@ -89,6 +75,7 @@ All commands support `--agent` to filter by agent.
 | `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
 | `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
 | `cursor`    | rules/ dir, mcp.json → mcpServers (enc), cli-config.json → permissions + model + enabledPlugins (enc) |
+| `codex`     | AGENTS.md, instructions.md |
 
 When omitted, operates on all enabled agents plus the shared tier (skills/MCP/shared memory).
 
@@ -97,4 +84,4 @@ When omitted, operates on all enabled agents plus the shared tier (skills/MCP/sh
 1. Node.js ≥ 18
 2. `wangchuan init` has been run (~/.wangchuan/config.json exists)
 3. Local SSH key has access to the target git repo
-4. Copy `~/.wangchuan/master.key` manually when migrating across machines
+4. Copy `~/.wangchuan/master.key` manually when migrating across machines (or use `wangchuan doctor --key-export`)

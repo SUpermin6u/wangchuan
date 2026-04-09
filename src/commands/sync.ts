@@ -7,6 +7,8 @@
  */
 
 import os from 'os';
+import fs from 'fs';
+import path from 'path';
 import { config }          from '../core/config.js';
 import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated }  from '../core/migrate.js';
@@ -22,6 +24,51 @@ import { t }               from '../i18n.js';
 import type { SyncOptions, RestoreResult, StageResult, CommitResult, FilterOptions } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
+
+const WANGCHUAN_DIR  = path.join(os.homedir(), '.wangchuan');
+const SNAPSHOTS_DIR  = path.join(WANGCHUAN_DIR, 'snapshots');
+const MAX_AUTO_SNAPSHOTS = 5;
+
+/** Create an auto-snapshot before sync (silent, no user output) */
+function autoSnapshot(repoPath: string): void {
+  try {
+    if (!fs.existsSync(repoPath)) return;
+    const snapshotName = `auto-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    const snapshotDir  = path.join(SNAPSHOTS_DIR, snapshotName);
+    fs.mkdirSync(snapshotDir, { recursive: true });
+    copyDirSync(repoPath, snapshotDir);
+    // Prune old auto-snapshots
+    pruneAutoSnapshots(MAX_AUTO_SNAPSHOTS);
+  } catch {
+    // Silent failure — snapshot is a safety net, not a blocker
+  }
+}
+
+function copyDirSync(src: string, dest: string): void {
+  if (!fs.existsSync(src)) return;
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath  = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+function pruneAutoSnapshots(max: number): void {
+  if (!fs.existsSync(SNAPSHOTS_DIR)) return;
+  const autoDirs = fs.readdirSync(SNAPSHOTS_DIR)
+    .filter(d => d.startsWith('auto-') && fs.statSync(path.join(SNAPSHOTS_DIR, d)).isDirectory())
+    .sort();
+  if (autoDirs.length <= max) return;
+  const toRemove = autoDirs.slice(0, autoDirs.length - max);
+  for (const dir of toRemove) {
+    fs.rmSync(path.join(SNAPSHOTS_DIR, dir), { recursive: true, force: true });
+  }
+}
 
 export interface SyncCommandResult {
   readonly pulled: boolean;
@@ -45,6 +92,9 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
   if (dryRun) logger.info(chalk.yellow(t('dryRun.enabled')));
 
   const filter = (only?.length || exclude?.length) ? { only, exclude } : undefined;
+
+  // ── Auto-snapshot before sync (silent safety net) ────────────
+  autoSnapshot(repoPath);
 
   // ── Acquire sync lock ─────────────────────────────────────────
   await syncLock.acquire(repoPath);

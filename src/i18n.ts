@@ -64,7 +64,8 @@ const M: Msgs = {
   'cli.cmd.agent':       ['Filter by agent (openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex)', '只操作指定智能体 (openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex)'],
   'cli.cmd.push':        ['Encrypt and push local configs to remote repo', '将本地配置加密后推送到远端仓库'],
   'cli.cmd.push.msg':    ['Custom commit message', '自定义提交信息'],
-  'cli.cmd.status':      ['Show sync status and workspace diff', '查看同步状态和工作区差异'],
+  'cli.cmd.status':      ['Show sync state at a glance (--verbose for full detail)', '一览同步状态（--verbose 查看完整详情）'],
+  'cli.cmd.status.verbose': ['Show full detail: file list, diff, history, health breakdown', '显示完整详情：文件清单、差异、历史、健康评分'],
   'cli.cmd.diff':        ['Show line-level diff between local and repo', '显示本地与仓库的行级文件差异'],
   'cli.cmd.list':        ['List all managed configs with local/repo status', '列出所有受管配置项及其状态'],
   'cli.cmd.dump':        ['Generate plaintext snapshot to temp dir', '生成明文快照到临时目录'],
@@ -95,8 +96,8 @@ const M: Msgs = {
   'init.cloneFailed':     ['Clone failed', '克隆仓库失败'],
   'init.gitFailed':       ['Git operation failed: {error}', 'Git 操作失败: {error}'],
   'init.complete':        ['Wangchuan initialized!', '忘川初始化完成！'],
-  'init.nextPull':        ['Next: wangchuan pull  (pull remote memories)', '下一步: wangchuan pull  (同步远端记忆到本地)'],
-  'init.nextPush':        ['              wangchuan push  (push local memories)', '              wangchuan push  (推送本地记忆到远端)'],
+  'init.nextPull':        ['Next: wangchuan sync  (sync memories across environments)', '下一步: wangchuan sync  (同步记忆到各环境)'],
+  'init.nextPush':        ['              wangchuan status  (check sync state)', '              wangchuan status  (查看同步状态)'],
 
   // ── pull ────────────────────────────────────────────────────
   'pull.banner':           ['Wangchuan · Pull', '忘川 · 拉取配置'],
@@ -154,8 +155,13 @@ const M: Msgs = {
   'status.modifiedLabel':  ['modified', '修改'],
   'status.missingLabel':   ['missing', '缺失'],
   'status.diffFailed':     ['Diff analysis failed: {error}', '差异分析失败: {error}'],
+  'status.healthLabel':    ['Health: ', '健康度：'],
+  'status.lastSync':       ['Last sync:', '上次同步：'],
+  'status.syncHint':       ['Run `wangchuan sync` to synchronize', '执行 `wangchuan sync` 同步'],
+  'status.verboseHint':    ['Run `wangchuan status -v` for full detail', '执行 `wangchuan status -v` 查看完整详情'],
+  'status.historyLabel':   ['Recent sync history:', '最近同步历史：'],
   'status.lockActive':     ['Sync in progress (PID: {pid}, started: {startedAt})', '同步进行中 (PID: {pid}, 开始于: {startedAt})'],
-  'status.lockStale':      ['Stale sync lock detected (PID {pid} is dead). Run `wangchuan doctor --fix` to clean up', '检测到过期同步锁 (PID {pid} 已终止)，执行 `wangchuan doctor --fix` 清理'],
+  'status.lockStale':      ['Stale sync lock detected (PID {pid} is dead). Run `wangchuan doctor` to clean up', '检测到过期同步锁 (PID {pid} 已终止)，执行 `wangchuan doctor` 清理'],
   'status.inventory':      ['Config inventory ({count} items):', '配置文件清单（{count} 项）：'],
   'status.fieldLabel':     ['[field]', '[字段]'],
 
@@ -304,7 +310,7 @@ const M: Msgs = {
   // ── conflict detection in status ──────────────────────────
   'status.conflictWarning':  ['Potential sync conflicts detected:', '检测到潜在同步冲突：'],
   'status.conflictFile':     ['⚠ {file} — modified locally since last sync, remote also updated', '⚠ {file} — 上次同步后本地有修改，远端也有更新'],
-  'status.conflictHint':     ['Run wangchuan diff to inspect, then push or pull to resolve', '执行 wangchuan diff 查看详情，然后 push 或 pull 解决冲突'],
+  'status.conflictHint':     ['Run wangchuan status -v to inspect, then sync to resolve', '执行 wangchuan status -v 查看详情，然后 sync 解决冲突'],
 
   // ── colorized sync progress ───────────────────────────────
   'sync.progress.enc':       ['[enc]', '[加密]'],
@@ -397,8 +403,11 @@ const M: Msgs = {
   'syncLock.cleanFailed':      ['Failed to clean dirty state: {error}', '清理脏状态失败: {error}'],
 
   // ── doctor command ─────────────────────────────────────────────
-  'cli.cmd.doctor':            ['Run health checks on the Wangchuan setup', '对忘川配置进行健康检查'],
+  'cli.cmd.doctor':            ['Diagnose and auto-fix issues (always fixes automatically)', '诊断并自动修复问题（自动修复，无需额外参数）'],
   'cli.cmd.doctor.fix':        ['Auto-fix common issues', '自动修复常见问题'],
+  'cli.cmd.doctor.keyRotate':  ['Rotate the master encryption key', '轮换主加密密钥'],
+  'cli.cmd.doctor.keyExport':  ['Print master key hex for migration', '输出主密钥（用于迁移）'],
+  'cli.cmd.doctor.setup':      ['Show one-liner init command for a new machine', '生成新机器初始化命令'],
   'cli.cmd.history':           ['Show recent sync history', '显示最近的同步历史'],
   'cli.cmd.history.limit':     ['Number of entries to show (default: 10)', '显示条数（默认: 10）'],
   'cli.cmd.history.json':      ['Output as JSON', '以 JSON 格式输出'],
@@ -439,6 +448,11 @@ const M: Msgs = {
   'doctor.fixRepoCloneFailed': ['Fix failed: could not clone repo — {error}', '修复失败: 无法克隆仓库 — {error}'],
   'doctor.fixKeyPerms':        ['Fixed: set master key permissions to 0600', '已修复: 主密钥权限已设置为 0600'],
   'doctor.fixAgentDir':        ['Fixed: created agent workspace directory {path}', '已修复: 已创建智能体工作区目录 {path}'],
+  'doctor.fixAgentEnabled':    ['Fixed: auto-enabled agent {name}', '已修复: 已自动启用智能体 {name}'],
+  'doctor.phantomFiles':       ['{count} phantom files (configured but missing locally)', '{count} 个幽灵文件（已配置但本地不存在）'],
+  'doctor.dormantFiles':       ['{count} dormant files (long inactive)', '{count} 个休眠文件（长期未活动）'],
+  'doctor.staleFiles':         ['{count} stale files (>90d not modified)', '{count} 个过期文件（>90 天未修改）'],
+  'doctor.filesHealthy':       ['All managed files are healthy', '所有受管文件状态正常'],
 
   // ── filter (--only / --exclude) ─────────────────────────────────
   'cli.cmd.only':              ['Only sync files matching patterns (comma-separated)', '仅同步匹配的文件（逗号分隔）'],
@@ -614,8 +628,8 @@ const M: Msgs = {
   'batch.summary':               ['Batch complete: {total} commands — {passed} passed, {failed} failed', '批量执行完成: {total} 个命令 — {passed} 通过, {failed} 失败'],
 
   // ── agent discovery ────────────────────────────────────────────
-  'doctor.discoveredAgent':      ['Agent {name} workspace found at {path} but agent is disabled. Run: wangchuan agent enable {name}', '智能体 {name} 工作区存在于 {path}，但该智能体已禁用。执行: wangchuan agent enable {name}'],
-  'status.discoveredAgent':      ['Agent {name} found at {path} but disabled. Run: wangchuan agent enable {name}', '智能体 {name} 存在于 {path}，但已禁用。执行: wangchuan agent enable {name}'],
+  'doctor.discoveredAgent':      ['Agent {name} workspace found at {path} but agent is disabled — auto-enabling', '智能体 {name} 工作区存在于 {path}，但该智能体已禁用 — 自动启用'],
+  'status.discoveredAgent':      ['Agent {name} found at {path} but disabled. Run `wangchuan doctor` to auto-enable', '智能体 {name} 存在于 {path}，但已禁用。执行 `wangchuan doctor` 自动启用'],
 
   // ── config validate ──────────────────────────────────────────
   'configValidate.agentField':       ['{agent}.{field}', '{agent}.{field}'],

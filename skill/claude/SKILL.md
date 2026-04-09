@@ -41,46 +41,29 @@ DO update for:
 - New tool integrations or workflow automations
 - Corrections to existing memory/skills (fixing outdated info)
 
-## Sync Commands
-
-After any update, run sync to propagate changes across all agents:
+## Commands — Just 6
 
 ```bash
-# Smart bidirectional sync — pull remote first if needed, then push
+# The ONE daily command — smart bidirectional sync
 wangchuan sync
 
-# Check what would change before syncing
+# Check sync state at a glance
 wangchuan status
+
+# Full detail (file list, diff, history, health)
+wangchuan status -v
+
+# Diagnose + auto-fix everything
+wangchuan doctor
 
 # Filter to specific agent
 wangchuan sync --agent claude
-```
 
-## Multi-Environment Support
-
-Each environment is an isolated git branch. Use env commands to manage them:
-
-```bash
-# Show current environment
-wangchuan env current
-
-# List all environments
+# Multi-environment management
 wangchuan env list
-
-# Create a new environment (e.g., for a work machine)
 wangchuan env create work
-
-# Switch to an environment — all subsequent push/pull/sync use its branch
 wangchuan env switch work
-
-# Switch back to default
-wangchuan env switch default
-
-# Delete an environment
-wangchuan env delete work
 ```
-
-All push/pull/sync commands automatically operate on the branch of the active environment.
 
 ## Current Sync Status
 
@@ -97,17 +80,3 @@ Before concluding any task:
 5. **Report**: Briefly tell the user what was synced (if anything)
 
 If nothing valuable was produced, skip silently — do not announce "nothing to sync".
-
-## Watch Mode (Background Daemon)
-
-For continuous sync, the user can start the watch daemon:
-
-```bash
-# Watch all agent configs, auto-sync on change (5-min poll default)
-wangchuan watch
-
-# Custom poll interval
-wangchuan watch --interval 10
-```
-
-The daemon monitors all agent workspace directories and auto-syncs when files change.
