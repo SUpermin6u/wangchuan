@@ -396,12 +396,18 @@ describe('cross-agent MCP sharing', () => {
     );
   });
 
-  it('MCP distribution does not overwrite existing config', async () => {
+  it('MCP distribution syncs updated config to other agents (newest mtime wins)', async () => {
+    // Write Claude's config FIRST (older mtime)
     writeFile(path.join(WS_CL, '.claude.json'), JSON.stringify({
       mcpServers: { playwright: { type: 'stdio', version: 'claude' } },
     }, null, 2));
+
+    // Small delay to ensure different mtime
+    await new Promise(r => setTimeout(r, 50));
+
+    // Write OpenClaw's config SECOND (newer mtime) — this version should win
     writeFile(path.join(WS_OC, 'config', 'mcporter.json'), JSON.stringify({
-      mcpServers: { playwright: { type: 'stdio', version: 'openclaw' } },
+      mcpServers: { playwright: { type: 'stdio', version: 'openclaw-updated' } },
     }, null, 2));
     writeFile(path.join(WS_GE, 'settings.json'), '{"security":{},"model":{}}');
     writeFile(path.join(WS_OC, 'MEMORY.md'), '# M');
@@ -411,15 +417,11 @@ describe('cross-agent MCP sharing', () => {
     const cfg = mkCfg();
     await syncEngine.stageToRepo(cfg);
 
-    // Both agents' playwright config should retain their own version
+    // Newer version (openclaw-updated) should propagate to Claude
     const clMcp = JSON.parse(
       fs.readFileSync(path.join(WS_CL, '.claude.json'), 'utf-8'),
     );
-    const ocMcp = JSON.parse(
-      fs.readFileSync(path.join(WS_OC, 'config', 'mcporter.json'), 'utf-8'),
-    );
-    assert.equal(clMcp.mcpServers.playwright.version, 'claude');
-    assert.equal(ocMcp.mcpServers.playwright.version, 'openclaw');
+    assert.equal(clMcp.mcpServers.playwright.version, 'openclaw-updated');
   });
 });
 

@@ -384,41 +384,64 @@ function distributeShared(cfg: WangchuanConfig): void {
     agentSkills.set(source.agent, skills);
   }
 
-  // Merge all agents' skills (deduplicate, first occurrence wins)
-  const allSkills = new Map<string, string>();
+  // Merge all agents' skills — for each relPath, pick the NEWEST version (latest mtime)
+  const allSkills = new Map<string, string>(); // relPath → absPath (newest)
+  const allSkillMtimes = new Map<string, number>(); // relPath → mtime ms
   for (const skills of agentSkills.values()) {
     for (const [rel, abs] of skills) {
-      if (!allSkills.has(rel)) allSkills.set(rel, abs);
+      try {
+        const mtime = fs.statSync(abs).mtimeMs;
+        if (!allSkills.has(rel) || mtime > allSkillMtimes.get(rel)!) {
+          allSkills.set(rel, abs);
+          allSkillMtimes.set(rel, mtime);
+        }
+      } catch {
+        if (!allSkills.has(rel)) allSkills.set(rel, abs);
+      }
     }
   }
 
-  // Distribute: only copy skills that a given agent is missing (present in global set)
+  // Distribute: copy skills that are missing OR outdated in each agent
   for (const source of shared.skills.sources) {
     const p = profiles[source.agent];
     if (!p.enabled) continue;
-    const mySkills  = agentSkills.get(source.agent)!;
     const skillsDir = path.join(expandHome(p.workspacePath), source.dir);
     for (const [relFile, srcAbs] of allSkills) {
-      if (mySkills.has(relFile)) continue; // already exists, do not overwrite
       const dest = path.join(skillsDir, relFile);
+      // Skip if the target file is the same as the source (same agent owns it)
+      if (fs.existsSync(dest) && path.resolve(dest) === path.resolve(srcAbs)) continue;
+      // Skip if target content is identical (no update needed)
+      if (fs.existsSync(dest)) {
+        try {
+          if (fs.readFileSync(dest).equals(fs.readFileSync(srcAbs))) continue;
+        } catch { /* fall through to copy */ }
+      }
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(srcAbs, dest);
       logger.debug(`  ${t('sync.distributeSkill', { file: relFile, agent: source.agent })}`);
     }
   }
 
-  // ── Distribute MCP configs: extract from each source, merge into other agents ──
+  // ── Distribute MCP configs: extract from each source, merge by newest mtime ──
   const mergedMcp: Record<string, unknown> = {};
+  const mcpMtimes: Record<string, number> = {}; // server key → mtime of source file
   for (const source of shared.mcp.sources) {
     const p = profiles[source.agent];
     if (!p.enabled) continue;
     const srcPath = path.join(expandHome(p.workspacePath), source.src);
     if (!fs.existsSync(srcPath)) continue;
     try {
+      const mtime = fs.statSync(srcPath).mtimeMs;
       const json = JSON.parse(fs.readFileSync(srcPath, 'utf-8')) as Record<string, unknown>;
       const mcpField = json[source.field];
       if (mcpField && typeof mcpField === 'object') {
-        Object.assign(mergedMcp, mcpField);
+        for (const [key, val] of Object.entries(mcpField as Record<string, unknown>)) {
+          // Keep the version from the most recently modified source file
+          if (!(key in mergedMcp) || mtime > (mcpMtimes[key] ?? 0)) {
+            mergedMcp[key] = val;
+            mcpMtimes[key] = mtime;
+          }
+        }
       }
     } catch { /* ignore parse failures */ }
   }
@@ -434,10 +457,16 @@ function distributeShared(cfg: WangchuanConfig): void {
           json = JSON.parse(fs.readFileSync(srcPath, 'utf-8')) as Record<string, unknown>;
         }
         const currentMcp = (json[source.field] ?? {}) as Record<string, unknown>;
-        // Only add MCP servers not present locally; do not overwrite existing configs
+        // Add new MCP servers AND update existing ones if config changed
         let changed = false;
         for (const [key, val] of Object.entries(mergedMcp)) {
           if (!(key in currentMcp)) {
+            // New server — add it
+            currentMcp[key] = val;
+            changed = true;
+          } else if (JSON.stringify(currentMcp[key]) !== JSON.stringify(val)) {
+            // Existing server with updated config — take the newer version
+            // (mergedMcp is built by iterating sources in order, last write wins)
             currentMcp[key] = val;
             changed = true;
           }
