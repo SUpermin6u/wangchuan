@@ -106,6 +106,35 @@ When omitted, operates on all enabled agents plus the shared tier (skills/MCP/cu
 
 Custom sub-agents defined in the `agents/` directory of any supported agent (Claude, Cursor, CodeBuddy, WorkBuddy) are automatically synced across all agents via the shared tier (`shared/agents/`). The same deletion confirmation logic as skills applies — a custom agent is pruned from the repo only when all local agents have removed it.
 
+## Sync Protocol for AI Agents (IMPORTANT — all agents must follow)
+
+When this skill is loaded by an AI agent, the agent MUST follow these rules:
+
+### After modifying skills or custom agents
+If you (the AI agent) create, modify, or delete any file under your `skills/` or `agents/` directory, you MUST immediately run:
+```bash
+wangchuan sync
+```
+This triggers cross-agent distribution with user confirmation — the user chooses which other agents receive the change.
+
+### After modifying memory or config
+If you update MEMORY.md, CLAUDE.md, settings.json, or any synced config file, run `wangchuan sync` to push changes to the cloud.
+
+### On session start
+Check if the watch daemon is running. If not, suggest starting it:
+```bash
+wangchuan watch
+```
+The watch daemon auto-detects file changes and triggers sync, serving as a safety net when the agent forgets to sync manually.
+
+### Rule summary
+| Event | Action |
+|-------|--------|
+| Created/modified/deleted a skill | Run `wangchuan sync` immediately |
+| Created/modified/deleted a custom agent | Run `wangchuan sync` immediately |
+| Updated memory or config | Run `wangchuan sync` |
+| Session start | Check `wangchuan status`, suggest `wangchuan watch` if not running |
+
 ## Prerequisites
 
 1. Node.js ≥ 18
