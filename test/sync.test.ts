@@ -512,7 +512,7 @@ describe('one-click restore on new environment', () => {
 // ── Delete propagation tests ────────────────────────────────────────
 
 describe('delete propagation', () => {
-  it('skill deleted from all agents → pruned from repo on push', async () => {
+  it('skill deleted from all agents → detected as pending deletion (non-TTY defers)', async () => {
     // Push a skill to repo first
     writeFile(path.join(WS_CL, 'skills', 'obsolete.md'), '# 过时的 skill');
     writeFile(path.join(WS_OC, 'MEMORY.md'), '# M');
@@ -534,18 +534,24 @@ describe('delete propagation', () => {
     if (fs.existsSync(ocSkill)) fs.unlinkSync(ocSkill);
     if (fs.existsSync(cbSkill)) fs.unlinkSync(cbSkill);
 
-    // Push again
+    // Push again — in non-TTY, deletions are deferred, not immediate
     const result = await syncEngine.stageToRepo(cfg);
 
-    // Repo should be cleaned
+    // File still exists in repo (deferred deletion)
+    const pending = syncEngine.loadPendingDeletions();
+    const skillRel = path.join('shared', 'skills', 'obsolete.md');
     assert.ok(
-      !fs.existsSync(path.join(REPO, 'shared', 'skills', 'obsolete.md')),
-      'skill deleted from all agents should be pruned from repo',
+      pending.includes(skillRel) || result.deleted.includes(skillRel),
+      'skill should be in pending deletions or deleted list',
     );
-    assert.ok(result.deleted.includes(path.join('shared', 'skills', 'obsolete.md')));
+
+    // Simulate user confirmation: manually delete
+    syncEngine.deleteStaleFiles(REPO, [skillRel]);
+    syncEngine.clearPendingDeletions();
+    assert.ok(!fs.existsSync(path.join(REPO, 'shared', 'skills', 'obsolete.md')));
   });
 
-  it('whole file in repo but absent from all local agents → pruned on push', async () => {
+  it('whole file in repo but absent from all local agents → detected as stale', async () => {
     // Manually create a ghost file in repo (simulating old version leftovers)
     writeFile(path.join(REPO, 'agents', 'openclaw', 'GHOST.md'), '幽灵');
 
@@ -559,11 +565,17 @@ describe('delete propagation', () => {
     const cfg = mkCfg();
     const result = await syncEngine.stageToRepo(cfg);
 
+    const ghostRel = path.join('agents', 'openclaw', 'GHOST.md');
+    const pending = syncEngine.loadPendingDeletions();
     assert.ok(
-      !fs.existsSync(path.join(REPO, 'agents', 'openclaw', 'GHOST.md')),
-      'ghost file in repo should be pruned',
+      pending.includes(ghostRel) || result.deleted.includes(ghostRel),
+      'ghost file should be in pending deletions or deleted list',
     );
-    assert.ok(result.deleted.includes(path.join('agents', 'openclaw', 'GHOST.md')));
+
+    // Simulate user confirmation
+    syncEngine.deleteStaleFiles(REPO, [ghostRel]);
+    syncEngine.clearPendingDeletions();
+    assert.ok(!fs.existsSync(path.join(REPO, 'agents', 'openclaw', 'GHOST.md')));
   });
 
   it('deleted skill from repo is not redistributed on pull', async () => {
@@ -579,12 +591,17 @@ describe('delete propagation', () => {
     const cfg = mkCfg();
     await syncEngine.stageToRepo(cfg);
 
-    // Delete from all agents and push (triggers repo cleanup)
+    // Delete from all agents and push (in non-TTY, deletion is deferred)
     for (const d of [WS_CL, WS_OC, WS_CB]) {
       const f = path.join(d, 'skills', 'temp.md');
       if (fs.existsSync(f)) fs.unlinkSync(f);
     }
     await syncEngine.stageToRepo(cfg);
+
+    // Simulate user confirming deletion
+    const tempRel = path.join('shared', 'skills', 'temp.md');
+    syncEngine.deleteStaleFiles(REPO, [tempRel]);
+    syncEngine.clearPendingDeletions();
     assert.ok(!fs.existsSync(path.join(REPO, 'shared', 'skills', 'temp.md')));
 
     // Pull — temp.md should not appear in any agent

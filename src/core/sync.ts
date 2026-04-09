@@ -483,12 +483,12 @@ function distributeShared(cfg: WangchuanConfig): void {
 }
 
 /**
- * Prune stale files from repo — delete entries present in repo but absent from current entries.
- * Only prunes files under agents/ and shared/ directories (does not touch .git etc.).
+ * Detect stale files in repo (present in repo but absent from current entries).
+ * Returns the list of stale repoRel paths WITHOUT deleting them.
  */
-function pruneRepoStaleFiles(repoPath: string, entries: FileEntry[]): string[] {
+function detectStaleFiles(repoPath: string, entries: FileEntry[]): string[] {
   const activeRepoRels = new Set(entries.map(e => e.repoRel));
-  const deleted: string[] = [];
+  const stale: string[] = [];
 
   for (const topDir of ['agents', 'shared']) {
     const scanRoot = path.join(repoPath, topDir);
@@ -498,26 +498,60 @@ function pruneRepoStaleFiles(repoPath: string, entries: FileEntry[]): string[] {
       if (path.basename(relFile).startsWith('.')) continue;
       const repoRel = path.join(topDir, relFile);
       if (!activeRepoRels.has(repoRel)) {
-        const abs = path.join(repoPath, repoRel);
-        fs.unlinkSync(abs);
-        deleted.push(repoRel);
-        logger.debug(`  ${t('sync.pruneStale', { file: repoRel })}`);
-
-        // Clean up empty directories
-        let dir = path.dirname(abs);
-        while (dir !== scanRoot && dir.startsWith(scanRoot)) {
-          const remaining = fs.readdirSync(dir);
-          if (remaining.length === 0) {
-            fs.rmdirSync(dir);
-            dir = path.dirname(dir);
-          } else {
-            break;
-          }
-        }
+        stale.push(repoRel);
       }
     }
   }
-  return deleted;
+  return stale;
+}
+
+/**
+ * Actually delete stale files from repo (after user confirmation).
+ */
+export function deleteStaleFiles(repoPath: string, staleFiles: string[]): void {
+  for (const repoRel of staleFiles) {
+    const abs = path.join(repoPath, repoRel);
+    if (!fs.existsSync(abs)) continue;
+    fs.unlinkSync(abs);
+    logger.debug(`  ${t('sync.pruneStale', { file: repoRel })}`);
+
+    // Clean up empty directories
+    const topDir = repoRel.split(path.sep)[0]!;
+    const scanRoot = path.join(repoPath, topDir);
+    let dir = path.dirname(abs);
+    while (dir !== scanRoot && dir.startsWith(scanRoot)) {
+      const remaining = fs.readdirSync(dir);
+      if (remaining.length === 0) {
+        fs.rmdirSync(dir);
+        dir = path.dirname(dir);
+      } else {
+        break;
+      }
+    }
+  }
+}
+
+const PENDING_DELETIONS_PATH = path.join(os.homedir(), '.wangchuan', 'pending-deletions.json');
+
+/** Save pending deletions for later user confirmation */
+function savePendingDeletions(files: string[]): void {
+  const existing = loadPendingDeletions();
+  const merged = [...new Set([...existing, ...files])];
+  fs.mkdirSync(path.dirname(PENDING_DELETIONS_PATH), { recursive: true });
+  fs.writeFileSync(PENDING_DELETIONS_PATH, JSON.stringify(merged, null, 2), 'utf-8');
+}
+
+/** Load pending deletions */
+export function loadPendingDeletions(): string[] {
+  try {
+    if (!fs.existsSync(PENDING_DELETIONS_PATH)) return [];
+    return JSON.parse(fs.readFileSync(PENDING_DELETIONS_PATH, 'utf-8')) as string[];
+  } catch { return []; }
+}
+
+/** Clear pending deletions after confirmation */
+export function clearPendingDeletions(): void {
+  try { if (fs.existsSync(PENDING_DELETIONS_PATH)) fs.unlinkSync(PENDING_DELETIONS_PATH); } catch { /* */ }
 }
 
 /** Sync metadata stored in repo root */
@@ -707,6 +741,9 @@ export const syncEngine = {
   expandHome,
   buildFileEntries,
   readSyncMeta,
+  loadPendingDeletions,
+  clearPendingDeletions,
+  deleteStaleFiles,
 
   /**
    * Push: distribute shared content to all agents, then collect files to repo.
@@ -794,12 +831,36 @@ export const syncEngine = {
       (result.synced as string[]).push(entry.repoRel);
     }
 
-    // ── Prune stale files from repo (full push only) ──────────────
-    // Only prune using entries actually written to repo, excluding skipped entries with missing local files
+    // ── Detect stale files in repo (full push only) ───────────────
+    // Only compare against entries actually written to repo, excluding skipped entries with missing local files
     if (!agent) {
       const syncedEntries = entries.filter(e => fs.existsSync(e.srcAbs));
-      const pruned = pruneRepoStaleFiles(repoPath, syncedEntries);
-      (result.deleted as string[]).push(...pruned);
+      const stale = detectStaleFiles(repoPath, syncedEntries);
+      if (stale.length > 0) {
+        const isTTY = process.stdin.isTTY === true;
+        if (isTTY) {
+          // Interactive mode: ask user for confirmation before deleting
+          logger.warn(t('sync.pendingDeletions', { count: stale.length }));
+          for (const f of stale) logger.warn(`  ${t('sync.pruneCandidate', { file: f })}`);
+
+          const rl = await import('readline');
+          const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
+          const answer = await new Promise<string>(resolve => {
+            iface.question(t('sync.confirmDelete'), (ans: string) => { iface.close(); resolve(ans.trim().toLowerCase()); });
+          });
+
+          if (answer === 'y' || answer === 'yes' || answer === '') {
+            deleteStaleFiles(repoPath, stale);
+            (result.deleted as string[]).push(...stale);
+          } else {
+            logger.info(t('sync.deletionSkipped'));
+          }
+        } else {
+          // Non-interactive mode (watch daemon): save to pending file for later confirmation
+          savePendingDeletions(stale);
+          logger.info(t('sync.deletionDeferred', { count: stale.length }));
+        }
+      }
     }
 
     // Write sync metadata to repo root

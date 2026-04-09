@@ -93,6 +93,31 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
 
   const filter = (only?.length || exclude?.length) ? { only, exclude } : undefined;
 
+  // ── Check for pending deletions from previous non-interactive sync ──
+  if (process.stdin.isTTY) {
+    const { loadPendingDeletions, clearPendingDeletions } = await import('../core/sync.js');
+    const pending = loadPendingDeletions();
+    if (pending.length > 0) {
+      logger.warn(t('sync.pendingDeletions', { count: pending.length }));
+      for (const f of pending) logger.warn(`  ${t('sync.pruneCandidate', { file: f })}`);
+
+      const rl = await import('readline');
+      const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
+      const answer = await new Promise<string>(resolve => {
+        iface.question(t('sync.confirmDelete'), (ans: string) => { iface.close(); resolve(ans.trim().toLowerCase()); });
+      });
+
+      if (answer === 'y' || answer === 'yes' || answer === '') {
+        const { deleteStaleFiles } = await import('../core/sync.js');
+        deleteStaleFiles(repoPath, pending);
+        logger.ok(t('sync.deletionConfirmed', { count: pending.length }));
+      } else {
+        logger.info(t('sync.deletionSkipped'));
+      }
+      clearPendingDeletions();
+    }
+  }
+
   // ── Auto-snapshot before sync (silent safety net) ────────────
   autoSnapshot(repoPath);
 
