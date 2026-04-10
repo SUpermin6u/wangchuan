@@ -11,7 +11,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from '../utils/logger.js';
 import { t }      from '../i18n.js';
-import { buildDefaultProfiles, buildDefaultShared } from '../agents/index.js';
+import { buildDefaultProfiles, buildDefaultShared, autoDetectAgents } from '../agents/index.js';
 import type { WangchuanConfig } from '../types.js';
 
 const WANGCHUAN_DIR = path.join(os.homedir(), '.wangchuan');
@@ -76,6 +76,8 @@ export const config = {
   async initialize(repo: string): Promise<WangchuanConfig> {
     fs.mkdirSync(WANGCHUAN_DIR, { recursive: true });
     const branch = await this.detectDefaultBranch(repo);
+    // Auto-detect installed agents instead of enabling all by default
+    const detectedProfiles = autoDetectAgents(DEFAULT_PROFILES);
     const cfg: WangchuanConfig = {
       repo,
       branch,
@@ -83,7 +85,7 @@ export const config = {
       keyPath:       KEY_PATH,
       hostname:      os.hostname(),
       version:       CONFIG_VERSION,
-      profiles:      { default: DEFAULT_PROFILES },
+      profiles:      { default: detectedProfiles },
       shared:        DEFAULT_SHARED,
     };
     this.save(cfg);

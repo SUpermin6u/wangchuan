@@ -15,7 +15,9 @@ import { gitEngine }    from '../core/git.js';
 import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
 import { t }            from '../i18n.js';
-import type { InitOptions, WangchuanConfig } from '../types.js';
+import { AGENT_NAMES }  from '../types.js';
+import type { InitOptions, WangchuanConfig, AgentName } from '../types.js';
+import { autoDetectAgents } from '../agents/index.js';
 import ora from 'ora';
 import fs   from 'fs';
 import path from 'path';
@@ -89,13 +91,32 @@ export async function cmdInit({ repo: repoArg, force = false, key }: InitOptions
   const cfg = await config.initialize(repo);
   spinner.succeed(t('init.configSaved', { path: config.paths.config }));
 
+  // Report auto-detected agents
+  const detectedAgents = AGENT_NAMES.filter(
+    name => cfg.profiles.default[name as keyof typeof cfg.profiles.default].enabled,
+  );
+  if (detectedAgents.length > 0) {
+    logger.ok(t('init.detectedAgents', { agents: detectedAgents.join(', ') }));
+  } else {
+    logger.warn(t('init.noAgentsDetected'));
+  }
+
   await ensureKey(cfg, key);
   await cloneRepo(repo, cfg.localRepoPath, cfg.branch);
 
-  logger.ok('\n' + t('init.complete'));
-  logger.step(t('init.nextPull'));
-  logger.step(t('init.nextPush'));
+  // ── Auto first sync ────────────────────────────────────────────
+  if (detectedAgents.length > 0) {
+    logger.info(t('init.autoSync'));
+    try {
+      const { cmdSync } = await import('./sync.js');
+      await cmdSync();
+      logger.ok(t('init.autoSyncDone'));
+    } catch (err) {
+      logger.warn(t('init.autoSyncFailed', { error: (err as Error).message }));
+    }
+  }
 
+  logger.ok('\n' + t('init.complete'));
   return cfg;
 }
 

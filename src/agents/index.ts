@@ -10,8 +10,11 @@
  * the imports below — no changes needed in types.ts or config.ts.
  */
 
+import fs   from 'fs';
+import os   from 'os';
+import path from 'path';
 import type { AgentDefinition } from './types.js';
-import type { AgentProfiles, SharedConfig } from '../types.js';
+import type { AgentProfiles, AgentProfile, SharedConfig } from '../types.js';
 
 import { openclaw }  from './openclaw.js';
 import { claude }    from './claude.js';
@@ -45,6 +48,26 @@ export function buildDefaultProfiles(): AgentProfiles {
     profiles[def.name] = def.profile;
   }
   return profiles as unknown as AgentProfiles;
+}
+
+/**
+ * Auto-detect which agents are installed by checking workspace directory existence.
+ * Returns a new AgentProfiles with only detected agents enabled.
+ */
+export function autoDetectAgents(profiles: AgentProfiles): AgentProfiles {
+  const result: Record<string, unknown> = {};
+  for (const def of AGENT_DEFINITIONS) {
+    const profile = profiles[def.name as keyof AgentProfiles];
+    const wsPath = profile.workspacePath.startsWith('~')
+      ? path.join(os.homedir(), profile.workspacePath.slice(1))
+      : profile.workspacePath;
+    let detected = false;
+    try {
+      detected = fs.statSync(wsPath).isDirectory();
+    } catch { /* does not exist */ }
+    result[def.name] = { ...profile, enabled: detected } as AgentProfile;
+  }
+  return result as unknown as AgentProfiles;
 }
 
 /** Build SharedConfig from definitions */

@@ -2,27 +2,31 @@
 /**
  * wangchuan.ts — CLI entry
  *
- * Simplified CLI surface: 6 user-facing commands.
+ * Simplified CLI surface: 9 user-facing commands.
  * Philosophy: "foolproof AI memory sync" — minimize cognitive load.
  *
  * Commands:
- *   init   — One-time setup (interactive if no --repo)
- *   sync   — Smart bidirectional sync (the ONE daily command)
- *   status — Show sync state at a glance (--verbose for full detail)
- *   doctor — Diagnose + auto-fix issues (always runs --fix)
- *   env    — Multi-environment management
- *   lang   — Switch display language
+ *   init     — One-time setup (interactive if no --repo)
+ *   sync     — Smart bidirectional sync (the ONE daily command)
+ *   status   — Show sync state at a glance (--verbose for full detail)
+ *   doctor   — Diagnose + auto-fix issues (always runs --fix)
+ *   env      — Multi-environment management
+ *   watch    — Background daemon for continuous sync
+ *   memory   — Browse/copy memories across agents
+ *   snapshot — Manage sync snapshots (save/list/restore/delete)
+ *   lang     — Switch display language
  */
 
 import { Command } from 'commander';
-import { cmdInit }   from '../src/commands/init.js';
-import { cmdStatus } from '../src/commands/status.js';
-import { cmdSync }   from '../src/commands/sync.js';
-import { cmdEnv }    from '../src/commands/env.js';
-import { cmdDoctor } from '../src/commands/doctor.js';
-import { cmdLang }   from '../src/commands/lang.js';
-import { cmdWatch }  from '../src/commands/watch.js';
-import { cmdMemory } from '../src/commands/memory.js';
+import { cmdInit }     from '../src/commands/init.js';
+import { cmdStatus }   from '../src/commands/status.js';
+import { cmdSync }     from '../src/commands/sync.js';
+import { cmdEnv }      from '../src/commands/env.js';
+import { cmdDoctor }   from '../src/commands/doctor.js';
+import { cmdLang }     from '../src/commands/lang.js';
+import { cmdWatch }    from '../src/commands/watch.js';
+import { cmdMemory }   from '../src/commands/memory.js';
+import { cmdSnapshot } from '../src/commands/snapshot.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
@@ -40,7 +44,7 @@ const program = new Command();
 program
   .name('wangchuan')
   .description(t('cli.description'))
-  .version('5.0.0');
+  .version('5.1.0');
 
 // ── init ────────────────────────────────────────────────────────
 program
@@ -60,7 +64,9 @@ program
   .description(t('cli.cmd.sync'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
-  .action(async (opts: { agent?: AgentName; dryRun?: boolean }) => {
+  .option('-o, --only <patterns...>', t('cli.cmd.sync.only'))
+  .option('-x, --exclude <patterns...>', t('cli.cmd.sync.exclude'))
+  .action(async (opts: { agent?: AgentName; dryRun?: boolean; only?: string[]; exclude?: string[] }) => {
     await run(() => cmdSync(opts));
   });
 
@@ -113,6 +119,15 @@ program
   .option('--file <pattern>', t('cli.cmd.memory.file'))
   .action(async (action: string, args: string[], opts: { agent?: AgentName; file?: string }) => {
     await run(() => cmdMemory({ action, args, agent: opts.agent, file: opts.file }));
+  });
+
+// ── snapshot ──────────────────────────────────────────────────
+program
+  .command('snapshot <action> [name]')
+  .alias('snap')
+  .description(t('cli.cmd.snapshot'))
+  .action(async (action: string, name?: string) => {
+    await run(() => cmdSnapshot({ action, name }));
   });
 
 // ── lang ────────────────────────────────────────────────────────

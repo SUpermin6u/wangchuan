@@ -96,6 +96,11 @@ const M: Msgs = {
   'init.cloneFailed':     ['Clone failed', '克隆仓库失败'],
   'init.gitFailed':       ['Git operation failed: {error}', 'Git 操作失败: {error}'],
   'init.complete':        ['Wangchuan initialized!', '忘川初始化完成！'],
+  'init.detectedAgents':  ['Auto-detected agents: {agents}', '自动检测到的 Agent: {agents}'],
+  'init.noAgentsDetected': ['No agents detected — enable agents manually via config.json', '未检测到已安装的 Agent，请手动在 config.json 中启用'],
+  'init.autoSync':        ['Running first sync...', '正在执行首次同步...'],
+  'init.autoSyncDone':    ['First sync completed', '首次同步完成'],
+  'init.autoSyncFailed':  ['First sync failed (you can retry with wangchuan sync): {error}', '首次同步失败（可稍后执行 wangchuan sync 重试）: {error}'],
   'init.nextPull':        ['Next: wangchuan sync  (sync memories across environments)', '下一步: wangchuan sync  (同步记忆到各环境)'],
   'init.nextPush':        ['              wangchuan status  (check sync state)', '              wangchuan status  (查看同步状态)'],
 
@@ -320,6 +325,8 @@ const M: Msgs = {
   'dryRun.wouldCommit':   ['Would commit and push to {repo}', '将提交并推送到 {repo}'],
   'dryRun.nothingToSync': ['Nothing to sync', '没有需要同步的内容'],
   'cli.cmd.dryRun':       ['Preview changes without committing or pushing', '预览变更，不实际提交或推送'],
+  'cli.cmd.sync.only':    ['Only sync files matching these patterns', '仅同步匹配指定模式的文件'],
+  'cli.cmd.sync.exclude': ['Exclude files matching these patterns', '排除匹配指定模式的文件'],
 
   // ── agent command ──────────────────────────────────────────
   'cli.cmd.agent.desc':      ['Manage agents (list|enable|disable|set-path|info)', '管理智能体 (list|enable|disable|set-path|info)'],
