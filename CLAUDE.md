@@ -39,7 +39,7 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Core Engines (`src/core/`)
 
-- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven agents + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP/custom agents to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations.
+- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven agents + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP/custom agents to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push (skipped when `--only`/`--exclude` filter is active to prevent data loss). `stageToRepo` compares plaintext before re-encrypting to eliminate spurious diffs from random IV. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations.
 - **json-field.ts** — JSON field-level extraction and merge. `extractFields` picks specified fields from a large JSON; `mergeFields` merges fields back without destroying other content. Used for `.claude.json` to sync only `mcpServers` while ignoring tipsHistory/projects etc.
 - **crypto.ts** — AES-256-GCM encryption. Ciphertext format: `[IV 12B][AuthTag 16B][CipherText] → Base64 → .enc`. Key stored at `~/.wangchuan/master.key` (0o600 permissions).
 - **git.ts** — simple-git wrapper. `cloneOrFetch` is idempotent; `commitAndPush` returns `{committed: false}` when nothing changed; `rollback` runs `git reset --soft HEAD~1` on failure.
@@ -48,17 +48,18 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Commands (`src/commands/`)
 
-Eight user-facing commands: `init`, `sync`, `status`, `watch`, `doctor`, `memory`, `env`, `lang`.
+Nine user-facing commands: `init`, `sync`, `status`, `watch`, `doctor`, `memory`, `env`, `snapshot`, `lang`.
 
 | Command | Aliases | Purpose | Key flags |
 |---------|---------|---------|-----------|
-| `init` | — | One-time setup (interactive if no --repo) | `--repo`, `--key`, `--force` |
-| `sync` | `s` | Smart bidirectional sync (THE daily command) | `-a, --agent`, `-n, --dry-run` |
+| `init` | — | One-time setup: auto-detects installed agents, runs first sync | `--repo`, `--key`, `--force` |
+| `sync` | `s` | Smart bidirectional sync (THE daily command) | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
 | `watch` | — | Background daemon for continuous sync | `-i, --interval <min>` |
 | `doctor` | — | Diagnose + auto-fix all issues | `--key-rotate`, `--key-export`, `--setup` |
 | `memory` | — | Browse/copy memories between agents | `list\|show\|copy\|broadcast` |
 | `env` | — | Multi-environment management | `list\|create\|switch\|current\|delete` |
+| `snapshot` | `snap` | Manage sync snapshots | `save\|list\|restore\|delete` |
 | `lang` | — | Switch display language | `zh\|en` |
 
 Many internal modules still exist (push.ts, pull.ts, diff.ts, health.ts, etc.) and are called internally by the user-facing commands — they are NOT registered as CLI commands.

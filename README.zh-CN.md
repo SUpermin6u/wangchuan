@@ -17,13 +17,10 @@
 ```bash
 npm install -g wangchuan
 
-# 1. 初始化（交互式向导）
+# 1. 初始化 — 自动检测已安装的智能体并执行首次同步
 wangchuan init
 
-# 2. 同步全部
-wangchuan sync
-
-# 3. 启动后台守护进程
+# 2. 启动后台守护进程（可选）
 wangchuan watch
 ```
 
@@ -31,7 +28,6 @@ wangchuan watch
 
 ```bash
 wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
-wangchuan sync
 ```
 
 ---
@@ -40,13 +36,14 @@ wangchuan sync
 
 | 命令 | 别名 | 描述 | 主要参数 |
 |------|------|------|----------|
-| `init` | — | 首次初始化（无 `--repo` 时进入交互向导） | `--repo`、`--key`、`--force` |
-| `sync` | `s` | 智能双向同步 — 日常唯一命令 | `-a, --agent`、`-n, --dry-run` |
+| `init` | — | 首次初始化 — 自动检测智能体并执行首次同步 | `--repo`、`--key`、`--force` |
+| `sync` | `s` | 智能双向同步 — 日常唯一命令 | `-a, --agent`、`-n, --dry-run`、`-o, --only`、`-x, --exclude` |
 | `status` | `st` | 一屏总览 + 健康评分 | `-v, --verbose` |
 | `watch` | — | 后台守护进程，持续自动同步 | `-i, --interval <分钟>` |
 | `doctor` | — | 诊断 + 自动修复所有问题 | `--key-export`、`--key-rotate`、`--setup` |
 | `memory` | — | 浏览/复制智能体记忆 | `list`、`show`、`copy`、`broadcast` |
 | `env` | — | 多环境管理 | `list`、`create`、`switch`、`current`、`delete` |
+| `snapshot` | `snap` | 管理同步快照 | `save`、`list`、`restore`、`delete` |
 | `lang` | — | 切换显示语言 | `zh`、`en` |
 
 ---
@@ -80,6 +77,18 @@ wangchuan sync
 - `agents/` 目录中的自定义子智能体通过 `shared/agents/` 在 Claude/Cursor/CodeBuddy/WorkBuddy 间同步
 - 删除传播 — 所有智能体都删除后自动从仓库清理
 - 已有条目不会被覆盖
+
+### 快照回滚
+- `wangchuan snapshot save [name]` — 在危险操作前保存命名快照
+- `wangchuan snapshot list` — 查看所有已保存的快照
+- `wangchuan snapshot restore <name>` — 回滚到指定快照
+- `wangchuan snapshot delete <name>` — 删除快照
+
+### 快照回滚
+- `wangchuan snapshot save [name]` — 在危险操作前保存命名快照
+- `wangchuan snapshot list` — 查看所有已保存的快照
+- `wangchuan snapshot restore <name>` — 回滚到指定快照
+- `wangchuan snapshot delete <name>` — 删除快照
 
 ### 多环境管理
 - 创建隔离环境：`wangchuan env create work`

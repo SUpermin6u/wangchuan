@@ -177,7 +177,7 @@ wangchuan lang en
 
 ## 后续规划（Phase 2）/ Roadmap (Phase 2)
 
-- 版本历史管理（配置回滚到指定时间点）/ Version history (rollback to specific point in time)
-- 多环境 Profile 切换（dev/staging/prod 不同配置集）/ Multi-environment profiles (dev/staging/prod)
-- 定时自动同步（cron / watch 模式）/ Scheduled auto-sync (cron / watch mode)
+- ~~版本历史管理（配置回滚到指定时间点）~~ ✅ Implemented as `wangchuan snapshot` (save/list/restore/delete)
+- ~~多环境 Profile 切换（dev/staging/prod 不同配置集）~~ ✅ Implemented as `wangchuan env`
+- ~~定时自动同步（cron / watch 模式）~~ ✅ Implemented as `wangchuan watch`
 - Web UI 管理界面 / Web UI management interface

@@ -17,13 +17,10 @@ Wangchuan encrypts and syncs your AI agent configurations, memories, and skills 
 ```bash
 npm install -g wangchuan
 
-# 1. Initialize (interactive wizard)
+# 1. Initialize — auto-detects installed agents and runs first sync
 wangchuan init
 
-# 2. Sync everything
-wangchuan sync
-
-# 3. Start background daemon
+# 2. Start background daemon (optional)
 wangchuan watch
 ```
 
@@ -31,7 +28,6 @@ On a new machine:
 
 ```bash
 wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
-wangchuan sync
 ```
 
 ---
@@ -40,13 +36,14 @@ wangchuan sync
 
 | Command | Aliases | Description | Key Flags |
 |---------|---------|-------------|-----------|
-| `init` | — | One-time setup (interactive if no `--repo`) | `--repo`, `--key`, `--force` |
-| `sync` | `s` | Smart bidirectional sync — THE daily command | `-a, --agent`, `-n, --dry-run` |
+| `init` | — | One-time setup — auto-detects agents, runs first sync | `--repo`, `--key`, `--force` |
+| `sync` | `s` | Smart bidirectional sync — THE daily command | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
 | `watch` | — | Background daemon for continuous sync | `-i, --interval <min>` |
 | `doctor` | — | Diagnose + auto-fix everything | `--key-export`, `--key-rotate`, `--setup` |
 | `memory` | — | Browse/copy memories between agents | `list`, `show`, `copy`, `broadcast` |
 | `env` | — | Multi-environment management | `list`, `create`, `switch`, `current`, `delete` |
+| `snapshot` | `snap` | Manage sync snapshots | `save`, `list`, `restore`, `delete` |
 | `lang` | — | Switch display language | `zh`, `en` |
 
 ---
@@ -80,6 +77,18 @@ Agent paths are customizable in `~/.wangchuan/config.json`.
 - Custom agents in `agents/` directories synced across Claude/Cursor/CodeBuddy/WorkBuddy via `shared/agents/`
 - Delete propagation — removed from all agents → pruned from repo
 - Existing entries preserved (no overwrite)
+
+### Snapshot Rollback
+- `wangchuan snapshot save [name]` — save a named snapshot before risky changes
+- `wangchuan snapshot list` — view all saved snapshots
+- `wangchuan snapshot restore <name>` — roll back to a previous snapshot
+- `wangchuan snapshot delete <name>` — remove a snapshot
+
+### Snapshot Rollback
+- `wangchuan snapshot save [name]` — save a named snapshot before risky changes
+- `wangchuan snapshot list` — view all saved snapshots
+- `wangchuan snapshot restore <name>` — roll back to a previous snapshot
+- `wangchuan snapshot delete <name>` — remove a snapshot
 
 ### Multi-Environment
 - Create isolated environments: `wangchuan env create work`

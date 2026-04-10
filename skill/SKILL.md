@@ -7,17 +7,20 @@ OpenClaw Skill wrapper for the Wangchuan AI memory sync system. Invoke directly 
 ## Command Reference
 
 ```
-wangchuan init     [--repo <url>] [--key <path>]           One-time setup (interactive if no --repo)
+wangchuan init     [--repo <url>] [--key <path>]           One-time setup — auto-detects agents, runs first sync
 wangchuan sync     [-a, --agent <name>] [-n, --dry-run]    Smart bidirectional sync (THE daily command)
+                   [-o, --only <patterns...>]              Filter: only sync files matching patterns
+                   [-x, --exclude <patterns...>]           Filter: exclude files matching patterns
 wangchuan status   [-v, --verbose]                         One-screen summary + health score
 wangchuan watch    [-i, --interval <min>]                  Background daemon for continuous sync
 wangchuan doctor   [--key-export|--key-rotate|--setup]     Diagnose + auto-fix everything
 wangchuan memory   list|show|copy|broadcast                Browse/copy memories between agents
 wangchuan env      list|create|switch|current|delete       Multi-environment management
+wangchuan snapshot save|list|restore|delete [name]         Manage sync snapshots
 wangchuan lang     [zh|en]                                 Switch CLI display language
 ```
 
-Aliases: `sync` → `s`, `status` → `st`
+Aliases: `sync` → `s`, `status` → `st`, `snapshot` → `snap`
 
 ## Invocation Examples
 
@@ -47,6 +50,10 @@ Aliases: `sync` → `s`, `status` → `st`
 
 > Broadcast a memory to all agents
 
+> Save a snapshot before making changes
+
+> Restore the last snapshot
+
 > Switch to English output
 
 ## Output Guide
@@ -67,6 +74,13 @@ Aliases: `sync` → `s`, `status` → `st`
 - Auto-creates safety snapshot before syncing
 - Pulls remote changes if any, then pushes local changes
 - Shows compact summary with files synced count
+- `--only` / `--exclude` for fine-grained file filtering (stale detection auto-skipped when filters active)
+
+### snapshot
+- `save [name]` — save a named snapshot (auto-named if omitted)
+- `list` — show all saved snapshots with timestamps
+- `restore <name>` — roll back to a previous snapshot
+- `delete <name>` — remove a snapshot
 
 ### watch
 - Runs as a background daemon with configurable interval
