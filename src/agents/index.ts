@@ -15,6 +15,7 @@ import os   from 'os';
 import path from 'path';
 import type { AgentDefinition } from './types.js';
 import type { AgentProfiles, AgentProfile, SharedConfig } from '../types.js';
+import { AGENT_NAMES } from '../types.js';
 
 import { openclaw }  from './openclaw.js';
 import { claude }    from './claude.js';
@@ -40,6 +41,17 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
 
 /** Derive AGENT_NAMES tuple from definitions (keeps type safety) */
 export const AGENT_NAMES_FROM_DEFS = AGENT_DEFINITIONS.map(d => d.name);
+
+// Runtime guard: AGENT_DEFINITIONS must match AGENT_NAMES in types.ts.
+// If you add/remove an agent, update BOTH AGENT_DEFINITIONS here AND AGENT_NAMES in types.ts.
+if (AGENT_NAMES.length !== AGENT_NAMES_FROM_DEFS.length ||
+    !AGENT_NAMES.every((n, i) => n === AGENT_NAMES_FROM_DEFS[i])) {
+  throw new Error(
+    `AGENT_NAMES is out of sync with AGENT_DEFINITIONS.\n` +
+    `  types.ts: [${[...AGENT_NAMES].join(', ')}]\n` +
+    `  agents/index.ts: [${AGENT_NAMES_FROM_DEFS.join(', ')}]`,
+  );
+}
 
 /** Build AgentProfiles from definitions */
 export function buildDefaultProfiles(): AgentProfiles {

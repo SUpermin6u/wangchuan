@@ -68,7 +68,24 @@ export const syncLock = {
       pid: process.pid,
     };
     fs.mkdirSync(WANGCHUAN_DIR, { recursive: true });
-    fs.writeFileSync(LOCK_PATH, JSON.stringify(lock, null, 2), 'utf-8');
+    try {
+      // Atomic exclusive create — prevents race condition between concurrent processes
+      fs.writeFileSync(LOCK_PATH, JSON.stringify(lock, null, 2), { encoding: 'utf-8', flag: 'wx' });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
+        // Another process acquired the lock between our read and write
+        const raceWinner = readLock();
+        if (raceWinner && isPidAlive(raceWinner.pid)) {
+          throw new Error(t('syncLock.anotherRunning', { pid: raceWinner.pid }));
+        }
+        // Stale — clean up and retry once
+        await this.cleanDirtyState(repoPath);
+        fs.unlinkSync(LOCK_PATH);
+        fs.writeFileSync(LOCK_PATH, JSON.stringify(lock, null, 2), { encoding: 'utf-8', flag: 'wx' });
+      } else {
+        throw err;
+      }
+    }
     logger.trace(t('syncLock.acquired'));
   },
 

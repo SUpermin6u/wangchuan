@@ -19,23 +19,9 @@ import path from 'path';
 import { config, CONFIG_VERSION } from './config.js';
 import { expandHome } from './sync.js';
 import { logger } from '../utils/logger.js';
+import { copyDirSync } from '../utils/fs.js';
 import { t }      from '../i18n.js';
 import type { WangchuanConfig } from '../types.js';
-
-/** Recursively copy directory */
-function copyDirRecursive(src: string, dest: string): void {
-  if (!fs.existsSync(src)) return;
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath  = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDirRecursive(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
 
 /** Recursively remove directory */
 function rmDirRecursive(dir: string): void {
@@ -66,7 +52,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
     logger.warn(t('migrate.incomplete'));
     if (fs.existsSync(backupDir)) {
       rmDirRecursive(repoPath);
-      copyDirRecursive(backupDir, repoPath);
+      copyDirSync(backupDir, repoPath);
       fs.unlinkSync(lockFile);
       logger.ok(t('migrate.rolledBack'));
     } else {
@@ -77,7 +63,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
   // ── 1. Full backup ──────────────────────────────────────────────
   if (!fs.existsSync(backupDir)) {
     logger.info(t('migrate.backingUp'));
-    copyDirRecursive(repoPath, backupDir);
+    copyDirSync(repoPath, backupDir);
   }
 
   // ── Write migration lock ────────────────────────────────────────
@@ -101,7 +87,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
     if (!fs.existsSync(sharedSkills)) {
       const ocSkills = path.join(repoPath, 'agents', 'openclaw', 'skills');
       if (fs.existsSync(ocSkills)) {
-        copyDirRecursive(ocSkills, sharedSkills);
+        copyDirSync(ocSkills, sharedSkills);
         logger.debug('  openclaw/skills → shared/skills/');
       }
     }
@@ -143,7 +129,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
     logger.info(t('migrate.rollingBack'));
     try {
       rmDirRecursive(repoPath);
-      copyDirRecursive(backupDir, repoPath);
+      copyDirSync(backupDir, repoPath);
       if (fs.existsSync(lockFile)) fs.unlinkSync(lockFile);
       logger.ok(t('migrate.rolledBackOk'));
     } catch (rollbackErr) {

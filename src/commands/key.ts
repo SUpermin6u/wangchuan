@@ -13,6 +13,7 @@ import { resolveGitBranch } from '../core/config.js';
 import { syncEngine }      from '../core/sync.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
+import { walkDir }         from '../utils/fs.js';
 import { t }               from '../i18n.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import ora from 'ora';
@@ -20,22 +21,6 @@ import ora from 'ora';
 export interface KeyOptions {
   readonly action: string;
   readonly hex?: string | undefined;
-}
-
-/** Walk a directory recursively and return all file paths relative to root */
-function walkDir(dirAbs: string): string[] {
-  const results: string[] = [];
-  if (!fs.existsSync(dirAbs)) return results;
-  function walk(subPath: string): void {
-    const full = path.join(dirAbs, subPath);
-    if (fs.statSync(full).isDirectory()) {
-      fs.readdirSync(full).forEach(f => walk(path.join(subPath, f)));
-    } else {
-      results.push(subPath);
-    }
-  }
-  fs.readdirSync(dirAbs).forEach(f => walk(f));
-  return results;
 }
 
 /** Find all .enc files in the repo (agents/ and shared/ directories) */

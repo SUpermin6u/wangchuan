@@ -21,6 +21,7 @@ import { cryptoEngine } from './crypto.js';
 import { jsonField }    from './json-field.js';
 import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
+import { walkDir as walkDirBase } from '../utils/fs.js';
 import { askConflict }  from '../utils/prompt.js';
 import { threeWayMerge } from './merge.js';
 import { gitEngine }    from './git.js';
@@ -34,6 +35,7 @@ import type {
   DiffResult,
   AgentName,
   AgentProfile,
+  CustomAgentProfile,
   FilterOptions,
   PendingDistribution,
 } from '../types.js';
@@ -130,21 +132,13 @@ function globMatch(str: string, pattern: string): boolean {
   return new RegExp(regex).test(str);
 }
 
+/** Walk directory with .wangchuanignore filtering */
 function walkDir(dirAbs: string): string[] {
-  const results: string[] = [];
-  if (!fs.existsSync(dirAbs)) return results;
   const ignorePatterns = loadIgnorePatterns();
-  function walk(subPath: string): void {
-    const full = path.join(dirAbs, subPath);
-    if (fs.statSync(full).isDirectory()) {
-      fs.readdirSync(full).forEach(f => walk(path.join(subPath, f)));
-    } else {
-      if (ignorePatterns.length > 0 && matchesIgnore(subPath, ignorePatterns)) return;
-      results.push(subPath);
-    }
-  }
-  fs.readdirSync(dirAbs).forEach(f => walk(f));
-  return results;
+  const filter = ignorePatterns.length > 0
+    ? (relPath: string) => !matchesIgnore(relPath, ignorePatterns)
+    : undefined;
+  return walkDirBase(dirAbs, filter);
 }
 
 /** Deduplicate by repoRel, keeping the first occurrence */
@@ -179,8 +173,8 @@ function logProgress(
  * Build syncFiles + syncDirs + jsonFields entries for a given agent profile.
  */
 function buildAgentEntries(
-  name: AgentName,
-  profile: AgentProfile,
+  name: AgentName | string,
+  profile: AgentProfile | CustomAgentProfile,
   repoDirBase?: string,
 ): FileEntry[] {
   const entries: FileEntry[] = [];
@@ -362,17 +356,25 @@ function applyFilter(entries: FileEntry[], filter?: FilterOptions): FileEntry[] 
 export function buildFileEntries(
   cfg: WangchuanConfig,
   repoDirBase?: string,
-  agent?: AgentName,
+  agent?: AgentName | string,
   filter?: FilterOptions,
 ): FileEntry[] {
   const entries: FileEntry[] = [];
   const profiles = cfg.profiles.default;
 
-  // per-agent entries
+  // per-agent entries (built-in agents)
   for (const name of AGENT_NAMES) {
     const p = profiles[name];
     if (!p.enabled || (agent && agent !== name)) continue;
     entries.push(...buildAgentEntries(name, p, repoDirBase));
+  }
+
+  // custom agents (config-driven, basic file sync only)
+  if (cfg.customAgents) {
+    for (const [name, profile] of Object.entries(cfg.customAgents)) {
+      if (agent && agent !== name) continue;
+      entries.push(...buildAgentEntries(name, profile, repoDirBase));
+    }
   }
 
   // shared entries (excluded when --agent filter is active, since shared belongs to no single agent)
@@ -1145,7 +1147,7 @@ export const syncEngine = {
   /**
    * Push: distribute shared content to all agents, then collect files to repo.
    */
-  async stageToRepo(cfg: WangchuanConfig, agent?: AgentName, filter?: FilterOptions): Promise<StageResult> {
+  async stageToRepo(cfg: WangchuanConfig, agent?: AgentName | string, filter?: FilterOptions): Promise<StageResult> {
     // Distribute shared resources to all agents before full push
     if (!agent) {
       distributeShared(cfg);
@@ -1278,7 +1280,7 @@ export const syncEngine = {
     return result;
   },
 
-  async restoreFromRepo(cfg: WangchuanConfig, agent?: AgentName, filter?: FilterOptions): Promise<RestoreResult> {
+  async restoreFromRepo(cfg: WangchuanConfig, agent?: AgentName | string, filter?: FilterOptions): Promise<RestoreResult> {
     const repoPath = expandHome(cfg.localRepoPath);
     const keyPath  = expandHome(cfg.keyPath);
     const entries  = buildFileEntries(cfg, repoPath, agent, filter);
@@ -1294,6 +1296,16 @@ export const syncEngine = {
       const wsPath = expandHome(p.workspacePath);
       if (!fs.existsSync(wsPath)) {
         (result.skippedAgents as string[]).push(name);
+      }
+    }
+    // Also check custom agents
+    if (cfg.customAgents) {
+      for (const [name, profile] of Object.entries(cfg.customAgents)) {
+        if (agent && agent !== name) continue;
+        const wsPath = expandHome(profile.workspacePath);
+        if (!fs.existsSync(wsPath)) {
+          (result.skippedAgents as string[]).push(name);
+        }
       }
     }
 
@@ -1434,8 +1446,9 @@ export const syncEngine = {
 
         if (isDiff) {
           // ── Three-way merge for non-encrypted plain text files ──
-          const isTextMergeable = !entry.encrypt &&
-            (entry.repoRel.endsWith('.md') || entry.repoRel.endsWith('.txt'));
+          const ext = path.extname(entry.repoRel).toLowerCase();
+          const MERGEABLE_EXTS = new Set(['.md', '.txt', '.json', '.yaml', '.yml']);
+          const isTextMergeable = !entry.encrypt && MERGEABLE_EXTS.has(ext);
           if (isTextMergeable && remoteContent !== undefined) {
             // Try to get the base version from git history (pre-pull version)
             const baseContent = await gitEngine.showFile(repoPath, 'HEAD~1', entry.repoRel);
@@ -1535,7 +1548,7 @@ export const syncEngine = {
     return result;
   },
 
-  async diff(cfg: WangchuanConfig, agent?: AgentName, filter?: FilterOptions): Promise<DiffResult> {
+  async diff(cfg: WangchuanConfig, agent?: AgentName | string, filter?: FilterOptions): Promise<DiffResult> {
     const repoPath = expandHome(cfg.localRepoPath);
     const keyPath  = expandHome(cfg.keyPath);
     const entries  = buildFileEntries(cfg, undefined, agent, filter);

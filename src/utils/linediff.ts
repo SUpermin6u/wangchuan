@@ -1,9 +1,11 @@
 /**
  * linediff.ts — Line-level unified diff tool (no external dependencies)
  *
- * Implements the Longest Common Subsequence (LCS) algorithm,
+ * Uses the shared LCS algorithm from lcs.ts,
  * outputs human-readable unified diff format.
  */
+
+import { buildLcsTable } from './lcs.js';
 
 export interface DiffLine {
   readonly type: 'context' | 'added' | 'removed';
@@ -16,23 +18,6 @@ export interface FileDiff {
   readonly lines: readonly DiffLine[];
   /** Both sides are completely identical */
   readonly unchanged: boolean;
-}
-
-/** Build the LCS traceback table for two string arrays */
-function buildLcsTable(a: string[], b: string[]): number[][] {
-  const m = a.length;
-  const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    new Array<number>(n + 1).fill(0)
-  );
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i]![j] = a[i - 1] === b[j - 1]
-        ? (dp[i - 1]![j - 1]! + 1)
-        : Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
-    }
-  }
-  return dp;
 }
 
 /** Generate diff line list from the LCS traceback table (iterative to avoid stack overflow on large files) */

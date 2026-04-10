@@ -1,10 +1,12 @@
 /**
  * merge.ts — Three-way merge for plain text files
  *
- * Uses the LCS algorithm from linediff.ts to compute diffs between
+ * Uses the shared LCS algorithm from utils/lcs.ts to compute diffs between
  * base-local and base-remote, then merges non-overlapping changes
  * and inserts conflict markers for overlapping edits.
  */
+
+import { buildLcsTable } from '../utils/lcs.js';
 
 export interface MergeResult {
   readonly merged: string;
@@ -16,26 +18,6 @@ interface EditRegion {
   readonly baseStart: number;
   readonly baseEnd: number;       // exclusive
   readonly lines: readonly string[];
-}
-
-/**
- * Compute LCS table between two string arrays.
- * Iterative version (avoids stack overflow on large files).
- */
-function buildLcsTable(a: readonly string[], b: readonly string[]): number[][] {
-  const m = a.length;
-  const n = b.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    new Array<number>(n + 1).fill(0),
-  );
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i]![j] = a[i - 1] === b[j - 1]
-        ? (dp[i - 1]![j - 1]! + 1)
-        : Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
-    }
-  }
-  return dp;
 }
 
 /**

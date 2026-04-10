@@ -28,7 +28,7 @@ import { execSync } from 'child_process';
 import { config }          from '../core/config.js';
 import { resolveGitBranch } from '../core/config.js';
 import { gitEngine }       from '../core/git.js';
-import { cryptoEngine }    from '../core/crypto.js';
+import { cryptoEngine, clearKeyCache } from '../core/crypto.js';
 import { syncLock }        from '../core/sync-lock.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -37,6 +37,7 @@ import { syncEngine }      from '../core/sync.js';
 import { loadIgnorePatterns } from '../core/sync.js';
 import { ensureMigrated }  from '../core/migrate.js';
 import { validator }        from '../utils/validator.js';
+import { walkDir }          from '../utils/fs.js';
 import type { AgentName, AgentProfile, WangchuanConfig, FileEntry } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
@@ -226,21 +227,6 @@ function classifyFiles(entries: readonly FileEntry[], staleDays = 90): { stale: 
 
 // ── Key management helpers (from key.ts) ────────────────────────
 
-function walkDir(dirAbs: string): string[] {
-  const results: string[] = [];
-  if (!fs.existsSync(dirAbs)) return results;
-  function walk(subPath: string): void {
-    const full = path.join(dirAbs, subPath);
-    if (fs.statSync(full).isDirectory()) {
-      fs.readdirSync(full).forEach(f => walk(path.join(subPath, f)));
-    } else {
-      results.push(subPath);
-    }
-  }
-  fs.readdirSync(dirAbs).forEach(f => walk(f));
-  return results;
-}
-
 function findEncFiles(repoPath: string): string[] {
   const encFiles: string[] = [];
   for (const topDir of ['agents', 'shared']) {
@@ -278,6 +264,7 @@ async function handleKeyRotate(cfg: WangchuanConfig): Promise<void> {
   }
 
   const newKey = cryptoEngine.generateKey(keyPath);
+  clearKeyCache(); // Invalidate cached key after rotation
 
   spinner.text = t('key.rotate.reencrypting');
   try {

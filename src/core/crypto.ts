@@ -15,8 +15,12 @@ const KEY_BYTES = 32;  // 256 bit
 const IV_BYTES  = 12;  // 96 bit (GCM recommended)
 const TAG_BYTES = 16;  // 128 bit auth tag
 
-/** Load and validate the master key from file */
+/** In-memory key cache to eliminate redundant disk reads during batch sync operations */
+let cachedKey: { readonly path: string; readonly key: Buffer } | undefined;
+
+/** Load and validate the master key from file (cached per path) */
 function loadKey(keyPath: string): Buffer {
+  if (cachedKey && cachedKey.path === keyPath) return cachedKey.key;
   if (!fs.existsSync(keyPath)) {
     throw new Error(`Key file not found: ${keyPath}\nPlease run wangchuan init to generate a key.`);
   }
@@ -24,8 +28,13 @@ function loadKey(keyPath: string): Buffer {
   if (hex.length !== KEY_BYTES * 2) {
     throw new Error(`Invalid key file format, expected ${KEY_BYTES * 2} hex characters`);
   }
-  return Buffer.from(hex, 'hex');
+  const key = Buffer.from(hex, 'hex');
+  cachedKey = { path: keyPath, key };
+  return key;
 }
+
+/** Invalidate the key cache (required after key rotation) */
+export function clearKeyCache(): void { cachedKey = undefined; }
 
 /** Encrypt Buffer → Base64 string (format: IV + AuthTag + CipherText) */
 function encryptBuffer(plaintext: Buffer, key: Buffer): string {
