@@ -92,7 +92,13 @@ Aliases: `sync` → `s`, `status` → `st`, `snapshot` → `snap`
 - Auto-discovers installed agents and enables them
 - Detects stale/phantom files
 - `--key-export` / `--key-rotate` for key management
+- Validates key fingerprint against repo — detects wrong master.key before sync
 - `--setup` generates migration one-liner
+
+**Key mismatch error handling**: If `⛔ Key mismatch!` appears during sync, the local `master.key` does not match the repo. Guide the user to:
+1. Run `wangchuan doctor --key-export` on the machine that last pushed
+2. Copy the key hex to the current machine
+3. Run `wangchuan init --key <hex>` or write to `~/.wangchuan/master.key`
 
 ### memory
 - `list` — show all agent memories with summaries
