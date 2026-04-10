@@ -1114,6 +1114,23 @@ function contentUnchanged(existingPath: string, newContent: Buffer): boolean {
   return h1 === h2;
 }
 
+/**
+ * Check if an encrypted file's plaintext matches new plaintext content.
+ * Decrypts the existing .enc file and compares with the new plaintext,
+ * avoiding false-positive diffs caused by random IV in AES-256-GCM.
+ */
+function encryptedPlaintextUnchanged(existingEncPath: string, newPlaintext: Buffer, keyPath: string): boolean {
+  if (!fs.existsSync(existingEncPath)) return false;
+  try {
+    const existingEnc = fs.readFileSync(existingEncPath, 'utf-8').trim();
+    const existingPlain = cryptoEngine.decryptString(existingEnc, keyPath);
+    return Buffer.from(existingPlain, 'utf-8').equals(newPlaintext);
+  } catch {
+    // Decryption failure (key changed, corrupted file) → treat as changed
+    return false;
+  }
+}
+
 export const syncEngine = {
   expandHome,
   buildFileEntries,
@@ -1158,12 +1175,12 @@ export const syncEngine = {
           const content  = JSON.stringify(partial, null, 2);
 
           if (entry.encrypt) {
-            const encrypted = cryptoEngine.encryptString(content, keyPath);
-            const newBuf = Buffer.from(encrypted, 'utf-8');
-            if (contentUnchanged(destAbs, newBuf)) {
+            // Compare plaintext to avoid false diffs from random IV
+            if (encryptedPlaintextUnchanged(destAbs, Buffer.from(content, 'utf-8'), keyPath)) {
               (result.unchanged as string[]).push(entry.repoRel);
               continue;
             }
+            const encrypted = cryptoEngine.encryptString(content, keyPath);
             fs.writeFileSync(destAbs, encrypted, 'utf-8');
             (result.encrypted as string[]).push(entry.repoRel);
           } else {
@@ -1199,6 +1216,12 @@ export const syncEngine = {
         }
       }
       if (entry.encrypt) {
+        // Compare plaintext to avoid false diffs from random IV
+        const srcBuf = fs.readFileSync(entry.srcAbs);
+        if (encryptedPlaintextUnchanged(destAbs, srcBuf, keyPath)) {
+          (result.unchanged as string[]).push(entry.repoRel);
+          continue;
+        }
         cryptoEngine.encryptFile(entry.srcAbs, destAbs, keyPath);
         (result.encrypted as string[]).push(entry.repoRel);
         progressIdx++;
@@ -1211,9 +1234,10 @@ export const syncEngine = {
       (result.synced as string[]).push(entry.repoRel);
     }
 
-    // ── Detect stale files in repo (full push only) ───────────────
-    // Only compare against entries actually written to repo, excluding skipped entries with missing local files
-    if (!agent) {
+    // ── Detect stale files in repo (full push only, skip when filtering) ──
+    // When --only/--exclude is active, the entry set is incomplete — stale detection
+    // would wrongly flag legitimately synced files as stale, causing data loss.
+    if (!agent && !filter) {
       const syncedEntries = entries.filter(e => fs.existsSync(e.srcAbs));
       const stale = detectStaleFiles(repoPath, syncedEntries);
       if (stale.length > 0) {
