@@ -89,16 +89,60 @@ function memoryList(cfg: WangchuanConfig, agent?: AgentName): void {
 // ── show ──────────────────────────────────────────────────────────
 
 function memoryShow(cfg: WangchuanConfig, args: readonly string[]): void {
-  if (args.length < 2) {
+  if (args.length < 1) {
     throw new Error(t('memory.argsRequired', { action: 'show' }));
   }
   const agentName = args[0] as AgentName;
-  const fileName  = args[1]!;
 
   const entries = getAgentFileEntries(cfg, agentName);
+
+  // When no filename is provided, list available files for this agent
+  if (!args[1]) {
+    console.log(chalk.bold(`  ${t('memory.show.fileList', { agent: agentName })}`));
+    console.log();
+    if (entries.length === 0) {
+      logger.info(t('memory.list.empty'));
+      return;
+    }
+    for (const e of entries) {
+      const exists = fs.existsSync(e.srcAbs);
+      const statusIcon = exists ? chalk.green('\u2713') : chalk.red('\u2717');
+      const statusLabel = exists ? t('memory.show.exists') : t('memory.show.missing');
+      const fileName = path.basename(e.srcAbs);
+      const encLabel = e.encrypt ? chalk.magenta(' [enc]') : '';
+      if (exists) {
+        const stat = fs.statSync(e.srcAbs);
+        const size = formatSize(stat.size);
+        console.log(`    ${statusIcon} ${chalk.white(fileName)}  ${chalk.gray(size)}  ${chalk.gray(statusLabel)}${encLabel}`);
+      } else {
+        console.log(`    ${statusIcon} ${chalk.gray(fileName)}  ${chalk.gray(statusLabel)}${encLabel}`);
+      }
+    }
+    console.log();
+    return;
+  }
+
+  const fileName = args[1]!;
   const entry = entries.find(e => path.basename(e.srcAbs) === fileName || e.repoRel.endsWith(fileName));
 
   if (!entry || !fs.existsSync(entry.srcAbs)) {
+    // Fuzzy match: substring against basenames and repoRels
+    const lowerInput = fileName.toLowerCase();
+    const suggestions = entries
+      .filter(e => {
+        const base = path.basename(e.srcAbs).toLowerCase();
+        const rel = e.repoRel.toLowerCase();
+        return base.includes(lowerInput) || rel.includes(lowerInput);
+      })
+      .map(e => path.basename(e.srcAbs));
+
+    if (suggestions.length > 0) {
+      throw new Error(t('memory.show.fuzzyHint', {
+        agent: agentName,
+        file: fileName,
+        suggestions: suggestions.join(', '),
+      }));
+    }
     throw new Error(t('memory.show.notFound', { agent: agentName, file: fileName }));
   }
 

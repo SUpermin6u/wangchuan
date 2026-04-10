@@ -22,21 +22,67 @@ import ora from 'ora';
 import fs   from 'fs';
 import path from 'path';
 import readline from 'readline';
+import { execSync } from 'child_process';
+
+/** Check if GitHub CLI is installed and authenticated */
+function isGhAvailable(): boolean {
+  try {
+    execSync('which gh', { stdio: 'ignore' });
+    execSync('gh auth status', { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Create a private repo via GitHub CLI and return the SSH URL */
+function createRepoViaGh(): string {
+  logger.info(t('init.ghCreating'));
+  const output = execSync('gh repo create wangchuan-sync --private --confirm 2>&1', {
+    encoding: 'utf-8',
+  }).trim();
+  // gh repo create prints the URL (e.g. https://github.com/user/wangchuan-sync)
+  const match = /https:\/\/github\.com\/[^\s]+/.exec(output);
+  if (!match) {
+    throw new Error(t('init.ghParseFailed', { output }));
+  }
+  const httpsUrl = match[0]!;
+  // Convert to SSH URL for better auth experience
+  const sshUrl = httpsUrl.replace('https://github.com/', 'git@github.com:') + '.git';
+  logger.ok(t('init.ghCreated', { url: sshUrl }));
+  return sshUrl;
+}
 
 /**
  * Prompt the user for the git repo URL when --repo is not provided and stdin is a TTY.
+ * If gh CLI is available, offers to create a new repo.
  */
 async function promptRepoUrl(): Promise<string> {
+  const ghAvailable = isGhAvailable();
+  const prompt = ghAvailable ? t('init.promptRepoOrCreate') : t('init.promptRepo');
+
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve, reject) => {
-    rl.question(t('init.promptRepo') + ' ', (answer: string) => {
+    rl.question(prompt + ' ', (answer: string) => {
       rl.close();
-      const url = answer.trim();
-      if (!url) {
+      const input = answer.trim();
+      if (!input) {
         reject(new Error(t('init.repoRequired')));
         return;
       }
-      resolve(url);
+      if (input.toLowerCase() === 'create') {
+        if (!ghAvailable) {
+          reject(new Error(t('init.ghNotAvailable')));
+          return;
+        }
+        try {
+          resolve(createRepoViaGh());
+        } catch (err) {
+          reject(err);
+        }
+        return;
+      }
+      resolve(input);
     });
   });
 }

@@ -55,7 +55,7 @@ type Msgs = Record<string, readonly [string, string]>;
 const M: Msgs = {
   // ── CLI ──────────────────────────────────────────────────────
   'cli.description':     ['Wangchuan · AI Memory Sync System', '忘川 · AI 记忆同步系统'],
-  'cli.invalidAgent':    ['--agent must be openclaw | claude | gemini | codebuddy | workbuddy | cursor | codex, got: {val}', '--agent 必须是 openclaw | claude | gemini | codebuddy | workbuddy | cursor | codex，收到: {val}'],
+  'cli.invalidAgent':    ['--agent must be a built-in agent (openclaw | claude | gemini | codebuddy | workbuddy | cursor | codex) or a custom agent defined in config.json, got: {val}', '--agent 必须是内置代理 (openclaw | claude | gemini | codebuddy | workbuddy | cursor | codex) 或 config.json 中定义的自定义代理名称，收到: {val}'],
   'cli.cmd.init':        ['Initialize Wangchuan, configure repo and generate key', '初始化忘川，配置仓库并生成密钥'],
   'cli.cmd.init.repo':   ['Git repo URL (SSH or HTTPS)', 'Git 仓库地址'],
   'cli.cmd.init.key':    ['Import existing master key (hex string)', '导入已有的主密钥（十六进制字符串）'],
@@ -712,7 +712,12 @@ const M: Msgs = {
 
   // ── init interactive ──────────────────────────────────────────
   'init.promptRepo':         ['Enter git repo URL (SSH or HTTPS):', '请输入 Git 仓库地址（SSH 或 HTTPS）:'],
+  'init.promptRepoOrCreate': ['Enter git repo URL, or type \'create\' to create one via GitHub CLI:', '请输入 Git 仓库地址，或输入 \'create\' 通过 GitHub CLI 创建:'],
   'init.repoRequired':       ['--repo is required (or run interactively in a terminal)', '需要 --repo 参数（或在终端中交互运行）'],
+  'init.ghCreating':         ['Creating private repo via GitHub CLI …', '正在通过 GitHub CLI 创建私有仓库 …'],
+  'init.ghCreated':          ['Repo created: {url}', '仓库已创建: {url}'],
+  'init.ghParseFailed':      ['Failed to parse repo URL from gh output: {output}', '无法从 gh 输出中解析仓库地址: {output}'],
+  'init.ghNotAvailable':     ['GitHub CLI (gh) is not installed or not authenticated', 'GitHub CLI (gh) 未安装或未登录'],
 
   // ── completions ───────────────────────────────────────────────
   'cli.cmd.completions':     ['Generate shell completion scripts (bash|zsh)', '生成 shell 补全脚本 (bash|zsh)'],
@@ -726,6 +731,10 @@ const M: Msgs = {
   'memory.list.empty':         ['No memory files found', '未找到记忆文件'],
   'memory.list.agentHeader':   ['Agent: {agent}', '智能体: {agent}'],
   'memory.show.notFound':      ['File not found: {agent}/{file}', '文件不存在: {agent}/{file}'],
+  'memory.show.fileList':      ['Available files for {agent}:', '{agent} 的可用文件：'],
+  'memory.show.exists':        ['exists', '存在'],
+  'memory.show.missing':       ['missing', '缺失'],
+  'memory.show.fuzzyHint':     ['File \'{file}\' not found for {agent}. Did you mean: {suggestions}?', '{agent} 下未找到文件 \'{file}\'。你是否想找: {suggestions}?'],
   'memory.show.header':        ['── {agent}/{file} ──', '── {agent}/{file} ──'],
   'memory.copy.done':          ['Copied {count} files from {from} to {to}', '从 {from} 复制 {count} 个文件到 {to}'],
   'memory.copy.overwrite':     ['Overwriting existing file: {file}', '覆盖已存在文件: {file}'],
