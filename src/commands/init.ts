@@ -174,12 +174,14 @@ function normalizeRepo(url: string): string {
 /** Ensure the master key exists (import, generate, or skip) */
 async function ensureKey(cfg: WangchuanConfig, key: string | undefined): Promise<void> {
   if (key) {
-    const hex = key.trim();
+    // Accept both "wangchuan_hex" and plain "hex" formats
+    const trimmed = key.trim();
+    const hex = trimmed.startsWith('wangchuan_') ? trimmed.slice('wangchuan_'.length) : trimmed;
     if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
       throw new Error(t('init.invalidKey'));
     }
     fs.mkdirSync(path.dirname(cfg.keyPath), { recursive: true });
-    fs.writeFileSync(cfg.keyPath, hex, 'utf-8');
+    fs.writeFileSync(cfg.keyPath, 'wangchuan_' + hex, 'utf-8');
     logger.ok(t('init.keyImported', { path: cfg.keyPath }));
   } else if (!cryptoEngine.hasKey(cfg.keyPath)) {
     const spinner = ora(t('init.generatingKey')).start();

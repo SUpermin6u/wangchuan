@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import fs     from 'fs';
 import os     from 'os';
 import path   from 'path';
-import { cryptoEngine } from '../src/core/crypto.js';
+import { cryptoEngine, clearKeyCache } from '../src/core/crypto.js';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'wc-test-'));
 const KEY = path.join(TMP, 'master.key');
@@ -17,9 +17,11 @@ after(() => {
 });
 
 describe('cryptoEngine.generateKey', () => {
-  it('generates a 64-char hex key file', () => {
+  it('generates key file with wangchuan_ prefix and 64-char hex', () => {
     cryptoEngine.generateKey(KEY);
-    const hex = fs.readFileSync(KEY, 'utf-8').trim();
+    const raw = fs.readFileSync(KEY, 'utf-8').trim();
+    assert.ok(raw.startsWith('wangchuan_'), 'key file should start with wangchuan_ prefix');
+    const hex = raw.slice('wangchuan_'.length);
     assert.equal(hex.length, 64);
     assert.match(hex, /^[0-9a-f]+$/);
   });
@@ -106,9 +108,27 @@ describe('cryptoEngine error paths', () => {
   it('throws error on invalid key format', () => {
     const badKey = path.join(TMP, 'bad.key');
     fs.writeFileSync(badKey, 'tooshort', 'utf-8');
+    clearKeyCache();
     assert.throws(
       () => cryptoEngine.encryptString('x', badKey),
       /Invalid key file format/
     );
+  });
+});
+
+describe('cryptoEngine legacy key compatibility', () => {
+  it('reads legacy pure-hex key file without prefix', () => {
+    // Write a legacy-format key (plain hex, no wangchuan_ prefix)
+    const legacyKey = path.join(TMP, 'legacy.key');
+    const raw = fs.readFileSync(KEY, 'utf-8').trim();
+    const hex = raw.slice('wangchuan_'.length);
+    fs.writeFileSync(legacyKey, hex, 'utf-8');
+    clearKeyCache();
+
+    // Encrypt with new-format key, decrypt with legacy-format key → same key bytes
+    const encrypted = cryptoEngine.encryptString('legacy test', KEY);
+    clearKeyCache();
+    const decrypted = cryptoEngine.decryptString(encrypted, legacyKey);
+    assert.equal(decrypted, 'legacy test');
   });
 });

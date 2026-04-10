@@ -1,7 +1,7 @@
 /**
  * crypto.ts — AES-256-GCM encryption/decryption module
  *
- * Key file format: 32 bytes of random data, stored as hex string (64 chars)
+ * Key file format: "wangchuan_" prefix + 64 hex chars (legacy: plain 64 hex chars also supported)
  * Ciphertext format: IV(12B) | AuthTag(16B) | CipherText → Base64 written to .enc file
  */
 
@@ -14,6 +14,7 @@ const ALGO      = 'aes-256-gcm' as const;
 const KEY_BYTES = 32;  // 256 bit
 const IV_BYTES  = 12;  // 96 bit (GCM recommended)
 const TAG_BYTES = 16;  // 128 bit auth tag
+const KEY_PREFIX = 'wangchuan_';
 
 /** In-memory key cache to eliminate redundant disk reads during batch sync operations */
 let cachedKey: { readonly path: string; readonly key: Buffer } | undefined;
@@ -24,7 +25,9 @@ function loadKey(keyPath: string): Buffer {
   if (!fs.existsSync(keyPath)) {
     throw new Error(`Key file not found: ${keyPath}\nPlease run wangchuan init to generate a key.`);
   }
-  const hex = fs.readFileSync(keyPath, 'utf-8').trim();
+  const raw = fs.readFileSync(keyPath, 'utf-8').trim();
+  // Support both new format (wangchuan_hex) and legacy format (plain hex)
+  const hex = raw.startsWith(KEY_PREFIX) ? raw.slice(KEY_PREFIX.length) : raw;
   if (hex.length !== KEY_BYTES * 2) {
     throw new Error(`Invalid key file format, expected ${KEY_BYTES * 2} hex characters`);
   }
@@ -71,7 +74,7 @@ export const cryptoEngine = {
   generateKey(keyPath: string): Buffer {
     fs.mkdirSync(path.dirname(keyPath), { recursive: true });
     const key = crypto.randomBytes(KEY_BYTES);
-    fs.writeFileSync(keyPath, key.toString('hex'), { mode: 0o600, encoding: 'utf-8' });
+    fs.writeFileSync(keyPath, KEY_PREFIX + key.toString('hex'), { mode: 0o600, encoding: 'utf-8' });
     logger.ok(`Master key generated: ${keyPath}`);
     return key;
   },

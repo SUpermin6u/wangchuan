@@ -319,8 +319,10 @@ async function handleKeyRotate(cfg: WangchuanConfig): Promise<void> {
 
 function handleKeyExport(cfg: WangchuanConfig): void {
   const keyPath = syncEngine.expandHome(cfg.keyPath);
-  const hex = fs.readFileSync(keyPath, 'utf-8').trim();
-  logger.info(t('key.export.hex', { hex }));
+  const raw = fs.readFileSync(keyPath, 'utf-8').trim();
+  // Normalize: always output with wangchuan_ prefix
+  const prefixed = raw.startsWith('wangchuan_') ? raw : 'wangchuan_' + raw;
+  logger.info(t('key.export.hex', { hex: prefixed }));
   logger.warn(t('key.export.warning'));
 }
 
@@ -331,10 +333,12 @@ function handleSetup(cfg: WangchuanConfig): void {
   }
 
   const keyHex = fs.readFileSync(keyPath, 'utf-8').trim();
+  // Normalize to prefixed format for display
+  const prefixed = keyHex.startsWith('wangchuan_') ? keyHex : 'wangchuan_' + keyHex;
   const repo = cfg.repo;
 
   console.log(chalk.bold(`  ${t('setup.repoLabel')}`) + chalk.cyan(repo));
-  console.log(chalk.bold(`  ${t('setup.keyLabel')}`) + chalk.gray(keyHex.slice(0, 8) + '…' + keyHex.slice(-8)));
+  console.log(chalk.bold(`  ${t('setup.keyLabel')}`) + chalk.gray(prefixed.slice(0, 18) + '…' + prefixed.slice(-8)));
   console.log();
 
   const command = `npx wangchuan init --repo ${repo} --key ${keyHex}`;
