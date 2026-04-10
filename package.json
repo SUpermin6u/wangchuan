@@ -1,6 +1,6 @@
 {
   "name": "wangchuan",
-  "version": "5.5.0",
+  "version": "5.6.0",
   "description": "忘川 · AI 记忆同步系统 — 智能体记忆永不遗失",
   "bin": {
     "wangchuan": "./dist/bin/wangchuan.js"
@@ -17,7 +17,7 @@
     "postbuild": "chmod +x dist/bin/wangchuan.js",
     "prepublishOnly": "npm run build",
     "dev": "tsx bin/wangchuan.ts",
-    "test": "node --import tsx/esm --test test/crypto.test.ts test/json-field.test.ts test/sync.test.ts test/sync-history.test.ts test/merge.test.ts",
+    "test": "node --import tsx/esm --test test/crypto.test.ts test/json-field.test.ts test/sync.test.ts test/sync-history.test.ts test/merge.test.ts test/git.test.ts test/sync-lock.test.ts test/migrate.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [

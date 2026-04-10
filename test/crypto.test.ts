@@ -101,7 +101,7 @@ describe('cryptoEngine error paths', () => {
   it('throws friendly error when key file missing', () => {
     assert.throws(
       () => cryptoEngine.encryptString('x', '/tmp/nonexistent.key'),
-      /Key file not found/
+      /nonexistent\.key/
     );
   });
 
@@ -111,7 +111,7 @@ describe('cryptoEngine error paths', () => {
     clearKeyCache();
     assert.throws(
       () => cryptoEngine.encryptString('x', badKey),
-      /Invalid key file format/
+      /64/
     );
   });
 });

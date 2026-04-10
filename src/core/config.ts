@@ -54,7 +54,7 @@ export const config = {
   /** Save config to disk */
   save(cfg: WangchuanConfig): void {
     fs.mkdirSync(WANGCHUAN_DIR, { recursive: true });
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), { encoding: 'utf-8', mode: 0o600 });
     logger.debug(t('config.saved', { path: CONFIG_PATH }));
   },
 

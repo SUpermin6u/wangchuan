@@ -9,6 +9,7 @@ import crypto from 'crypto';
 import fs     from 'fs';
 import path   from 'path';
 import { logger } from '../utils/logger.js';
+import { t }      from '../i18n.js';
 
 const ALGO      = 'aes-256-gcm' as const;
 const KEY_BYTES = 32;  // 256 bit
@@ -23,13 +24,13 @@ let cachedKey: { readonly path: string; readonly key: Buffer } | undefined;
 function loadKey(keyPath: string): Buffer {
   if (cachedKey && cachedKey.path === keyPath) return cachedKey.key;
   if (!fs.existsSync(keyPath)) {
-    throw new Error(`Key file not found: ${keyPath}\nPlease run wangchuan init to generate a key.`);
+    throw new Error(t('crypto.keyNotFound', { path: keyPath }));
   }
   const raw = fs.readFileSync(keyPath, 'utf-8').trim();
   // Support both new format (wangchuan_hex) and legacy format (plain hex)
   const hex = raw.startsWith(KEY_PREFIX) ? raw.slice(KEY_PREFIX.length) : raw;
   if (hex.length !== KEY_BYTES * 2) {
-    throw new Error(`Invalid key file format, expected ${KEY_BYTES * 2} hex characters`);
+    throw new Error(t('crypto.invalidKeyFormat', { expected: String(KEY_BYTES * 2) }));
   }
   const key = Buffer.from(hex, 'hex');
   cachedKey = { path: keyPath, key };

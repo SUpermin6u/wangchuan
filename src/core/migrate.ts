@@ -65,6 +65,7 @@ function migrateV1toV2(cfg: WangchuanConfig): WangchuanConfig {
   // ── 1. Full backup ──────────────────────────────────────────────
   if (!fs.existsSync(backupDir)) {
     logger.info(t('migrate.backingUp'));
+    fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
     copyDirSync(repoPath, backupDir);
   }
 

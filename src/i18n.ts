@@ -41,7 +41,7 @@ export function setLang(lang: Lang): void {
   }
   cfg['lang'] = lang;
   fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf-8');
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), { encoding: 'utf-8', mode: 0o600 });
   cachedLang = lang;
 }
 
@@ -362,6 +362,16 @@ const M: Msgs = {
   'config.saved':      ['Config saved to {path}', '配置已保存到 {path}'],
   'config.invalidFormat': ['Invalid config: missing required field "{field}"', '配置文件无效: 缺少必需字段 "{field}"'],
 
+  // ── crypto ─────────────────────────────────────────────────
+  'crypto.keyNotFound': [
+    'Key file not found: {path}\n\n  How to fix:\n  - If you have the key from another machine: wangchuan init --key <hex>\n  - Export from the source machine first:       wangchuan doctor --key-export\n  - Generate a new key (fresh start):           wangchuan init --repo <url>',
+    '未找到密钥文件: {path}\n\n  修复方法:\n  - 如果有其他机器的密钥: wangchuan init --key <hex>\n  - 先从源机器导出密钥:   wangchuan doctor --key-export\n  - 生成新密钥（全新开始）: wangchuan init --repo <url>'
+  ],
+  'crypto.invalidKeyFormat': [
+    'Invalid key file format (expected {expected} hex characters).\n\n  The key file may be corrupted. Re-import with: wangchuan init --key <hex>',
+    '密钥文件格式无效（应为 {expected} 个十六进制字符）。\n\n  密钥文件可能已损坏。重新导入: wangchuan init --key <hex>'
+  ],
+
   // ── env command ──────────────────────────────────────────────
   'cli.cmd.env':              ['Manage environments (list|create|switch|current|delete)', '管理多环境 (list|create|switch|current|delete)'],
   'cli.cmd.env.from':         ['Base branch to create from (default: current branch)', '创建环境时的基础分支（默认：当前分支）'],
@@ -410,6 +420,10 @@ const M: Msgs = {
   'keyFingerprint.notFound':  ['No key fingerprint in repo (first push or legacy), skipping validation', '仓库中无密钥指纹（首次推送或旧版本），跳过校验'],
   'keyFingerprint.verified':  ['Key fingerprint verified ✓', '密钥指纹校验通过 ✓'],
   'keyFingerprint.mismatch':  ['⛔ Key mismatch! Your local master.key does NOT match the key used to encrypt the repo.\n   This likely means you copied the wrong key or are using a different key from another machine.\n   To fix: run `wangchuan doctor --key-export` on the machine that last pushed, and import that key here.\n   Sync aborted to prevent data corruption.', '⛔ 密钥不匹配！本地 master.key 与仓库加密密钥不一致。\n   可能原因：复制了错误的密钥，或使用了另一台机器的密钥。\n   修复方法：在上次推送的机器上执行 `wangchuan doctor --key-export`，将密钥导入到本机。\n   同步已中止，以防止数据损坏。'],
+  'keyFingerprint.mismatchWithHint': [
+    'Key mismatch: your local key does not match the repo fingerprint.\n\n  This means another machine pushed with a different key.\n  How to fix:\n  - Export the correct key: run `wangchuan doctor --key-export` on the machine that last pushed\n  - Then import here:       wangchuan init --key <hex>',
+    '密钥不匹配: 本地密钥与仓库指纹不一致。\n\n  这表示另一台机器使用了不同的密钥推送。\n  修复方法:\n  - 在最后推送的机器上导出密钥: wangchuan doctor --key-export\n  - 然后在此导入:              wangchuan init --key <hex>'
+  ],
   'doctor.keyFingerprintOk':  ['Key fingerprint matches repo ✓', '密钥指纹与仓库一致 ✓'],
   'doctor.keyFingerprintFail':['Key fingerprint does NOT match repo — wrong master.key?', '密钥指纹与仓库不一致 — 是否使用了错误的 master.key？'],
   'doctor.keyFingerprintNone':['No key fingerprint in repo (run sync once to generate)', '仓库中无密钥指纹（执行一次 sync 即可生成）'],
@@ -443,7 +457,7 @@ const M: Msgs = {
   'init.repoMissing':       ['Repo directory missing, re-cloning …', '仓库目录缺失，正在重新克隆 …'],
 
   // ── sync-lock ──────────────────────────────────────────────────
-  'syncLock.anotherRunning':   ['Another sync is running (PID {pid}), please wait or kill it', '另一个同步正在进行中 (PID {pid})，请等待或终止该进程'],
+  'syncLock.anotherRunning':   ['Another sync is running (PID {pid}). If no sync is running, delete ~/.wangchuan/sync-lock.json', '另一个同步正在运行 (PID {pid})。如果没有同步在运行，请删除 ~/.wangchuan/sync-lock.json'],
   'syncLock.staleLock':        ['Stale sync lock found (PID {pid} is dead), cleaning up …', '发现过期同步锁 (PID {pid} 已终止)，正在清理 …'],
   'syncLock.acquired':         ['Sync lock acquired', '同步锁已获取'],
   'syncLock.released':         ['Sync lock released', '同步锁已释放'],
@@ -722,6 +736,18 @@ const M: Msgs = {
   'hooks.success':           ['Hook OK: {cmd}', '钩子成功: {cmd}'],
   'hooks.failed':            ['Hook failed (exit {code}): {cmd}', '钩子失败 (退出码 {code}): {cmd}'],
 
+  // ── init wizard ────────────────────────────────────────────────
+  'init.wizard.title':         ['Select your Git platform:', '选择你的 Git 平台:'],
+  'init.wizard.ghAuto':        ['GitHub (create automatically via gh CLI)', 'GitHub（通过 gh CLI 自动创建）'],
+  'init.wizard.github':        ['GitHub (manual URL)', 'GitHub（手动输入地址）'],
+  'init.wizard.gitlab':        ['GitLab', 'GitLab'],
+  'init.wizard.gitee':         ['Gitee', 'Gitee'],
+  'init.wizard.other':         ['Other (enter custom URL)', '其他（输入自定义地址）'],
+  'init.wizard.choose':        ['Enter choice [1-{max}]:', '请选择 [1-{max}]:'],
+  'init.wizard.enterUrl':      ['Enter Git repo URL', '输入 Git 仓库地址'],
+  'init.wizard.example':       ['e.g.', '示例'],
+  'init.wizard.invalidChoice': ['Invalid choice', '无效的选择'],
+
   // ── init interactive ──────────────────────────────────────────
   'init.promptRepo':         ['Enter git repo URL (SSH or HTTPS):', '请输入 Git 仓库地址（SSH 或 HTTPS）:'],
   'init.promptRepoOrCreate': ['Enter git repo URL, or type \'create\' to create one via GitHub CLI:', '请输入 Git 仓库地址，或输入 \'create\' 通过 GitHub CLI 创建:'],
@@ -730,6 +756,7 @@ const M: Msgs = {
   'init.ghCreated':          ['Repo created: {url}', '仓库已创建: {url}'],
   'init.ghParseFailed':      ['Failed to parse repo URL from gh output: {output}', '无法从 gh 输出中解析仓库地址: {output}'],
   'init.ghNotAvailable':     ['GitHub CLI (gh) is not installed or not authenticated', 'GitHub CLI (gh) 未安装或未登录'],
+  'init.ghCreateFailed':     ['Failed to create GitHub repo: {error}', '创建 GitHub 仓库失败: {error}'],
 
   // ── completions ───────────────────────────────────────────────
   'cli.cmd.completions':     ['Generate shell completion scripts (bash|zsh)', '生成 shell 补全脚本 (bash|zsh)'],

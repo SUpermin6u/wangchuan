@@ -38,13 +38,21 @@ function isGhAvailable(): boolean {
 /** Create a private repo via GitHub CLI and return the SSH URL */
 function createRepoViaGh(): string {
   logger.info(t('init.ghCreating'));
-  const output = execSync('gh repo create wangchuan-sync --private --confirm 2>&1', {
-    encoding: 'utf-8',
-  }).trim();
+  let stdout: string;
+  try {
+    stdout = execSync('gh repo create wangchuan-sync --private --confirm', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const sanitized = msg.replace(/\b(gh[opsu]_[A-Za-z0-9_]+)\b/g, '***');
+    throw new Error(t('init.ghCreateFailed', { error: sanitized }));
+  }
   // gh repo create prints the URL (e.g. https://github.com/user/wangchuan-sync)
-  const match = /https:\/\/github\.com\/[^\s]+/.exec(output);
+  const match = /https:\/\/github\.com\/[^\s]+/.exec(stdout);
   if (!match) {
-    throw new Error(t('init.ghParseFailed', { output }));
+    throw new Error(t('init.ghParseFailed', { output: stdout }));
   }
   const httpsUrl = match[0]!;
   // Convert to SSH URL for better auth experience
@@ -59,30 +67,68 @@ function createRepoViaGh(): string {
  */
 async function promptRepoUrl(): Promise<string> {
   const ghAvailable = isGhAvailable();
-  const prompt = ghAvailable ? t('init.promptRepoOrCreate') : t('init.promptRepo');
+
+  console.log();
+  console.log(t('init.wizard.title'));
+  console.log();
+
+  const options: Array<{ label: string; action: () => Promise<string> | string }> = [];
+
+  if (ghAvailable) {
+    options.push({
+      label: t('init.wizard.ghAuto'),
+      action: () => createRepoViaGh(),
+    });
+  }
+  options.push({
+    label: t('init.wizard.github'),
+    action: () => promptCustomUrl('git@github.com:user/repo.git'),
+  });
+  options.push({
+    label: t('init.wizard.gitlab'),
+    action: () => promptCustomUrl('git@gitlab.com:user/repo.git'),
+  });
+  options.push({
+    label: t('init.wizard.gitee'),
+    action: () => promptCustomUrl('git@gitee.com:user/repo.git'),
+  });
+  options.push({
+    label: t('init.wizard.other'),
+    action: () => promptCustomUrl(),
+  });
+
+  for (let i = 0; i < options.length; i++) {
+    console.log(`  [${i + 1}] ${options[i]!.label}`);
+  }
+  console.log();
 
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve, reject) => {
-    rl.question(prompt + ' ', (answer: string) => {
+    rl.question(t('init.wizard.choose', { max: String(options.length) }) + ' ', async (answer: string) => {
       rl.close();
-      const input = answer.trim();
-      if (!input) {
-        reject(new Error(t('init.repoRequired')));
+      const idx = parseInt(answer.trim(), 10) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= options.length) {
+        reject(new Error(t('init.wizard.invalidChoice')));
         return;
       }
-      if (input.toLowerCase() === 'create') {
-        if (!ghAvailable) {
-          reject(new Error(t('init.ghNotAvailable')));
-          return;
-        }
-        try {
-          resolve(createRepoViaGh());
-        } catch (err) {
-          reject(err);
-        }
-        return;
+      try {
+        resolve(await options[idx]!.action());
+      } catch (err) {
+        reject(err);
       }
-      resolve(input);
+    });
+  });
+}
+
+async function promptCustomUrl(example?: string): Promise<string> {
+  const hint = example ? ` (${t('init.wizard.example')}: ${example})` : '';
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise((resolve, reject) => {
+    rl.question(t('init.wizard.enterUrl') + hint + ': ', (answer: string) => {
+      rl.close();
+      const url = answer.trim();
+      if (!url) { reject(new Error(t('init.repoRequired'))); return; }
+      resolve(url);
     });
   });
 }
