@@ -36,7 +36,7 @@ wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
 
 | 命令 | 别名 | 描述 | 主要参数 |
 |------|------|------|----------|
-| `init` | — | 首次初始化 — 自动检测智能体并执行首次同步 | `--repo`、`--key`、`--force` |
+| `init` | — | 首次初始化 — 自动检测智能体，支持 `gh repo create` 创建仓库，执行首次同步 | `--repo`、`--key`、`--force` |
 | `sync` | `s` | 智能双向同步 — 日常唯一命令 | `-a, --agent`、`-n, --dry-run`、`-o, --only`、`-x, --exclude` |
 | `status` | `st` | 一屏总览 + 健康评分 | `-v, --verbose` |
 | `watch` | — | 后台守护进程，持续自动同步 | `-i, --interval <分钟>` |
@@ -84,11 +84,12 @@ wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
 - `wangchuan snapshot restore <name>` — 回滚到指定快照
 - `wangchuan snapshot delete <name>` — 删除快照
 
-### 快照回滚
-- `wangchuan snapshot save [name]` — 在危险操作前保存命名快照
-- `wangchuan snapshot list` — 查看所有已保存的快照
-- `wangchuan snapshot restore <name>` — 回滚到指定快照
-- `wangchuan snapshot delete <name>` — 删除快照
+### 自定义智能体注册
+- 在 `config.json` 中通过 `customAgents` 字段定义自定义智能体，无需重新编译
+- 自定义智能体与内置智能体一样参与同步
+
+### 扩展冲突解决
+- 三方合并现在支持 `.json`、`.yaml`、`.yml` 文件（除 `.md`/`.txt` 外）
 
 ### 多环境管理
 - 创建隔离环境：`wangchuan env create work`
@@ -102,6 +103,7 @@ wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
 
 ### 记忆浏览
 - `wangchuan memory list` — 查看所有智能体记忆概览
+- `wangchuan memory show <agent>` — 列出所有文件；支持模糊/子串匹配，不匹配时给出建议
 - `wangchuan memory copy openclaw claude` — 在智能体间传输记忆
 - `wangchuan memory broadcast claude` — 将记忆广播到所有智能体
 

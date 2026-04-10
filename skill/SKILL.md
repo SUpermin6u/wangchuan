@@ -7,7 +7,7 @@ OpenClaw Skill wrapper for the Wangchuan AI memory sync system. Invoke directly 
 ## Command Reference
 
 ```
-wangchuan init     [--repo <url>] [--key <path>]           One-time setup — auto-detects agents, runs first sync
+wangchuan init     [--repo <url>] [--key <path>]           One-time setup — auto-detects agents, offers gh repo create, runs first sync
 wangchuan sync     [-a, --agent <name>] [-n, --dry-run]    Smart bidirectional sync (THE daily command)
                    [-o, --only <patterns...>]              Filter: only sync files matching patterns
                    [-x, --exclude <patterns...>]           Filter: exclude files matching patterns
@@ -96,7 +96,7 @@ Aliases: `sync` → `s`, `status` → `st`, `snapshot` → `snap`
 
 ### memory
 - `list` — show all agent memories with summaries
-- `show <agent>` — display full memory content
+- `show <agent>` — list all files when no filename given; fuzzy/substring matching with suggestions on mismatch
 - `copy <from> <to>` — copy memory between agents
 - `broadcast <agent>` — distribute memory to all agents
 
@@ -119,6 +119,10 @@ When omitted, operates on all enabled agents plus the shared tier (skills/MCP/cu
 ## Custom Sub-Agent Sync
 
 Custom sub-agents defined in the `agents/` directory of any supported agent (Claude, Cursor, CodeBuddy, WorkBuddy) are automatically synced across all agents via the shared tier (`shared/agents/`). The same deletion confirmation logic as skills applies — a custom agent is pruned from the repo only when all local agents have removed it.
+
+## Dynamic Agent Registration
+
+Custom agents can be registered at runtime via the `customAgents` field in `config.json`, without recompilation. Custom agents participate in sync identically to built-in agents and support all three entry types (`syncFiles`, `syncDirs`, `jsonFields`).
 
 ## Sync Protocol for AI Agents (IMPORTANT — all agents must follow)
 

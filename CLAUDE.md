@@ -39,12 +39,17 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Core Engines (`src/core/`)
 
-- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven agents + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP/custom agents to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push (skipped when `--only`/`--exclude` filter is active to prevent data loss). `stageToRepo` compares plaintext before re-encrypting to eliminate spurious diffs from random IV. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations.
+- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven built-in agents + any `customAgents` from config + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP/custom agents to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push (skipped when `--only`/`--exclude` filter is active to prevent data loss). `stageToRepo` compares plaintext before re-encrypting to eliminate spurious diffs from random IV. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations. Sync lock uses `{ flag: 'wx' }` for atomic exclusive creation.
 - **json-field.ts** — JSON field-level extraction and merge. `extractFields` picks specified fields from a large JSON; `mergeFields` merges fields back without destroying other content. Used for `.claude.json` to sync only `mcpServers` while ignoring tipsHistory/projects etc.
-- **crypto.ts** — AES-256-GCM encryption. Ciphertext format: `[IV 12B][AuthTag 16B][CipherText] → Base64 → .enc`. Key stored at `~/.wangchuan/master.key` (0o600 permissions).
+- **crypto.ts** — AES-256-GCM encryption. Ciphertext format: `[IV 12B][AuthTag 16B][CipherText] → Base64 → .enc`. Key stored at `~/.wangchuan/master.key` (0o600 permissions). `loadKey()` caches in memory to eliminate redundant disk reads; `clearKeyCache()` resets cache for key rotation.
 - **git.ts** — simple-git wrapper. `cloneOrFetch` is idempotent; `commitAndPush` returns `{committed: false}` when nothing changed; `rollback` runs `git reset --soft HEAD~1` on failure.
 - **config.ts** — Config management at `~/.wangchuan/config.json`. `DEFAULT_PROFILES` defines per-agent sync strategy; `DEFAULT_SHARED` defines cross-agent sharing strategy. `CONFIG_VERSION` controls migration.
 - **migrate.ts** — Version migration. `ensureMigrated()` auto-detects and migrates old configs before each command (v1→v2: repo restructuring, skills merge, stale file cleanup). Auto-backup to `~/.wangchuan/backup-v1/` before migration, auto-rollback on failure.
+
+### Shared Utilities (`src/utils/`)
+
+- **fs.ts** — `walkDir` (recursive directory traversal) and `copyDirSync` (synchronous directory copy), extracted from duplicate code across the codebase.
+- **lcs.ts** — `buildLcsTable` (longest common subsequence table), extracted for use by the three-way merge engine.
 
 ### Commands (`src/commands/`)
 
@@ -52,12 +57,12 @@ Nine user-facing commands: `init`, `sync`, `status`, `watch`, `doctor`, `memory`
 
 | Command | Aliases | Purpose | Key flags |
 |---------|---------|---------|-----------|
-| `init` | — | One-time setup: auto-detects installed agents, runs first sync | `--repo`, `--key`, `--force` |
+| `init` | — | One-time setup: auto-detects installed agents, offers `gh repo create` when GitHub CLI available, runs first sync | `--repo`, `--key`, `--force` |
 | `sync` | `s` | Smart bidirectional sync (THE daily command) | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
 | `watch` | — | Background daemon for continuous sync | `-i, --interval <min>` |
 | `doctor` | — | Diagnose + auto-fix all issues | `--key-rotate`, `--key-export`, `--setup` |
-| `memory` | — | Browse/copy memories between agents | `list\|show\|copy\|broadcast` |
+| `memory` | — | Browse/copy memories between agents; `show` supports fuzzy/substring file matching | `list\|show\|copy\|broadcast` |
 | `env` | — | Multi-environment management | `list\|create\|switch\|current\|delete` |
 | `snapshot` | `snap` | Manage sync snapshots | `save\|list\|restore\|delete` |
 | `lang` | — | Switch display language | `zh\|en` |
@@ -72,6 +77,7 @@ All CLI user-facing messages use `t(key, params?)` from `src/i18n.ts`. The messa
 
 All interfaces use `readonly` modifiers. Key types:
 - `AgentProfile` — Unified agent config (syncFiles/syncDirs/jsonFields)
+- `CustomAgentConfig` — Runtime agent registration config (allows adding agents via `customAgents` in config.json without recompilation)
 - `JsonFieldEntry` — JSON field-level extraction config
 - `SharedConfig` — Cross-agent sharing config (skills sources, MCP sources, shared files)
 - `FileEntry` — Sync entry (`agentName: AgentName | 'shared'`, optional `jsonExtract`)
@@ -87,7 +93,7 @@ import { cryptoEngine } from '../core/crypto.js';
 
 ## Testing
 
-Uses Node.js built-in `node:test` framework; test files in `test/` loaded via tsx. Covers crypto, json-field, and sync engine (including shared distribution, delete propagation, one-click restore, JSON fault tolerance — 42 test cases).
+Uses Node.js built-in `node:test` framework; test files in `test/` loaded via tsx. Covers crypto, json-field, sync engine, sync-history, and three-way merge (including shared distribution, delete propagation, one-click restore, JSON fault tolerance, merge fast paths, non-overlapping edits, conflicts, empty inputs, multi-region — 75 test cases).
 
 ## Language Conventions (MANDATORY — check before every commit)
 

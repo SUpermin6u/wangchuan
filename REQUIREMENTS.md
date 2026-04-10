@@ -181,3 +181,16 @@ wangchuan lang en
 - ~~多环境 Profile 切换（dev/staging/prod 不同配置集）~~ ✅ Implemented as `wangchuan env`
 - ~~定时自动同步（cron / watch 模式）~~ ✅ Implemented as `wangchuan watch`
 - Web UI 管理界面 / Web UI management interface
+
+## v5.2.0 P1 Implementations
+
+- ~~P1-6: `wangchuan init` offers `gh repo create` when GitHub CLI is available~~ ✅
+- ~~P1-7: `memory show <agent>` lists all files without filename; fuzzy/substring matching with suggestions~~ ✅
+- ~~P1-8: Three-way merge extended to `.json`, `.yaml`, `.yml` files (not just `.md`/`.txt`)~~ ✅
+- ~~P1-9: Dynamic agent registration via `customAgents` in config.json — no recompilation needed~~ ✅
+- ~~P1-10: Extracted `walkDir`, `copyDirSync` to `src/utils/fs.ts`; `buildLcsTable` to `src/utils/lcs.ts`~~ ✅
+- ~~P1-11: sync.ts split deferred; code extraction reduces urgency~~ ✅ (partial — extraction done)
+- ~~P1-12: 21 new merge.ts tests (fast paths, non-overlapping, conflicts, empty inputs, multi-region)~~ ✅
+- ~~P1-13: Runtime assertion validates AGENT_NAMES matches AGENT_DEFINITIONS~~ ✅
+- ~~P1-14: Sync lock uses `{ flag: 'wx' }` for atomic exclusive creation~~ ✅
+- ~~P1-15: `loadKey()` caches in memory; `clearKeyCache()` for key rotation~~ ✅

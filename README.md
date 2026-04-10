@@ -36,7 +36,7 @@ wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
 
 | Command | Aliases | Description | Key Flags |
 |---------|---------|-------------|-----------|
-| `init` | — | One-time setup — auto-detects agents, runs first sync | `--repo`, `--key`, `--force` |
+| `init` | — | One-time setup — auto-detects agents, offers `gh repo create`, runs first sync | `--repo`, `--key`, `--force` |
 | `sync` | `s` | Smart bidirectional sync — THE daily command | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
 | `watch` | — | Background daemon for continuous sync | `-i, --interval <min>` |
@@ -84,11 +84,12 @@ Agent paths are customizable in `~/.wangchuan/config.json`.
 - `wangchuan snapshot restore <name>` — roll back to a previous snapshot
 - `wangchuan snapshot delete <name>` — remove a snapshot
 
-### Snapshot Rollback
-- `wangchuan snapshot save [name]` — save a named snapshot before risky changes
-- `wangchuan snapshot list` — view all saved snapshots
-- `wangchuan snapshot restore <name>` — roll back to a previous snapshot
-- `wangchuan snapshot delete <name>` — remove a snapshot
+### Custom Agent Registration
+- Define custom agents in `config.json` via `customAgents` field — no recompilation needed
+- Custom agents participate in sync just like built-in agents
+
+### Extended Conflict Resolution
+- Three-way merge now supports `.json`, `.yaml`, `.yml` files in addition to `.md`/`.txt`
 
 ### Multi-Environment
 - Create isolated environments: `wangchuan env create work`
@@ -102,6 +103,7 @@ Agent paths are customizable in `~/.wangchuan/config.json`.
 
 ### Memory Browsing
 - `wangchuan memory list` — overview of all agent memories
+- `wangchuan memory show <agent>` — list all files; fuzzy/substring matching with suggestions on mismatch
 - `wangchuan memory copy openclaw claude` — transfer memories
 - `wangchuan memory broadcast claude` — share to all agents
 
