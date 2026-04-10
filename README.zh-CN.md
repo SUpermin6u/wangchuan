@@ -27,7 +27,9 @@ wangchuan watch
 在新机器上：
 
 ```bash
-wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
+wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
+# 也支持 GitLab、Gitee、Bitbucket、Gitea 等任意 Git 托管：
+# wangchuan init --repo git@gitlab.com:you/brain.git --key wangchuan_<hex>
 ```
 
 ---
@@ -36,7 +38,7 @@ wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
 
 | 命令 | 别名 | 描述 | 主要参数 |
 |------|------|------|----------|
-| `init` | — | 首次初始化 — 自动检测智能体，支持 `gh repo create` 创建仓库，执行首次同步 | `--repo`、`--key`、`--force` |
+| `init` | — | 首次初始化 — 自动检测智能体，支持一键创建仓库（GitHub CLI），执行首次同步 | `--repo`、`--key`、`--force` |
 | `sync` | `s` | 智能双向同步 — 日常唯一命令 | `-a, --agent`、`-n, --dry-run`、`-o, --only`、`-x, --exclude` |
 | `status` | `st` | 一屏总览 + 健康评分 | `-v, --verbose` |
 | `watch` | — | 后台守护进程，持续自动同步 | `-i, --interval <分钟>` |
@@ -53,12 +55,12 @@ wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
 | 智能体 | 默认路径 | 同步内容 |
 |--------|---------|----------|
 | **OpenClaw** | `~/.openclaw/workspace/` | MEMORY.md（加密）、AGENTS.md、SOUL.md、TOOLS.md、IDENTITY.md、USER.md（加密）、HEARTBEAT.md、memory/（加密）、openclaw.json → agents/skills/ui（加密）、skills/ |
-| **Claude** | `~/.claude/` | CLAUDE.md、settings.json（加密）、`.claude.json` → mcpServers（加密） |
-| **Gemini** | `~/.gemini/` | `settings.internal.json` → security + model + general（加密） |
-| **CodeBuddy** | `~/.codebuddy/` | MEMORY.md（加密）、CODEBUDDY.md、mcp.json → mcpServers（加密）、settings.json → enabledPlugins（加密） |
-| **WorkBuddy** | `~/.workbuddy/` | MEMORY.md（加密）、IDENTITY.md、SOUL.md、USER.md（加密）、mcp.json → mcpServers（加密） |
-| **Cursor** | `~/.cursor/` | rules/（目录）、mcp.json → mcpServers（加密）、cli-config.json → 字段（加密） |
-| **Codex** | `~/.codex/` | AGENTS.md、instructions.md |
+| **Claude** | `~/.claude/` | CLAUDE.md、settings.json（加密）、`.claude.json` → mcpServers（加密）、commands/（目录）、plugins/（已安装 + 市场源） |
+| **Gemini** | `~/.gemini/` | `settings.internal.json` → security + model + general（加密）、skills/（目录） |
+| **CodeBuddy** | `~/.codebuddy/` | MEMORY.md（加密）、CODEBUDDY.md、mcp.json → mcpServers（加密）、settings.json → enabledPlugins + hooks（加密）、plugins/（市场源） |
+| **WorkBuddy** | `~/.workbuddy/` | MEMORY.md（加密）、IDENTITY.md、SOUL.md、USER.md（加密）、BOOTSTRAP.md、mcp.json → mcpServers（加密）、settings.json → enabledPlugins + hooks（加密）、skills/（目录）、extensions/ |
+| **Cursor** | `~/.cursor/` | rules/（目录）、mcp.json → mcpServers（加密）、cli-config.json → 字段（加密）、extensions/、hooks.json |
+| **Codex** | `~/.codex/` | MEMORY.md（加密）、instructions.md、config.toml（加密）、skills/（目录）、memories/（加密） |
 
 各智能体的 `workspacePath` 均可在 `~/.wangchuan/config.json` 中自定义。
 
@@ -115,13 +117,47 @@ wangchuan init --repo git@github.com:you/brain.git --key /path/to/master.key
 
 ---
 
+## 支持的 Git 托管
+
+忘川支持**任意 Git 托管**，只要支持 SSH 或 HTTPS 协议：
+
+| 平台 | 仓库地址示例 |
+|------|------------|
+| **GitHub** | `git@github.com:you/brain.git` |
+| **GitLab** | `git@gitlab.com:you/brain.git` |
+| **Gitee（码云）** | `git@gitee.com:you/brain.git` |
+| **Bitbucket** | `git@bitbucket.org:you/brain.git` |
+| **Gitea** | `git@gitea.example.com:you/brain.git` |
+| **自建服务** | 任意 SSH/HTTPS Git 地址 |
+
+> **提示**：已安装 GitHub CLI（`gh`）时，`wangchuan init` 可一键创建私有仓库。其他平台请先创建私有仓库，然后 `wangchuan init --repo <url>` 传入地址即可。
+
+---
+
+## 支持的 Git 托管
+
+忘川支持**任意 Git 托管**，只要支持 SSH 或 HTTPS 协议：
+
+| 平台 | 仓库地址示例 |
+|------|------------|
+| **GitHub** | `git@github.com:you/brain.git` |
+| **GitLab** | `git@gitlab.com:you/brain.git` |
+| **Gitee（码云）** | `git@gitee.com:you/brain.git` |
+| **Bitbucket** | `git@bitbucket.org:you/brain.git` |
+| **Gitea** | `git@gitea.example.com:you/brain.git` |
+| **自建服务** | 任意 SSH/HTTPS Git 地址 |
+
+> **提示**：已安装 GitHub CLI（`gh`）时，`wangchuan init` 可一键创建私有仓库。其他平台请先创建私有仓库，然后 `wangchuan init --repo <url>` 传入地址即可。
+
+---
+
 ## 配置文件
 
 位于 `~/.wangchuan/config.json`：
 
 ```jsonc
 {
-  "repo": "git@github.com:you/brain.git",
+  "repo": "git@github.com:you/brain.git",  // 或任意 Git 托管地址  // 或任意 Git 托管地址
   "branch": "main",
   "localRepoPath": "~/.wangchuan/repo",
   "keyPath": "~/.wangchuan/master.key",
@@ -161,7 +197,7 @@ npm install -g wangchuan
 从源码安装：
 
 ```bash
-git clone https://github.com/nicepkg/wangchuan.git
+git clone https://github.com/SUpermin6u/wangchuan.git
 cd wangchuan && npm install && npm run build && npm link
 ```
 

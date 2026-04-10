@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Wangchuan (忘川)** — AI memory sync system. A TypeScript CLI tool that encrypts and syncs AI agent configs and memories via a Git repo, enabling cross-environment migration and one-click restore. Supports 7 agents: OpenClaw, Claude, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
+**Wangchuan (忘川)** — AI memory sync system. A TypeScript CLI tool that encrypts and syncs AI agent configs and memories via a Git repo (supports any Git hosting: GitHub, GitLab, Gitee, Bitbucket, Gitea, self-hosted), enabling cross-environment migration and one-click restore. Supports 7 agents: OpenClaw, Claude, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
 
 ## Build & Dev Commands
 
@@ -57,7 +57,7 @@ Nine user-facing commands: `init`, `sync`, `status`, `watch`, `doctor`, `memory`
 
 | Command | Aliases | Purpose | Key flags |
 |---------|---------|---------|-----------|
-| `init` | — | One-time setup: auto-detects installed agents, offers `gh repo create` when GitHub CLI available, runs first sync | `--repo`, `--key`, `--force` |
+| `init` | — | One-time setup: auto-detects installed agents, auto-creates repo (GitHub CLI), runs first sync. Works with any Git hosting (GitHub/GitLab/Gitee/Bitbucket/Gitea) | `--repo`, `--key`, `--force` |
 | `sync` | `s` | Smart bidirectional sync (THE daily command) | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
 | `watch` | — | Background daemon for continuous sync | `-i, --interval <min>` |
@@ -126,7 +126,6 @@ Rules:
 | `CLAUDE.md` | Commands table, architecture description, agent count |
 | `README.md` | Commands table, features, quick start, agent list (English) |
 | `README.zh-CN.md` | Same as README.md but in Chinese |
-| `REQUIREMENTS.md` | If sync scope or agent config changed |
 | `.wangchuan/config.example.json` | If agent profiles or shared config changed |
 
 **This is NOT a "do it later" task. If you change code and don't update docs in the same commit, you are shipping a bug.**
@@ -144,7 +143,7 @@ grep -c "\.command(" bin/wangchuan.ts
 
 Every release MUST complete ALL steps. Skipping any step is a release blocker.
 
-1. **Docs sync verification**: Confirm `skill/SKILL.md`, `CLAUDE.md`, `README.md`, `README.zh-CN.md`, `REQUIREMENTS.md` all reflect current code. Run the pre-commit verification above.
+1. **Docs sync verification**: Confirm `skill/SKILL.md`, `CLAUDE.md`, `README.md`, `README.zh-CN.md` all reflect current code. Run the pre-commit verification above.
 2. **Privacy check**: Verify no tokens, API keys, or passwords leaked in code or configs
 3. **Language check**: `grep -rP '[\x{4e00}-\x{9fff}]' src/ test/ --include='*.ts' | grep -v 'i18n.ts'` returns empty (except test data strings)
 4. **Typecheck + test**: `npm run typecheck && npm test` — all must pass

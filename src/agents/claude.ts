@@ -12,8 +12,13 @@ export const claude: AgentDefinition = {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.claude'),
     syncFiles: [
-      { src: 'CLAUDE.md',     encrypt: false },
-      { src: 'settings.json', encrypt: true  },
+      { src: 'CLAUDE.md',                        encrypt: false },
+      { src: 'settings.json',                    encrypt: true  },
+      { src: 'plugins/installed_plugins.json',   encrypt: false },
+      { src: 'plugins/known_marketplaces.json',  encrypt: false },
+    ],
+    syncDirs: [
+      { src: 'commands/', encrypt: false },
     ],
     jsonFields: [
       {

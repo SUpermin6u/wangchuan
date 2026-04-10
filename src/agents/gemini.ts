@@ -12,6 +12,9 @@ export const gemini: AgentDefinition = {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.gemini'),
     syncFiles: [],
+    syncDirs: [
+      { src: 'skills/', encrypt: false },
+    ],
     jsonFields: [
       {
         src:      'settings.internal.json',
@@ -21,4 +24,5 @@ export const gemini: AgentDefinition = {
       },
     ],
   },
+  sharedSkills: { dir: 'skills/' },
 };

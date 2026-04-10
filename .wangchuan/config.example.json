@@ -1,5 +1,5 @@
 {
-  "_comment": "忘川配置示例 v2 — 复制为 ~/.wangchuan/config.json 并修改",
+  "_comment": "忘川配置示例 v2 — 复制为 ~/.wangchuan/config.json 并修改。支持任意 Git 托管: GitHub/GitLab/Gitee/Bitbucket/Gitea 等",
   "repo": "git@github.com:you/your-brain.git",
   "branch": "main",
   "localRepoPath": "~/.wangchuan/repo",

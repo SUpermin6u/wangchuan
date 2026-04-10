@@ -126,7 +126,7 @@ export async function cmdWatch({ agent, interval }: WatchOptions = {}): Promise<
     } catch (err) {
       // ── Smart conflict resolution for watch mode ───────────────
       const errorMsg = (err as Error).message;
-      if (errorMsg.includes('conflict') || errorMsg.includes('冲突')) {
+      if (errorMsg.includes('conflict') || errorMsg.includes('\u51b2\u7a81')) {
         await handleWatchConflicts(cfg, repoPath, agent);
       } else {
         logger.error(t('watch.syncError', { error: errorMsg }));

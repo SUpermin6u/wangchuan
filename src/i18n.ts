@@ -223,6 +223,7 @@ const M: Msgs = {
   'migrate.detecting':         ['Detected v{from} config, migrating to v{to} …', '检测到 v{from} 配置，正在迁移至 v{to} …'],
   'migrate.complete':          ['Config migration complete', '配置迁移完成'],
   'migrate.backedUp':          ['Old data backed up to {path}/backup-v1/', '旧数据已备份到 {path}/backup-v1/'],
+  'migrate.profilesReconciled': ['Agent profiles updated to match latest definitions', '智能体配置已更新至最新定义'],
 
   // ── sync (debug) ────────────────────────────────────────────
   'sync.distributeSkill':  ['distribute skill: {file} → {agent}', '分发 skill: {file} → {agent}'],
@@ -374,6 +375,7 @@ const M: Msgs = {
   'env.cannotDeleteDefault':  ['Cannot delete the default environment', '无法删除 default 环境'],
   'env.created':              ['Environment created: {name}', '环境已创建: {name}'],
   'env.switched':             ['Switched to environment: {name}', '已切换到环境: {name}'],
+  'env.switch.syncing':       ['Syncing memories for the new environment …', '正在同步新环境的记忆 …'],
   'env.deleted':              ['Environment deleted: {name}', '环境已删除: {name}'],
   'env.create.creating':      ['Creating environment {name} …', '正在创建环境 {name} …'],
   'env.switch.switching':     ['Switching to environment {name} …', '正在切换到环境 {name} …'],
@@ -545,6 +547,8 @@ const M: Msgs = {
   'snapshot.banner':           ['Wangchuan · Snapshot', '忘川 · 快照管理'],
   'snapshot.saved':            ['Snapshot saved: {name} ({count} files)', '快照已保存: {name}（{count} 个文件）'],
   'snapshot.restored':         ['Snapshot restored: {name}', '快照已恢复: {name}'],
+  'snapshot.pushing':          ['Pushing restored snapshot to cloud …', '正在将恢复的快照推送到云端 …'],
+  'snapshot.pushedToCloud':    ['Restored snapshot pushed to cloud — other machines will pull this version', '已推送到云端 — 其他机器下次同步将拉取此版本'],
   'snapshot.deleted':          ['Snapshot deleted: {name}', '快照已删除: {name}'],
   'snapshot.notFound':         ['Snapshot not found: {name}', '快照不存在: {name}'],
   'snapshot.listHeader':       ['Snapshots:', '快照列表：'],

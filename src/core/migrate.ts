@@ -21,7 +21,9 @@ import { expandHome } from './sync.js';
 import { logger } from '../utils/logger.js';
 import { copyDirSync } from '../utils/fs.js';
 import { t }      from '../i18n.js';
-import type { WangchuanConfig } from '../types.js';
+import { AGENT_DEFINITIONS, buildDefaultShared } from '../agents/index.js';
+import { AGENT_NAMES } from '../types.js';
+import type { WangchuanConfig, AgentProfiles, AgentProfile } from '../types.js';
 
 /** Recursively remove directory */
 function rmDirRecursive(dir: string): void {
@@ -157,22 +159,90 @@ function applyConfigV2(cfg: WangchuanConfig): WangchuanConfig {
 }
 
 /**
+ * Reconcile user's local profiles with latest agent definitions.
+ *
+ * When wangchuan upgrades and agent definitions add new syncFiles/syncDirs/jsonFields,
+ * user's existing config.json won't have them. This function merges the latest defaults
+ * while preserving user customizations (enabled state, workspacePath).
+ *
+ * Also updates the shared tier (skills/mcp/agents sources) from latest definitions.
+ */
+function reconcileProfiles(cfg: WangchuanConfig): WangchuanConfig {
+  const userProfiles = cfg.profiles.default;
+  const reconciled: Record<string, unknown> = {};
+  let changed = false;
+
+  for (const def of AGENT_DEFINITIONS) {
+    const name = def.name as keyof AgentProfiles;
+    const userProfile: AgentProfile | undefined = userProfiles[name];
+    const latestProfile = def.profile;
+
+    if (!userProfile) {
+      // New agent added in upgrade — use default (disabled until doctor auto-detects)
+      reconciled[name] = { ...latestProfile, enabled: false };
+      changed = true;
+      continue;
+    }
+
+    // Preserve user's enabled state and workspacePath, take latest sync definitions
+    const merged: AgentProfile = {
+      enabled:       userProfile.enabled,
+      workspacePath: userProfile.workspacePath,
+      syncFiles:     latestProfile.syncFiles,
+      ...(latestProfile.syncDirs  ? { syncDirs:  latestProfile.syncDirs }  : {}),
+      ...(latestProfile.jsonFields ? { jsonFields: latestProfile.jsonFields } : {}),
+    };
+
+    // Check if anything actually changed
+    if (JSON.stringify(userProfile) !== JSON.stringify(merged)) {
+      changed = true;
+    }
+    reconciled[name] = merged;
+  }
+
+  if (!changed) return cfg;
+
+  logger.info(t('migrate.profilesReconciled'));
+
+  // Also reconcile shared tier from latest definitions
+  const latestShared = buildDefaultShared();
+
+  return {
+    ...cfg,
+    profiles: { default: reconciled as unknown as AgentProfiles },
+    shared:   {
+      ...latestShared,
+      // Preserve user's custom syncFiles if any
+      syncFiles: cfg.shared?.syncFiles ?? latestShared.syncFiles,
+    },
+  };
+}
+
+/**
  * Detect and execute config migration, returns latest version config.
  * Call after config.load().
  */
 export function ensureMigrated(cfg: WangchuanConfig): WangchuanConfig {
   const currentVersion = cfg.version ?? 1;
-  if (currentVersion >= CONFIG_VERSION) return cfg;
-
-  logger.info(t('migrate.detecting', { from: currentVersion, to: CONFIG_VERSION }));
-
   let migrated = cfg;
-  if (currentVersion < 2) {
-    migrated = migrateV1toV2(migrated);
+
+  // Version migration (v1 → v2, etc.)
+  if (currentVersion < CONFIG_VERSION) {
+    logger.info(t('migrate.detecting', { from: currentVersion, to: CONFIG_VERSION }));
+    if (currentVersion < 2) {
+      migrated = migrateV1toV2(migrated);
+    }
+    config.save(migrated);
+    logger.ok(t('migrate.complete'));
+    logger.info(t('migrate.backedUp', { path: config.paths.dir }));
   }
 
-  config.save(migrated);
-  logger.ok(t('migrate.complete'));
-  logger.info(t('migrate.backedUp', { path: config.paths.dir }));
+  // Profile reconciliation — always runs, catches upgrades within same config version
+  const reconciled = reconcileProfiles(migrated);
+  if (reconciled !== migrated) {
+    config.save(reconciled);
+    migrated = reconciled;
+  }
+
   return migrated;
 }

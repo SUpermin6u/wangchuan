@@ -159,6 +159,11 @@ async function cmdEnvSwitch(cfg: WangchuanConfig, repoPath: string, name?: strin
   config.save(updated);
 
   logger.ok(t('env.switched', { name }));
+
+  // Auto-sync to pull the new environment's memories into workspace
+  logger.info(t('env.switch.syncing'));
+  const { cmdSync } = await import('./sync.js');
+  await cmdSync();
 }
 
 // ── delete ────────────────────────────────────────────────────────────

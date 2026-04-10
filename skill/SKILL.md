@@ -113,12 +113,12 @@ Supported by: `sync`, `status`, `watch`, `memory`.
 | Value | Description |
 |-------|-------------|
 | `openclaw`  | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), HEARTBEAT.md, BOOTSTRAP.md, memory/ (enc), openclaw.json → agents/skills/ui (enc), skills/ |
-| `claude`    | CLAUDE.md, settings.json (enc), .claude.json → mcpServers (enc) |
-| `gemini`    | settings.internal.json → security + model + general (enc) |
-| `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
-| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), BOOTSTRAP.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins (enc) |
-| `cursor`    | rules/ dir, mcp.json → mcpServers (enc), cli-config.json → permissions + model + enabledPlugins (enc) |
-| `codex`     | AGENTS.md, instructions.md |
+| `claude`    | CLAUDE.md, settings.json (enc), .claude.json → mcpServers (enc), commands/ (dir), plugins/ (installed + marketplaces) |
+| `gemini`    | settings.internal.json → security + model + general (enc), skills/ (dir) |
+| `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins + hooks (enc), plugins/ (marketplaces) |
+| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), BOOTSTRAP.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins + hooks (enc), skills/ (dir), extensions/ |
+| `cursor`    | rules/ dir, mcp.json → mcpServers (enc), cli-config.json → permissions + model + enabledPlugins (enc), extensions/, hooks.json |
+| `codex`     | MEMORY.md (enc), instructions.md, config.toml (enc), skills/ (dir), memories/ (enc) |
 
 When omitted, operates on all enabled agents plus the shared tier (skills/MCP/custom agents/shared memory).
 
@@ -162,6 +162,78 @@ The watch daemon auto-detects file changes and triggers sync, serving as a safet
 ## Prerequisites
 
 1. Node.js ≥ 18
-2. `wangchuan init` has been run (~/.wangchuan/config.json exists)
-3. Local SSH key has access to the target git repo
-4. Copy `~/.wangchuan/master.key` manually when migrating across machines (or use `wangchuan doctor --key-export`)
+2. Git installed and configured (SSH key or HTTPS credentials)
+3. A **private** Git repo on any hosting platform (GitHub, GitLab, Gitee, Bitbucket, Gitea, or self-hosted)
+
+## Installation
+
+### Install wangchuan CLI
+
+```bash
+npm install -g wangchuan
+```
+
+### First-time setup
+
+```bash
+# Interactive — auto-detects installed agents, creates repo via GitHub CLI if available
+wangchuan init
+
+# Or specify a repo URL directly (any Git hosting):
+wangchuan init --repo git@github.com:you/brain.git
+wangchuan init --repo git@gitlab.com:you/brain.git
+wangchuan init --repo git@gitee.com:you/brain.git
+```
+
+### Install this skill to an agent
+
+Copy the `wangchuan/` skill folder to your agent's skills directory:
+
+```bash
+# Claude
+cp -r wangchuan/ ~/.claude/skills/wangchuan/
+
+# OpenClaw
+cp -r wangchuan/ ~/.openclaw/workspace/skills/wangchuan/
+
+# Codex
+cp -r wangchuan/ ~/.codex/skills/wangchuan/
+
+# Or let wangchuan sync distribute it to all agents automatically:
+wangchuan sync
+```
+
+### Setting up Git repo (if you don't have one)
+
+Create a **private** repo on your preferred platform:
+
+| Platform | How to create |
+|----------|--------------|
+| **GitHub** | `wangchuan init` auto-creates via `gh` CLI, or: github.com → New repository → Private |
+| **GitLab** | gitlab.com → New project → Private |
+| **Gitee** | gitee.com → New repo → Private |
+| **Bitbucket** | bitbucket.org → Create repository → Private |
+| **Gitea** | Your instance → New Repository → Private |
+
+Then: `wangchuan init --repo <ssh-url>`
+
+### New machine setup
+
+```bash
+npm install -g wangchuan
+wangchuan init --repo <your-repo-url> --key <master-key-hex>
+```
+
+Get the master key from your original machine: `wangchuan doctor --key-export`
+
+### Migrating the master key
+
+⚠️ **`master.key` is the ONLY thing that cannot be recovered.** Back it up securely.
+
+```bash
+# On the source machine:
+wangchuan doctor --key-export    # prints wangchuan_<hex>
+
+# On the target machine:
+wangchuan init --repo <url> --key wangchuan_<hex>
+```

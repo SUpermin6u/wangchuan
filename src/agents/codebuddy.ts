@@ -12,8 +12,9 @@ export const codebuddy: AgentDefinition = {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.codebuddy'),
     syncFiles: [
-      { src: 'MEMORY.md',     encrypt: true  },
-      { src: 'CODEBUDDY.md',  encrypt: false },
+      { src: 'MEMORY.md',                        encrypt: true  },
+      { src: 'CODEBUDDY.md',                     encrypt: false },
+      { src: 'plugins/known_marketplaces.json',   encrypt: false },
     ],
     jsonFields: [
       {
@@ -24,7 +25,7 @@ export const codebuddy: AgentDefinition = {
       },
       {
         src:      'settings.json',
-        fields:   ['enabledPlugins'],
+        fields:   ['enabledPlugins', 'hooks'],
         repoName: 'settings-sync.json',
         encrypt:  true,
       },

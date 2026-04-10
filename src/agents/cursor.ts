@@ -11,7 +11,10 @@ export const cursor: AgentDefinition = {
   profile: {
     enabled: true,
     workspacePath: path.join(os.homedir(), '.cursor'),
-    syncFiles: [],
+    syncFiles: [
+      { src: 'extensions/extensions.json', encrypt: false },
+      { src: 'hooks.json',                encrypt: false },
+    ],
     syncDirs: [
       { src: 'rules/', encrypt: false },
     ],
