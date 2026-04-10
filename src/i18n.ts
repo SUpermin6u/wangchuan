@@ -404,6 +404,14 @@ const M: Msgs = {
   'integrity.missingChecksum':['No integrity.json in repo, skipping verification', '仓库中无 integrity.json，跳过校验'],
   'integrity.mismatchCount':  ['Warning: {count} files failed integrity check', '警告: {count} 个文件完整性校验失败'],
 
+  // ── key fingerprint validation ──────────────────────────────────
+  'keyFingerprint.notFound':  ['No key fingerprint in repo (first push or legacy), skipping validation', '仓库中无密钥指纹（首次推送或旧版本），跳过校验'],
+  'keyFingerprint.verified':  ['Key fingerprint verified ✓', '密钥指纹校验通过 ✓'],
+  'keyFingerprint.mismatch':  ['⛔ Key mismatch! Your local master.key does NOT match the key used to encrypt the repo.\n   This likely means you copied the wrong key or are using a different key from another machine.\n   To fix: run `wangchuan doctor --key-export` on the machine that last pushed, and import that key here.\n   Sync aborted to prevent data corruption.', '⛔ 密钥不匹配！本地 master.key 与仓库加密密钥不一致。\n   可能原因：复制了错误的密钥，或使用了另一台机器的密钥。\n   修复方法：在上次推送的机器上执行 `wangchuan doctor --key-export`，将密钥导入到本机。\n   同步已中止，以防止数据损坏。'],
+  'doctor.keyFingerprintOk':  ['Key fingerprint matches repo ✓', '密钥指纹与仓库一致 ✓'],
+  'doctor.keyFingerprintFail':['Key fingerprint does NOT match repo — wrong master.key?', '密钥指纹与仓库不一致 — 是否使用了错误的 master.key？'],
+  'doctor.keyFingerprintNone':['No key fingerprint in repo (run sync once to generate)', '仓库中无密钥指纹（执行一次 sync 即可生成）'],
+
   // ── backup before pull ────────────────────────────────────────
   'backup.creating':          ['Backing up {count} files before overwrite …', '覆盖前备份 {count} 个文件 …'],
   'backup.created':           ['Backup saved: {path}', '备份已保存: {path}'],

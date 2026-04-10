@@ -36,6 +36,12 @@ function loadKey(keyPath: string): Buffer {
 /** Invalidate the key cache (required after key rotation) */
 export function clearKeyCache(): void { cachedKey = undefined; }
 
+/** Compute SHA-256 fingerprint of the master key (for cross-machine validation) */
+export function keyFingerprint(keyPath: string): string {
+  const key = loadKey(keyPath);
+  return crypto.createHash('sha256').update(key).digest('hex');
+}
+
 /** Encrypt Buffer → Base64 string (format: IV + AuthTag + CipherText) */
 function encryptBuffer(plaintext: Buffer, key: Buffer): string {
   const iv     = crypto.randomBytes(IV_BYTES);

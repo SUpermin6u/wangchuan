@@ -18,6 +18,7 @@ import path from 'path';
 import os   from 'os';
 import crypto from 'crypto';
 import { cryptoEngine } from './crypto.js';
+import { keyFingerprint } from './crypto.js';
 import { jsonField }    from './json-field.js';
 import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
@@ -1034,6 +1035,56 @@ function verifyIntegrity(repoPath: string): string[] {
   return mismatched;
 }
 
+// ── Key fingerprint validation ──────────────────────────────────
+
+const KEY_FINGERPRINT_FILE = 'key-fingerprint.json';
+
+interface KeyFingerprintManifest {
+  readonly fingerprint: string;
+  readonly updatedAt: string;
+}
+
+/**
+ * Write the local key's SHA-256 fingerprint to the repo.
+ * Called after successful push so other machines can verify key match.
+ */
+function writeKeyFingerprint(repoPath: string, keyPath: string): void {
+  const fp = keyFingerprint(keyPath);
+  const manifest: KeyFingerprintManifest = {
+    fingerprint: fp,
+    updatedAt: new Date().toISOString(),
+  };
+  fs.writeFileSync(
+    path.join(repoPath, KEY_FINGERPRINT_FILE),
+    JSON.stringify(manifest, null, 2),
+    'utf-8',
+  );
+}
+
+/**
+ * Verify the local key matches the fingerprint stored in the repo.
+ * Throws with a clear message on mismatch. Skips silently if no fingerprint exists
+ * (first-time push, or migrated from older version).
+ */
+function verifyKeyFingerprint(repoPath: string, keyPath: string): void {
+  const fpPath = path.join(repoPath, KEY_FINGERPRINT_FILE);
+  if (!fs.existsSync(fpPath)) {
+    logger.debug(t('keyFingerprint.notFound'));
+    return; // first push or migrated — no fingerprint yet
+  }
+  let manifest: KeyFingerprintManifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(fpPath, 'utf-8')) as KeyFingerprintManifest;
+  } catch {
+    return; // corrupt file — skip validation
+  }
+  const localFp = keyFingerprint(keyPath);
+  if (localFp !== manifest.fingerprint) {
+    throw new Error(t('keyFingerprint.mismatch'));
+  }
+  logger.debug(t('keyFingerprint.verified'));
+}
+
 // ── Backup before destructive pull ──────────────────────────────
 
 const WANGCHUAN_DIR = path.join(os.homedir(), '.wangchuan');
@@ -1154,6 +1205,9 @@ export const syncEngine = {
     }
     const repoPath = expandHome(cfg.localRepoPath);
     const keyPath  = expandHome(cfg.keyPath);
+
+    // ── Verify key fingerprint before pushing (prevents overwriting cloud with wrong key) ──
+    verifyKeyFingerprint(repoPath, keyPath);
     const entries  = buildFileEntries(cfg, undefined, agent, filter);
     const result: StageResult = { synced: [], skipped: [], encrypted: [], deleted: [], unchanged: [] };
     let progressIdx = 0;
@@ -1277,12 +1331,19 @@ export const syncEngine = {
       writeIntegrity(repoPath, result.synced);
     }
 
+    // Write key fingerprint so other machines can verify key match before pull
+    writeKeyFingerprint(repoPath, keyPath);
+
     return result;
   },
 
   async restoreFromRepo(cfg: WangchuanConfig, agent?: AgentName | string, filter?: FilterOptions): Promise<RestoreResult> {
     const repoPath = expandHome(cfg.localRepoPath);
     const keyPath  = expandHome(cfg.keyPath);
+
+    // ── Verify key fingerprint before pulling (prevents decrypt failures mid-restore) ──
+    verifyKeyFingerprint(repoPath, keyPath);
+
     const entries  = buildFileEntries(cfg, repoPath, agent, filter);
     const result: RestoreResult = { synced: [], skipped: [], decrypted: [], conflicts: [], localOnly: [], skippedAgents: [] };
     let restoreIdx = 0;

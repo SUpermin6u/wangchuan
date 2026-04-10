@@ -29,6 +29,7 @@ import { config }          from '../core/config.js';
 import { resolveGitBranch } from '../core/config.js';
 import { gitEngine }       from '../core/git.js';
 import { cryptoEngine, clearKeyCache } from '../core/crypto.js';
+import { keyFingerprint } from '../core/crypto.js';
 import { syncLock }        from '../core/sync-lock.js';
 import { logger }          from '../utils/logger.js';
 import { t }               from '../i18n.js';
@@ -84,6 +85,25 @@ function checkMasterKey(): CheckResult {
     }
   } catch { /* On some OS permission check may not work */ }
   return PASS(t('doctor.keyOk'));
+}
+
+/** Check if local key fingerprint matches the one stored in the repo */
+function checkKeyFingerprint(cfg: WangchuanConfig): CheckResult {
+  const repoPath = syncEngine.expandHome(cfg.localRepoPath);
+  const fpPath = path.join(repoPath, 'key-fingerprint.json');
+  if (!fs.existsSync(fpPath)) {
+    return WARN(t('doctor.keyFingerprintNone'));
+  }
+  try {
+    const manifest = JSON.parse(fs.readFileSync(fpPath, 'utf-8')) as { fingerprint: string };
+    const localFp = keyFingerprint(cfg.keyPath);
+    if (localFp !== manifest.fingerprint) {
+      return FAIL(t('doctor.keyFingerprintFail'));
+    }
+    return PASS(t('doctor.keyFingerprintOk'));
+  } catch {
+    return WARN(t('doctor.keyFingerprintNone'));
+  }
 }
 
 async function checkGit(): Promise<CheckResult> {
@@ -373,6 +393,11 @@ export async function cmdDoctor(opts: DoctorOptions = {}): Promise<void> {
 
   // 2. Master key
   results.push(checkMasterKey());
+
+  // 2b. Key fingerprint (repo vs local key match)
+  if (cfg) {
+    results.push(checkKeyFingerprint(cfg));
+  }
 
   // 3. Git
   results.push(await checkGit());
