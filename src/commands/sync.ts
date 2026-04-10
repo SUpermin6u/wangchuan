@@ -20,6 +20,7 @@ import { fireWebhooks, buildWebhookPayload } from '../core/webhook.js';
 import { runHooks } from '../core/hooks.js';
 import { validator }       from '../utils/validator.js';
 import { logger }          from '../utils/logger.js';
+import { copyDirSync }    from '../utils/fs.js';
 import { t }               from '../i18n.js';
 import type { SyncOptions, RestoreResult, StageResult, CommitResult, FilterOptions } from '../types.js';
 import chalk from 'chalk';
@@ -41,20 +42,6 @@ function autoSnapshot(repoPath: string): void {
     pruneAutoSnapshots(MAX_AUTO_SNAPSHOTS);
   } catch {
     // Silent failure — snapshot is a safety net, not a blocker
-  }
-}
-
-function copyDirSync(src: string, dest: string): void {
-  if (!fs.existsSync(src)) return;
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath  = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDirSync(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
   }
 }
 
@@ -148,7 +135,7 @@ async function runSync(
   cfg: import('../types.js').WangchuanConfig,
   repoPath: string,
   hostname: string,
-  agent: import('../types.js').AgentName | undefined,
+  agent: import('../types.js').AgentName | string | undefined,
   dryRun: boolean | undefined,
   filter: FilterOptions | undefined,
 ): Promise<SyncCommandResult> {

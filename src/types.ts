@@ -120,6 +120,17 @@ export interface WangchuanConfig {
     readonly postPush?: readonly string[];
     readonly postPull?: readonly string[];
   };
+  /** Custom agents for config-driven file sync (not part of built-in AGENT_NAMES) */
+  readonly customAgents?: Readonly<Record<string, CustomAgentProfile>>;
+}
+
+/** Profile for a custom (config-driven) agent — basic file sync only, no shared distribution */
+export interface CustomAgentProfile {
+  readonly workspacePath: string;
+  readonly syncFiles: readonly SyncFileEntry[];
+  readonly syncDirs?: readonly SyncDirEntry[];
+  readonly jsonFields?: readonly JsonFieldEntry[];
+  readonly encrypt?: boolean;
 }
 
 // ─── Agent filtering ─────────────────────────────────────────────
@@ -134,12 +145,12 @@ export const AGENT_NAMES = ['openclaw', 'claude', 'gemini', 'codebuddy', 'workbu
 /** Agent name that supports filtering */
 export type AgentName = (typeof AGENT_NAMES)[number];
 
-/** Sync tier identifier */
-export type SyncTier = AgentName | 'shared';
+/** Sync tier identifier (built-in agents, shared, or custom agent names) */
+export type SyncTier = AgentName | 'shared' | (string & {});
 
 /** Shared mixin for all commands supporting --agent filtering */
 export interface AgentOptions {
-  readonly agent?: AgentName;
+  readonly agent?: AgentName | string;
 }
 
 // ─── Pending distribution (cross-agent change confirmation) ──────

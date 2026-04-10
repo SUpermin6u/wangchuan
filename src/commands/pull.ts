@@ -44,7 +44,7 @@ export async function cmdPull({ agent, only, exclude }: PullOptions = {}): Promi
 async function runPull(
   cfg: import('../types.js').WangchuanConfig,
   repoPath: string,
-  agent: import('../types.js').AgentName | undefined,
+  agent: import('../types.js').AgentName | string | undefined,
   filter: FilterOptions | undefined,
 ): Promise<RestoreResult> {
   let spinner = ora(t('pull.pulling', { repo: cfg.repo })).start();

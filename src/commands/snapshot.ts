@@ -16,6 +16,7 @@ import { ensureMigrated } from '../core/migrate.js';
 import { syncEngine }     from '../core/sync.js';
 import { validator }      from '../utils/validator.js';
 import { logger }         from '../utils/logger.js';
+import { copyDirSync }    from '../utils/fs.js';
 import { t }              from '../i18n.js';
 import chalk              from 'chalk';
 
@@ -39,24 +40,6 @@ interface SnapshotMeta {
 
 function ensureSnapshotsDir(): void {
   fs.mkdirSync(SNAPSHOTS_DIR, { recursive: true });
-}
-
-/** Recursively copy a directory */
-function copyDirSync(src: string, dest: string): number {
-  let count = 0;
-  if (!fs.existsSync(src)) return count;
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath  = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      count += copyDirSync(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-      count++;
-    }
-  }
-  return count;
 }
 
 /** Calculate total size of a directory in bytes */

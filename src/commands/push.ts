@@ -53,7 +53,7 @@ async function runPush(
   repoPath: string,
   hostname: string,
   message: string | undefined,
-  agent: import('../types.js').AgentName | undefined,
+  agent: import('../types.js').AgentName | string | undefined,
   dryRun: boolean | undefined,
   filter: FilterOptions | undefined,
 ): Promise<PushCommandResult> {

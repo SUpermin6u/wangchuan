@@ -27,16 +27,22 @@ import { cmdLang }     from '../src/commands/lang.js';
 import { cmdWatch }    from '../src/commands/watch.js';
 import { cmdMemory }   from '../src/commands/memory.js';
 import { cmdSnapshot } from '../src/commands/snapshot.js';
+import { config }    from '../src/core/config.js';
 import { logger }    from '../src/utils/logger.js';
 import { t }         from '../src/i18n.js';
 import type { AgentName } from '../src/types.js';
 import { AGENT_NAMES } from '../src/types.js';
 
-function parseAgent(val: string): AgentName {
-  if (!(AGENT_NAMES as readonly string[]).includes(val)) {
-    throw new Error(t('cli.invalidAgent', { val }));
+function parseAgent(val: string): AgentName | string {
+  if ((AGENT_NAMES as readonly string[]).includes(val)) {
+    return val as AgentName;
   }
-  return val as AgentName;
+  // Also accept custom agent names from config
+  const cfg = config.load();
+  if (cfg?.customAgents && val in cfg.customAgents) {
+    return val;
+  }
+  throw new Error(t('cli.invalidAgent', { val }));
 }
 
 const program = new Command();
@@ -44,7 +50,7 @@ const program = new Command();
 program
   .name('wangchuan')
   .description(t('cli.description'))
-  .version('5.1.0');
+  .version('5.2.0');
 
 // ── init ────────────────────────────────────────────────────────
 program

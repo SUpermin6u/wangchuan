@@ -34,7 +34,7 @@ const PID_FILE = path.join(WANGCHUAN_DIR, 'watch.pid');
  */
 function collectWatchTargets(
   cfg: WangchuanConfig,
-  agent?: AgentName,
+  agent?: AgentName | string,
 ): { readonly watchDirs: readonly string[]; readonly watchFiles: Set<string> } {
   const entries = syncEngine.buildFileEntries(cfg, undefined, agent);
   const watchFiles = new Set<string>();
@@ -198,7 +198,7 @@ export async function cmdWatch({ agent, interval }: WatchOptions = {}): Promise<
 async function handleWatchConflicts(
   cfg: WangchuanConfig,
   repoPath: string,
-  agent?: AgentName,
+  agent?: AgentName | string,
 ): Promise<void> {
   const entries = syncEngine.buildFileEntries(cfg, undefined, agent);
   const keyPath = syncEngine.expandHome(cfg.keyPath);
