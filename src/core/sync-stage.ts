@@ -353,9 +353,12 @@ export async function stageToRepo(
   cfg: WangchuanConfig,
   agent?: AgentName | string,
   filter?: FilterOptions,
+  yes?: boolean,
+  skipShared?: boolean,
 ): Promise<StageResult> {
   // Distribute shared resources to all agents before full push
-  if (!agent) {
+  // Skip in watch mode — shared changes are deferred for interactive confirmation
+  if (!agent && !skipShared) {
     distributeShared(cfg);
   }
   const repoPath = expandHome(cfg.localRepoPath);
@@ -472,15 +475,18 @@ export async function stageToRepo(
     const stale = detectStaleFiles(repoPath, syncedEntries);
     if (stale.length > 0) {
       const isTTY = process.stdin.isTTY === true;
-      if (isTTY) {
+      if (isTTY || yes) {
         logger.warn(t('sync.pendingDeletions', { count: stale.length }));
         for (const f of stale) logger.warn(`  ${t('sync.pruneCandidate', { file: f })}`);
 
-        const rl = await import('readline');
-        const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
-        const answer = await new Promise<string>(resolve => {
-          iface.question(t('sync.confirmDelete'), (ans: string) => { iface.close(); resolve(ans.trim().toLowerCase()); });
-        });
+        let answer = 'y';
+        if (!yes) {
+          const rl = await import('readline');
+          const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
+          answer = await new Promise<string>(resolve => {
+            iface.question(t('sync.confirmDelete'), (ans: string) => { iface.close(); resolve(ans.trim().toLowerCase()); });
+          });
+        }
 
         if (answer === 'y' || answer === 'yes' || answer === '') {
           deleteStaleFiles(repoPath, stale);

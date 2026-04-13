@@ -1,8 +1,13 @@
 /**
  * sync-shared.ts — Cross-agent sharing distribution logic
  *
- * Handles distribution of skills, MCP configs, and custom agents between agents.
- * Manages pending distributions and deletions for user confirmation.
+ * New architecture (shared registry):
+ * - Skills/agents are agent-specific by default
+ * - Only resources explicitly registered in shared-registry.json are shared
+ * - distributeShared detects NEW resources and saves pending prompts
+ * - processPendingDistributions asks user → on confirm: register as shared + copy to agents
+ * - On decline: resource stays agent-specific, NOT pushed to shared tier
+ * - Delete propagation: when source agent deletes a shared resource, prompt to delete from others
  */
 
 import fs   from 'fs';
@@ -11,6 +16,14 @@ import os   from 'os';
 import { expandHome, walkDir } from './sync.js';
 import { logger }       from '../utils/logger.js';
 import { t }            from '../i18n.js';
+import {
+  isShared,
+  resourceName,
+  registerShared,
+  unregisterShared,
+  getSharedNames,
+  loadRegistry,
+} from './shared-registry.js';
 import type {
   WangchuanConfig,
   AgentProfile,
@@ -64,7 +77,7 @@ function mergePendingItems(items: PendingDistribution[]): PendingDistribution[] 
 }
 
 /** Save pending distributions for user confirmation */
-function savePendingDistributions(items: readonly PendingDistribution[]): void {
+export function savePendingDistributions(items: readonly PendingDistribution[]): void {
   fs.mkdirSync(path.dirname(PENDING_DISTRIBUTIONS_PATH), { recursive: true });
   fs.writeFileSync(PENDING_DISTRIBUTIONS_PATH, JSON.stringify(items, null, 2), 'utf-8');
 }
@@ -82,11 +95,16 @@ export function clearPendingDistributions(): void {
   try { if (fs.existsSync(PENDING_DISTRIBUTIONS_PATH)) fs.unlinkSync(PENDING_DISTRIBUTIONS_PATH); } catch { /* */ }
 }
 
+/** Check if there are any pending actions awaiting user decision */
+export function hasPendingActions(): boolean {
+  return loadPendingDeletions().length > 0 || loadPendingDistributions().length > 0;
+}
+
 // ── Shared distribution logic ──────────────────────────────────────
 
 /**
  * Aggregate resources (skills or custom agents) from multiple agent sources.
- * Returns a merged map (relPath → absPath of newest version) and an ownership map (relPath → set of agents).
+ * Returns a merged map and ownership tracking.
  */
 function aggregateResources(
   sources: ReadonlyArray<{ readonly agent: string; readonly dir: string }>,
@@ -154,17 +172,28 @@ function aggregateResources(
 
 /**
  * Detect pending distributions for a resource type (skills or agents).
- * Returns pending items without executing them.
+ *
+ * NEW LOGIC (shared registry):
+ * 1. For already-shared resources: detect add/update/delete across agents
+ * 2. For new resources (only in one agent, not yet shared): generate 'add' pending
+ *    so user can choose to share them
+ * 3. For delete: when a shared resource is removed from ONE agent, ask user
+ *    whether to delete it from ALL other agents that still have it
  */
 function detectResourceDistributions(
   kind: 'skill' | 'agent',
   sources: ReadonlyArray<{ readonly agent: string; readonly dir: string }>,
   profiles: AgentProfiles,
 ): PendingDistribution[] {
-  const { allFiles, allOwner, agentHas, allSourceAgents, perAgent: _perAgent } = aggregateResources(sources, profiles);
+  const { allFiles, allOwner, agentHas, allSourceAgents } = aggregateResources(sources, profiles);
   const items: PendingDistribution[] = [];
+  const sharedNames = new Set(getSharedNames(kind));
 
+  // ── 1. Already-shared resources: distribute to agents that don't have them ──
   for (const [relFile, srcAbs] of allFiles) {
+    const resName = resourceName(relFile);
+    if (!sharedNames.has(resName)) continue;
+
     const owners = agentHas.get(relFile) ?? new Set<string>();
     const sourceAgent = allOwner.get(relFile) ?? '';
 
@@ -178,10 +207,10 @@ function detectResourceDistributions(
       const targetPath = path.join(targetDir, relFile);
 
       if (!targetHasIt) {
-        if (owners.size === 1) {
-          items.push({ kind, action: 'add', relFile, sourceAgent, targetAgents: [targetAgent], sourceAbs: srcAbs });
-        }
+        // Shared resource missing from this agent → add it
+        items.push({ kind, action: 'add', relFile, sourceAgent, targetAgents: [targetAgent], sourceAbs: srcAbs });
       } else {
+        // Both have it — check for content differences (update)
         if (path.resolve(targetPath) === path.resolve(srcAbs)) continue;
         try {
           if (fs.readFileSync(targetPath).equals(fs.readFileSync(srcAbs))) continue;
@@ -191,15 +220,68 @@ function detectResourceDistributions(
     }
   }
 
-  // Detect delete cases
-  for (const [relFile, owners] of agentHas) {
-    const missingFrom = allSourceAgents.filter(a => !owners.has(a));
-    if (missingFrom.length > 0 && owners.size > 1) {
-      const srcAgent = [...owners][0]!;
-      const srcAbs = allFiles.get(relFile) ?? '';
-      for (const target of missingFrom) {
-        items.push({ kind, action: 'delete', relFile, sourceAgent: srcAgent, targetAgents: [target], sourceAbs: srcAbs });
+  // ── 2. New resources (single agent, not yet shared): ask user to share ──
+  const seenNewResources = new Set<string>();
+  for (const [relFile, srcAbs] of allFiles) {
+    const resName = resourceName(relFile);
+    if (sharedNames.has(resName)) continue;
+
+    const owners = agentHas.get(relFile) ?? new Set<string>();
+    if (owners.size !== 1) continue; // only prompt for single-agent resources
+    if (seenNewResources.has(resName)) continue; // one prompt per resource
+
+    const sourceAgent = allOwner.get(relFile) ?? '';
+    const otherAgents = allSourceAgents.filter(a => a !== sourceAgent);
+    if (otherAgents.length === 0) continue;
+
+    seenNewResources.add(resName);
+    items.push({
+      kind,
+      action: 'add',
+      relFile,
+      sourceAgent,
+      targetAgents: otherAgents,
+      sourceAbs: srcAbs,
+    });
+  }
+
+  // ── 3. Delete: shared resource removed from source agent → ask to delete from others ──
+  for (const name of sharedNames) {
+    // Collect agents that still have this resource
+    const agentsWithResource: string[] = [];
+    const agentsWithoutResource: string[] = [];
+
+    for (const agent of allSourceAgents) {
+      const p = profiles[agent as keyof AgentProfiles];
+      if (!p?.enabled) continue;
+      const source = sources.find(s => s.agent === agent);
+      if (!source) continue;
+      const dir = path.join(expandHome(p.workspacePath), source.dir, name);
+      if (fs.existsSync(dir)) {
+        agentsWithResource.push(agent);
+      } else {
+        agentsWithoutResource.push(agent);
       }
+    }
+
+    // If at least one agent removed it but others still have it → propagate delete
+    if (agentsWithoutResource.length > 0 && agentsWithResource.length > 0) {
+      const srcAgent = agentsWithoutResource[0]!;
+      for (const target of agentsWithResource) {
+        items.push({
+          kind,
+          action: 'delete',
+          relFile: name,
+          sourceAgent: srcAgent,
+          targetAgents: [target],
+          sourceAbs: '',
+        });
+      }
+    }
+
+    // If ALL agents removed it → unregister from shared
+    if (agentsWithResource.length === 0) {
+      unregisterShared(kind, name);
     }
   }
 
@@ -288,67 +370,83 @@ export function distributeShared(cfg: WangchuanConfig): void {
 
 /**
  * Process pending distributions interactively.
- * Groups by relFile, prompts user for each, executes the chosen actions.
+ * Groups by resource name, prompts user for each, executes the chosen actions.
+ *
+ * Key behavior:
+ * - User confirms → resource registered as shared + copied to selected agents
+ * - User declines → resource stays agent-specific (not registered in shared)
+ * - Delete action → resource removed from selected agents; if all agents remove it, unregistered
  */
-export async function processPendingDistributions(cfg: WangchuanConfig): Promise<void> {
+export async function processPendingDistributions(cfg: WangchuanConfig, yes?: boolean): Promise<void> {
   const pending = loadPendingDistributions();
   if (pending.length === 0) return;
 
   const shared = cfg.shared;
   if (!shared) { clearPendingDistributions(); return; }
 
-  // Group by kind + relFile
+  // Group by kind + resource name (not relFile, so all files in a skill group together)
   const grouped = new Map<string, PendingDistribution[]>();
   for (const item of pending) {
-    const key = `${item.kind}:${item.relFile}`;
+    const resName = resourceName(item.relFile);
+    const key = `${item.kind}:${item.action}:${resName}`;
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key)!.push(item);
   }
 
-  logger.info(t('sync.pendingDistributions', { count: pending.length }));
+  logger.info(t('sync.pendingDistributions', { count: grouped.size }));
 
   const rl = await import('readline');
 
   for (const [, items] of grouped) {
     const first = items[0]!;
+    const resName = resourceName(first.relFile);
     const allTargets = [...new Set(items.flatMap(i => [...i.targetAgents]))];
 
     console.log();
     logger.info(t('sync.distItem', {
       kind: first.kind,
       action: first.action,
-      file: first.relFile,
+      file: resName,
       source: first.sourceAgent,
     }));
-    logger.info(t('sync.distPrompt'));
 
-    const choices: string[] = [];
-    choices.push(`[0] ${t('sync.distAll')} (${allTargets.join(', ')})`);
-    for (let i = 0; i < allTargets.length; i++) {
-      choices.push(`[${i + 1}] ${allTargets[i]}`);
-    }
-    choices.push(`[${allTargets.length + 1}] ${t('sync.distNone')}`);
-    for (const c of choices) console.log(`  ${c}`);
-
-    const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
-    const answer = await new Promise<string>(resolve => {
-      iface.question(t('sync.distInputPrompt'), (ans: string) => { iface.close(); resolve(ans.trim()); });
-    });
-
-    const indices = answer.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n));
-    let selectedAgents: string[] = [];
-
-    if (indices.includes(0)) {
+    // --yes: auto-confirm all
+    let selectedAgents: string[];
+    if (yes) {
+      logger.info(t('sync.distAll') + ` (${allTargets.join(', ')})`);
       selectedAgents = [...allTargets];
-    } else if (indices.includes(allTargets.length + 1)) {
-      selectedAgents = [];
     } else {
-      selectedAgents = indices
-        .filter(i => i > 0 && i <= allTargets.length)
-        .map(i => allTargets[i - 1]!)
-        .filter((a): a is string => a !== undefined);
+      logger.info(t('sync.distPrompt'));
+
+      const choices: string[] = [];
+      choices.push(`[0] ${t('sync.distAll')} (${allTargets.join(', ')})`);
+      for (let i = 0; i < allTargets.length; i++) {
+        choices.push(`[${i + 1}] ${allTargets[i]}`);
+      }
+      choices.push(`[${allTargets.length + 1}] ${t('sync.distNone')}`);
+      for (const c of choices) console.log(`  ${c}`);
+
+      const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
+      const answer = await new Promise<string>(resolve => {
+        iface.question(t('sync.distInputPrompt'), (ans: string) => { iface.close(); resolve(ans.trim()); });
+      });
+
+      const indices = answer.split(/[,\s]+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n));
+      selectedAgents = [];
+
+      if (indices.includes(0)) {
+        selectedAgents = [...allTargets];
+      } else if (indices.includes(allTargets.length + 1)) {
+        selectedAgents = [];
+      } else {
+        selectedAgents = indices
+          .filter(i => i > 0 && i <= allTargets.length)
+          .map(i => allTargets[i - 1]!)
+          .filter((a): a is string => a !== undefined);
+      }
     }
 
+    // Execute distribution for selected agents
     for (const targetAgent of selectedAgents) {
       for (const item of items) {
         if (!item.targetAgents.includes(targetAgent)) continue;
@@ -356,8 +454,24 @@ export async function processPendingDistributions(cfg: WangchuanConfig): Promise
       }
     }
 
-    if (selectedAgents.length === 0) {
-      logger.info(t('sync.distSkipped'));
+    // ── Registry updates based on user choice ──
+    if (first.action === 'add' || first.action === 'update') {
+      if (selectedAgents.length > 0) {
+        // User confirmed sharing → register as shared
+        registerShared(first.kind, resName, first.sourceAgent);
+        logger.ok(`  ${t('sync.distRegistered', { name: resName })}`);
+      } else {
+        // User declined → stays agent-specific (not registered)
+        logger.info(t('sync.distSkipped'));
+      }
+    } else if (first.action === 'delete') {
+      if (selectedAgents.length > 0) {
+        logger.ok(`  ${t('sync.distDeleteApplied', { name: resName, count: selectedAgents.length })}`);
+      }
+      // If user chose to delete from all targets, check if resource should be unregistered
+      if (selectedAgents.length === allTargets.length) {
+        unregisterShared(first.kind, resName);
+      }
     }
   }
 
@@ -391,17 +505,12 @@ function executeDistribution(
   const targetPath = path.join(targetDir, item.relFile);
 
   if (item.action === 'delete') {
-    if (fs.existsSync(targetPath)) {
-      fs.unlinkSync(targetPath);
-      let dir = path.dirname(targetPath);
-      while (dir !== targetDir && dir.startsWith(targetDir)) {
-        try {
-          const remaining = fs.readdirSync(dir);
-          if (remaining.length === 0) { fs.rmdirSync(dir); dir = path.dirname(dir); }
-          else break;
-        } catch { break; }
-      }
-      logger.ok(`  ${t('sync.distApplied', { action: 'delete', file: item.relFile, agent: targetAgent })}`);
+    // For delete: remove the resource directory (not just one file)
+    const resName = resourceName(item.relFile);
+    const resourceDir = path.join(targetDir, resName);
+    if (fs.existsSync(resourceDir)) {
+      fs.rmSync(resourceDir, { recursive: true, force: true });
+      logger.ok(`  ${t('sync.distApplied', { action: 'delete', file: resName, agent: targetAgent })}`);
     }
   } else {
     if (!fs.existsSync(item.sourceAbs)) return;

@@ -122,7 +122,8 @@ export async function cmdWatch({ agent, interval }: WatchOptions = {}): Promise<
     syncing = true;
     try {
       logger.step(t('watch.triggerSync', { reason, time: timestamp() }));
-      await cmdSync(agent ? { agent } : {});
+      // Watch mode: skip shared distribution — changes are deferred for interactive confirmation
+      await cmdSync(agent ? { agent, skipShared: true } : { skipShared: true });
     } catch (err) {
       // ── Smart conflict resolution for watch mode ───────────────
       const errorMsg = (err as Error).message;

@@ -252,6 +252,9 @@ export interface ListOptions extends AgentOptions {}
 
 export interface SyncOptions extends AgentOptions, FilterOptions {
   readonly dryRun?: boolean;
+  readonly yes?: boolean;
+  /** Skip shared distribution (used by watch daemon) */
+  readonly skipShared?: boolean;
 }
 
 export interface WatchOptions extends AgentOptions {

@@ -17,6 +17,7 @@ import { jsonField }    from './json-field.js';
 import { logger }       from '../utils/logger.js';
 import { walkDir as walkDirBase } from '../utils/fs.js';
 import { t }            from '../i18n.js';
+import { isShared, resourceName, migrateExistingToRegistry } from './shared-registry.js';
 import type {
   WangchuanConfig,
   FileEntry,
@@ -37,6 +38,8 @@ export {
   loadPendingDistributions,
   clearPendingDistributions,
   processPendingDistributions,
+  savePendingDistributions,
+  hasPendingActions,
 } from './sync-shared.js';
 
 export {
@@ -236,6 +239,7 @@ function buildAgentEntries(
 
 /**
  * Build shared tier entries (skills, MCP templates, shared files).
+ * Only includes skills/agents explicitly registered in the shared registry.
  */
 function buildSharedEntries(
   cfg: WangchuanConfig,
@@ -245,6 +249,14 @@ function buildSharedEntries(
   const shared = cfg.shared;
   if (!shared) return entries;
   const profiles = cfg.profiles.default;
+
+  // Auto-migrate existing repo shared skills to registry on first run
+  if (repoDirBase) {
+    migrateExistingToRegistry(repoDirBase);
+  } else {
+    const repoPath = expandHome(cfg.localRepoPath);
+    migrateExistingToRegistry(repoPath);
+  }
 
   for (const source of shared.skills.sources) {
     const p = profiles[source.agent];
@@ -257,6 +269,10 @@ function buildSharedEntries(
 
     for (const relFile of walkDir(scanBase)) {
       if (path.basename(relFile).startsWith('.')) continue;
+      // Only include files belonging to shared-registered resources
+      const resName = resourceName(relFile);
+      if (!isShared('skill', resName)) continue;
+
       entries.push({
         srcAbs:    path.join(wsPath, source.dir, relFile),
         repoRel:   path.join('shared', 'skills', relFile),
@@ -310,6 +326,10 @@ function buildSharedEntries(
 
       for (const relFile of walkDir(scanBase)) {
         if (path.basename(relFile).startsWith('.')) continue;
+        // Only include agents registered in shared registry
+        const resName = resourceName(relFile);
+        if (!isShared('agent', resName)) continue;
+
         entries.push({
           srcAbs:    path.join(wsPath, source.dir, relFile),
           repoRel:   path.join('shared', 'agents', relFile),
@@ -443,6 +463,8 @@ import {
   loadPendingDistributions,
   clearPendingDistributions,
   processPendingDistributions,
+  savePendingDistributions,
+  hasPendingActions,
 } from './sync-shared.js';
 
 export const syncEngine = {
@@ -455,6 +477,8 @@ export const syncEngine = {
   loadPendingDistributions,
   clearPendingDistributions,
   processPendingDistributions,
+  savePendingDistributions,
+  hasPendingActions,
   stageToRepo,
   restoreFromRepo,
   diff,

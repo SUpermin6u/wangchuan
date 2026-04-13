@@ -50,7 +50,7 @@ const program = new Command();
 program
   .name('wangchuan')
   .description(t('cli.description'))
-  .version('5.6.1');
+  .version('5.7.0');
 
 // ── init ────────────────────────────────────────────────────────
 program
@@ -72,7 +72,8 @@ program
   .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
   .option('-o, --only <patterns...>', t('cli.cmd.sync.only'))
   .option('-x, --exclude <patterns...>', t('cli.cmd.sync.exclude'))
-  .action(async (opts: { agent?: AgentName; dryRun?: boolean; only?: string[]; exclude?: string[] }) => {
+  .option('-y, --yes', t('cli.cmd.sync.yes'), false)
+  .action(async (opts: { agent?: AgentName; dryRun?: boolean; only?: string[]; exclude?: string[]; yes?: boolean }) => {
     await run(() => cmdSync(opts));
   });
 

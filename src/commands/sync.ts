@@ -64,7 +64,7 @@ export interface SyncCommandResult {
   readonly pushResult?: (CommitResult & { readonly stageResult?: StageResult | undefined }) | undefined;
 }
 
-export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}): Promise<SyncCommandResult> {
+export async function cmdSync({ agent, dryRun, only, exclude, yes, skipShared }: SyncOptions = {}): Promise<SyncCommandResult> {
   logger.banner(t('sync.banner'));
 
   let cfg = config.load();
@@ -81,24 +81,28 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
   const filter = (only?.length || exclude?.length) ? { only, exclude } : undefined;
 
   // ── Check for pending distributions from previous sync (requires user decision) ──
-    if (process.stdin.isTTY) {
-      const { processPendingDistributions } = await import('../core/sync.js');
-      await processPendingDistributions(cfg);
-    }
+  // Skip in watch mode (skipShared) — pending actions saved for next interactive session
+  if (!skipShared && (process.stdin.isTTY || yes)) {
+    const { processPendingDistributions } = await import('../core/sync.js');
+    await processPendingDistributions(cfg, yes);
+  }
 
-    // ── Check for pending deletions from previous non-interactive sync ──
-  if (process.stdin.isTTY) {
+  // ── Check for pending deletions from previous non-interactive sync ──
+  if (!skipShared && (process.stdin.isTTY || yes)) {
     const { loadPendingDeletions, clearPendingDeletions } = await import('../core/sync.js');
     const pending = loadPendingDeletions();
     if (pending.length > 0) {
       logger.warn(t('sync.pendingDeletions', { count: pending.length }));
       for (const f of pending) logger.warn(`  ${t('sync.pruneCandidate', { file: f })}`);
 
-      const rl = await import('readline');
-      const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
-      const answer = await new Promise<string>(resolve => {
-        iface.question(t('sync.confirmDelete'), (ans: string) => { iface.close(); resolve(ans.trim().toLowerCase()); });
-      });
+      let answer = 'y';
+      if (!yes) {
+        const rl = await import('readline');
+        const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
+        answer = await new Promise<string>(resolve => {
+          iface.question(t('sync.confirmDelete'), (ans: string) => { iface.close(); resolve(ans.trim().toLowerCase()); });
+        });
+      }
 
       if (answer === 'y' || answer === 'yes' || answer === '') {
         const { deleteStaleFiles } = await import('../core/sync.js');
@@ -117,12 +121,12 @@ export async function cmdSync({ agent, dryRun, only, exclude }: SyncOptions = {}
   // ── Acquire sync lock ─────────────────────────────────────────
   await syncLock.acquire(repoPath);
   try {
-    const result = await runSync(cfg, repoPath, hostname, agent, dryRun, filter);
+    const result = await runSync(cfg, repoPath, hostname, agent, dryRun, filter, yes, skipShared);
 
     // ── Check for pending distributions after push (requires user decision) ──
-    if (process.stdin.isTTY) {
+    if (!skipShared && (process.stdin.isTTY || yes)) {
       const { processPendingDistributions } = await import('../core/sync.js');
-      await processPendingDistributions(cfg);
+      await processPendingDistributions(cfg, yes);
     }
 
     return result;
@@ -138,6 +142,8 @@ async function runSync(
   agent: import('../types.js').AgentName | string | undefined,
   dryRun: boolean | undefined,
   filter: FilterOptions | undefined,
+  yes: boolean | undefined,
+  skipShared: boolean | undefined,
 ): Promise<SyncCommandResult> {
   let spinner = ora(t('sync.fetching')).start();
   let remoteAhead = 0;
@@ -189,7 +195,7 @@ async function runSync(
   spinner = ora(t('sync.staging')).start();
   let stageResult: StageResult;
   try {
-    stageResult = await syncEngine.stageToRepo(cfg, agent, filter);
+    stageResult = await syncEngine.stageToRepo(cfg, agent, filter, yes, skipShared);
     spinner.succeed(t('sync.staged', { count: stageResult.synced.length }) +
       (stageResult.unchanged.length > 0 ? ' ' + t('push.unchangedSummary', { count: stageResult.unchanged.length }) : ''));
   } catch (err) {

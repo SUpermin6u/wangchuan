@@ -191,6 +191,13 @@ async function renderCompact(cfg: WangchuanConfig, repoPath: string, agent?: Age
   // Agent discovery hints
   renderDiscoveryHints(cfg);
 
+  // Pending actions notice
+  if (syncEngine.hasPendingActions()) {
+    const pendingCount = syncEngine.loadPendingDistributions().length + syncEngine.loadPendingDeletions().length;
+    console.log();
+    logger.warn(`  ${t('sync.pendingNotice', { count: pendingCount })}`);
+  }
+
   // Hint
   console.log();
   logger.info(`  ${t('status.syncHint')}`);

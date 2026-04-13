@@ -17,6 +17,7 @@ import os   from 'os';
 import path from 'path';
 import { syncEngine, buildFileEntries, loadPendingDistributions, clearPendingDistributions } from '../src/core/sync.js';
 import { cryptoEngine } from '../src/core/crypto.js';
+import { setRegistryPath, resetRegistryPath, registerShared } from '../src/core/shared-registry.js';
 import type { WangchuanConfig, PendingDistribution } from '../src/types.js';
 
 // ── Test utilities ──────────────────────────────────────────────────
@@ -178,9 +179,12 @@ before(() => {
   }
   // Pre-create empty MCP configs for all shared MCP source agents
   prepareEmptyMcpFiles();
+  // Use test-specific shared registry
+  setRegistryPath(path.join(TMP, 'shared-registry.json'));
 });
 
 after(() => {
+  resetRegistryPath();
   fs.rmSync(TMP, { recursive: true, force: true });
 });
 
@@ -223,6 +227,8 @@ describe('buildFileEntries', () => {
   it('shared skills entries carry shared identifier', () => {
     // Create skill file so walkDir can find it
     writeFile(path.join(WS_CL, 'skills', 'test.md'), '# test skill');
+    // Register skill as shared so it appears in shared entries
+    registerShared('skill', 'test.md', 'claude');
     const cfg = mkCfg();
     const entries = buildFileEntries(cfg);
     const sharedSkills = entries.filter(
@@ -235,6 +241,7 @@ describe('buildFileEntries', () => {
   it('repoRel dedup: same-name skill across agents keeps only first', () => {
     writeFile(path.join(WS_CL, 'skills', 'dup.md'), 'claude version');
     writeFile(path.join(WS_OC, 'skills', 'dup.md'), 'openclaw version');
+    registerShared('skill', 'dup.md', 'claude');
     const cfg = mkCfg();
     const entries = buildFileEntries(cfg);
     const dupEntries = entries.filter(e => e.repoRel === path.join('shared', 'skills', 'dup.md'));
@@ -371,15 +378,17 @@ describe('cross-agent skill sharing', () => {
     assert.ok(allTargets.includes('openclaw'), 'OpenClaw should be a target');
     assert.ok(allTargets.includes('codebuddy'), 'CodeBuddy should be a target');
 
-    // Repo shared/skills/ should still have it
-    assert.ok(fs.existsSync(path.join(REPO, 'shared', 'skills', 'new-skill.md')));
+    // Repo shared/skills/ should NOT have it yet (not registered as shared)
+    assert.ok(!fs.existsSync(path.join(REPO, 'shared', 'skills', 'new-skill.md')),
+      'Unregistered skill should not appear in shared repo');
 
     // Cleanup
     clearPendingDistributions();
   });
 
   it('skill missing from one agent → pending delete distribution created', async () => {
-    // Both agents have old-skill
+    // Both agents have old-skill — register as shared first
+    registerShared('skill', 'old-skill.md', 'claude');
     writeFile(path.join(WS_CL, 'skills', 'old-skill.md'), '# Old');
     writeFile(path.join(WS_OC, 'skills', 'old-skill.md'), '# Old');
     writeFile(path.join(WS_CB, 'skills', 'old-skill.md'), '# Old');
@@ -391,14 +400,16 @@ describe('cross-agent skill sharing', () => {
     clearPendingDistributions();
     await syncEngine.stageToRepo(cfg);
 
-    // Should have a delete pending for openclaw (skill missing from openclaw but present in claude/codebuddy)
+    // Should have a delete pending targeting agents that STILL have the skill
     const pending = loadPendingDistributions();
     const deletes = pending.filter(
       (p: PendingDistribution) => p.kind === 'skill' && p.action === 'delete' && p.relFile === 'old-skill.md',
     );
     assert.ok(deletes.length > 0, 'Should have pending delete distribution for old-skill.md');
     const deleteTargets = deletes.flatMap((p: PendingDistribution) => [...p.targetAgents]);
-    assert.ok(deleteTargets.includes('openclaw'), 'OpenClaw should be a delete target');
+    // Now targets the agents that STILL have the file (claude, codebuddy), not the one that deleted it
+    assert.ok(deleteTargets.includes('claude') || deleteTargets.includes('codebuddy'),
+      'Target should be agents that still have the skill');
 
     // Cleanup
     clearPendingDistributions();
@@ -490,6 +501,7 @@ describe('one-click restore on new environment', () => {
     }, null, 2));
     writeFile(path.join(WS_CL, 'skills', 'review.md'), '# code review');
     writeFile(path.join(WS_OC, 'skills', 'review.md'), '# code review');
+    registerShared('skill', 'review.md', 'claude');
     writeFile(path.join(WS_OC, 'config', 'mcporter.json'), '{"mcpServers":{}}');
     // New agents: empty MCP configs for shared MCP sources
     writeFile(CB_MCP, '{"mcpServers":{}}');
@@ -557,7 +569,8 @@ describe('one-click restore on new environment', () => {
 
 describe('delete propagation', () => {
   it('skill deleted from all agents → detected as pending deletion (non-TTY defers)', async () => {
-    // Push a skill to repo first (manually place in all agents since auto-distribute is now pending)
+    // Push a skill to repo first — register as shared so it goes to shared tier
+    registerShared('skill', 'obsolete.md', 'claude');
     writeFile(path.join(WS_CL, 'skills', 'obsolete.md'), '# obsolete skill');
     writeFile(path.join(WS_OC, 'skills', 'obsolete.md'), '# obsolete skill');
     writeFile(path.join(WS_CB, 'skills', 'obsolete.md'), '# obsolete skill');
@@ -628,7 +641,8 @@ describe('delete propagation', () => {
   });
 
   it('deleted skill from repo is not redistributed on pull', async () => {
-    // Create skill in all agents and push
+    // Create skill in all agents and push — register as shared
+    registerShared('skill', 'temp.md', 'claude');
     writeFile(path.join(WS_CL, 'skills', 'temp.md'), '# temp');
     writeFile(path.join(WS_OC, 'skills', 'temp.md'), '# temp');
     writeFile(path.join(WS_CB, 'skills', 'temp.md'), '# temp');

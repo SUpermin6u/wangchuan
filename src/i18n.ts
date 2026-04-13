@@ -257,6 +257,9 @@ const M: Msgs = {
   'sync.distInputPrompt':       ['Enter numbers (comma-separated), or "0" for all: ', '输入编号（逗号分隔），或输入 "0" 选择全部: '],
   'sync.distApplied':           ['{action} {file} → {agent}', '{action} {file} → {agent}'],
   'sync.distSkipped':           ['Skipped (not distributed)', '已跳过（未分发）'],
+  'sync.distRegistered':        ['Registered "{name}" as shared resource', '已注册 "{name}" 为共享资源'],
+  'sync.distDeleteApplied':     ['Deleted "{name}" from {count} agent(s)', '已从 {count} 个 agent 中删除 "{name}"'],
+  'sync.pendingNotice':         ['⚠ {count} pending action(s) require your attention. Run `wangchuan sync` to review.', '⚠ 有 {count} 项待处理操作需要确认。执行 `wangchuan sync` 查看详情。'],
   'sync.skipNotFound':     ['Skipping (not found): {path}', '跳过（不存在）: {path}'],
   'sync.skipJsonParse':    ['Skipping JSON field extraction (parse error): {path} — {error}', '跳过 JSON 字段提取（解析失败）: {path} — {error}'],
   'sync.sensitiveData':    ['Possible plaintext sensitive data detected: {path}', '检测到疑似明文敏感信息: {path}'],
@@ -328,6 +331,7 @@ const M: Msgs = {
   'cli.cmd.dryRun':       ['Preview changes without committing or pushing', '预览变更，不实际提交或推送'],
   'cli.cmd.sync.only':    ['Only sync files matching these patterns', '仅同步匹配指定模式的文件'],
   'cli.cmd.sync.exclude': ['Exclude files matching these patterns', '排除匹配指定模式的文件'],
+  'cli.cmd.sync.yes':     ['Auto-confirm all prompts (deletions, distributions)', '自动确认所有提示（删除、分发）'],
 
   // ── agent command ──────────────────────────────────────────
   'cli.cmd.agent.desc':      ['Manage agents (list|enable|disable|set-path|info)', '管理智能体 (list|enable|disable|set-path|info)'],
