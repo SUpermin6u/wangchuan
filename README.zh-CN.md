@@ -6,9 +6,9 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.19.0-brightgreen)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> AI 记忆加密同步 — 跨机器、跨智能体，永不遗失。
+> 忘川是中国神话中冥界的遗忘之河，亡魂渡河饮水即忘前世一切记忆。 而 **忘川** 让你的 AI 智能体记忆在环境切换时永不遗失。
 
-忘川通过私有 Git 仓库加密同步你的 AI 智能体配置、记忆和技能。一条命令同步，一个守护进程保持全局最新。
+忘川加密同步你所有 AI 智能体的配置、记忆和技能，跨机器、跨环境无缝迁移——换电脑、切环境，一条命令恢复全部 Agent 状态。
 
 ---
 

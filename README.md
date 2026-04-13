@@ -6,9 +6,9 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.19.0-brightgreen)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-> Encrypted sync for AI agent configs and memories — across machines, across agents, never lost.
+> In Chinese mythology, Wangchuan (忘川) is the River of Oblivion in the underworld — souls crossing it forget all memories of past lives. Wangchuan ensures your AI agent memories are never lost across environments.
 
-Wangchuan encrypts and syncs your AI agent configurations, memories, and skills through a private Git repo. One command to sync, one daemon to keep everything up to date.
+Wangchuan encrypts and syncs all your AI agents' configs, memories, and skills across machines and environments — switch laptops, change environments, and restore every agent's state with a single command.
 
 ---
 
