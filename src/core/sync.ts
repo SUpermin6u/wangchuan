@@ -283,20 +283,25 @@ function buildSharedEntries(
     }
   }
 
-  for (const source of shared.mcp.sources) {
-    const p = profiles[source.agent];
-    if (!p.enabled) continue;
-    const wsPath   = expandHome(p.workspacePath);
-    const srcPath  = path.join(wsPath, source.src);
-    const repoName = `mcp/${source.agent}-${source.field}.json`;
+  // ── Shared MCP: one merged file (not per-agent) ──────────────────
+  // distributeShared() already merged all agents' mcpServers locally.
+  // Pick the first enabled source as the canonical copy for the single shared file.
+  const mcpCanonical = shared.mcp.sources.find(s => {
+    const p = profiles[s.agent];
+    return p.enabled;
+  });
+  if (mcpCanonical) {
+    const p = profiles[mcpCanonical.agent];
+    const wsPath  = expandHome(p.workspacePath);
+    const srcPath = path.join(wsPath, mcpCanonical.src);
     entries.push({
       srcAbs:    srcPath,
-      repoRel:   path.join('shared', repoName + '.enc'),
-      plainRel:  path.join('shared', repoName),
+      repoRel:   path.join('shared', 'mcp', 'mcpServers.json.enc'),
+      plainRel:  path.join('shared', 'mcp', 'mcpServers.json'),
       encrypt:   true,
       agentName: 'shared',
       jsonExtract: {
-        fields:       [source.field],
+        fields:       [mcpCanonical.field],
         originalPath: srcPath,
       },
     });

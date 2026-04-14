@@ -1,244 +1,113 @@
+---
+name: wangchuan
+version: 1.4.0
+description: >-
+  Encrypt and sync AI agent configs, memories, skills, and MCP servers across environments via a private Git repo.
+  Supports Claude, OpenClaw, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
+  TRIGGER when: user mentions syncing AI memories/configs, wangchuan/忘川, cross-machine agent setup, backup/restore agent settings, memory sync, skill distribution, MCP server sync, agent migration, master key export, sync status, watch daemon, environment management, snapshot, pushing/pulling memories, conflict resolution, syncing between agents, rolling back/restoring versions, switching environments, health check, customizing agent paths, or any commands: init, sync, status, watch, doctor, memory, env, snapshot, lang.
+  Triggers: 忘川、wangchuan、同步记忆、同步配置、同步技能、同步MCP、初始化忘川、备份记忆、恢复记忆、迁移agent、导出密钥、轮换密钥、同步状态、健康检查、多环境、快照、跨机器同步、agent记忆、配置路径、查看技能、删除技能、新增技能、修改技能、自定义agent、MCP服务器、新增MCP、删除MCP、修改MCP、查看MCP、写记忆、删除记忆、修改记忆、查看记忆、广播记忆、复制记忆、推送记忆、拉取记忆、同步到agent、冲突、合并记忆、回退记忆、回滚、恢复版本、切换环境、忘川状态、新建环境、删除环境、查看环境、切换语言、sync memories、push memory、pull memory、rollback、switch environment、custom agent、MCP server、health status、rotate key、switch language.
+  DO NOT TRIGGER when: general git operations, unrelated CLI tools, or AI model APIs.
+---
+
 # wangchuan — AI Agent Memory Sync Skill
 
-## Overview
+## Quick Start
 
-OpenClaw Skill wrapper for the Wangchuan AI memory sync system. Invoke directly in conversation to sync AI agent configs — memories never lost across environments.
+```bash
+command -v wangchuan || npm install -g wangchuan
+```
+If `~/.wangchuan/config.json` does not exist → Read [references/install-setup.md](references/install-setup.md) for initialization guide.
 
 ## Command Reference
 
 ```
-wangchuan init     [--repo <url>] [--key <path>]           One-time setup — auto-detects agents, offers gh repo create, runs first sync
-wangchuan sync     [-a, --agent <name>] [-n, --dry-run]    Smart bidirectional sync (THE daily command)
-                   [-o, --only <patterns...>]              Filter: only sync files matching patterns
-                   [-x, --exclude <patterns...>]           Filter: exclude files matching patterns
-wangchuan status   [-v, --verbose]                         One-screen summary + health score
-wangchuan watch    [-i, --interval <min>]                  Background daemon for continuous sync
-wangchuan doctor   [--key-export|--key-rotate|--setup]     Diagnose + auto-fix everything
-wangchuan memory   list|show|copy|broadcast                Browse/copy memories between agents
-wangchuan env      list|create|switch|current|delete       Multi-environment management
-wangchuan snapshot save|list|restore|delete [name]         Manage sync snapshots
-wangchuan lang     [zh|en]                                 Switch CLI display language
+wangchuan init     [--repo <url>] [--key <path>]           One-time setup
+wangchuan sync     [-a <agent>] [-n] [-o <pat>] [-x <pat>] Smart bidirectional sync
+wangchuan status   [-v]                                     Health + diff summary
+wangchuan watch    [-i <min>]                               Pull-only background daemon
+wangchuan doctor   [--key-export|--key-rotate|--setup]      Diagnose + auto-fix
+wangchuan memory   list|show|copy|broadcast [-a <agent>]    Memory management
+wangchuan env      list|create|switch|current|delete        Multi-environment
+wangchuan snapshot save|list|restore|delete [name]          Snapshots
+wangchuan lang     [zh|en]                                  Display language
 ```
+Aliases: `sync`→`s`, `status`→`st`, `snapshot`→`snap`. All support `--agent` / `-a` filter.
 
-Aliases: `sync` → `s`, `status` → `st`, `snapshot` → `snap`
+## Task Routing — Load the right reference BEFORE acting
 
-## Invocation Examples
+| User intent | Read this reference first |
+|-------------|--------------------------|
+| Create/modify/delete skills, custom agents, MCP, or memory | [references/resource-crud.md](references/resource-crud.md) |
+| Push/pull memories, resolve conflicts, sync between agents | [references/sync-conflict.md](references/sync-conflict.md) |
+| Switch/create/list/delete environments, rollback, snapshots | [references/environment.md](references/environment.md) |
+| Inspect/check skills, agents, MCP, memory, or health status | [references/inspect-status.md](references/inspect-status.md) |
+| Initialize wangchuan, install, migrate key, new machine setup | [references/install-setup.md](references/install-setup.md) |
 
-> Sync my AI memories
+**IMPORTANT**: Before executing any task below, **Read the corresponding reference file** for detailed instructions, bash commands, and decision flows. The reference files contain the complete procedures.
 
-> Check sync status
+## Non-TTY Constraints (Agent shell)
 
-> Show full sync status with file list and diff
+| Command | Constraint | Required |
+|---------|-----------|----------|
+| `wangchuan init` | Interactive prompt fails | Must pass `--repo <url>` |
+| `wangchuan sync` | Pending confirmations skipped | Must pass `-y` |
+| `wangchuan env create` | Memory import prompt fails | Auto-forks (OK) |
 
-> Sync claude configs only
+## Customizing Agent Workspace Paths
 
-> Run a health check and fix any issues
-
-> Export my master key for migration
-
-> Generate a setup command for my new laptop
-
-> Create a work environment
-
-> Switch to work environment
-
-> Start continuous background sync
-
-> List memories from all agents
-
-> Copy openclaw memory to claude
-
-> Broadcast a memory to all agents
-
-> Save a snapshot before making changes
-
-> Restore the last snapshot
-
-> Switch to English output
-
-## Output Guide
-
-### status (default)
-- Health score bar (0-100)
-- Changed files count since last sync
-- Last sync timestamp
-- Hint: `wangchuan sync` to update
-
-### status --verbose
-- Full file inventory with local/repo presence
-- Line-level diff for changed files
-- Recent sync history
-- Per-agent health breakdown
-
-### sync
-- Auto-creates safety snapshot before syncing
-- Pulls remote changes if any, then pushes local changes
-- Shows compact summary with files synced count
-- `--only` / `--exclude` for fine-grained file filtering (stale detection auto-skipped when filters active)
-
-### snapshot
-- `save [name]` — save a named snapshot (auto-named if omitted)
-- `list` — show all saved snapshots with timestamps
-- `restore <name>` — roll back to a previous snapshot
-- `delete <name>` — remove a snapshot
-
-### watch
-- Runs as a background daemon with configurable interval
-- Auto-syncs on detected file changes
-- PID file at `~/.wangchuan/watch.pid`
-
-### doctor
-- Auto-fixes all common issues (no --fix needed)
-- Auto-discovers installed agents and enables them
-- Detects stale/phantom files
-- `--key-export` / `--key-rotate` for key management
-- Validates key fingerprint against repo — detects wrong master.key before sync
-- `--setup` generates migration one-liner
-
-**Key mismatch error handling**: If `⛔ Key mismatch!` appears during sync, the local `master.key` does not match the repo. Guide the user to:
-1. Run `wangchuan doctor --key-export` on the machine that last pushed
-2. Copy the key hex to the current machine
-3. Run `wangchuan init --key <hex>` or write to `~/.wangchuan/master.key`
-
-### memory
-- `list` — show all agent memories with summaries
-- `show <agent>` — list all files when no filename given; fuzzy/substring matching with suggestions on mismatch
-- `copy <from> <to>` — copy memory between agents
-- `broadcast <agent>` — distribute memory to all agents
-
-## --agent Filter
-
-Supported by: `sync`, `status`, `watch`, `memory`.
-
-| Value | Description |
-|-------|-------------|
-| `openclaw`  | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), HEARTBEAT.md, BOOTSTRAP.md, memory/ (enc), openclaw.json → agents/skills/ui (enc), skills/ |
-| `claude`    | CLAUDE.md, settings.json (enc), .claude.json → mcpServers (enc), commands/ (dir), plugins/ (installed + marketplaces) |
-| `gemini`    | settings.internal.json → security + model + general (enc), skills/ (dir) |
-| `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins + hooks (enc), plugins/ (marketplaces) |
-| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), BOOTSTRAP.md, mcp.json → mcpServers (enc), settings.json → enabledPlugins + hooks (enc), skills/ (dir), extensions/ |
-| `cursor`    | rules/ dir, mcp.json → mcpServers (enc), cli-config.json → permissions + model + enabledPlugins (enc), extensions/, hooks.json |
-| `codex`     | MEMORY.md (enc), instructions.md, config.toml (enc), skills/ (dir), memories/ (enc) |
-
-When omitted, operates on all enabled agents plus the shared tier (skills/MCP/custom agents/shared memory).
-
-## Custom Sub-Agent Sync
-
-Custom sub-agents defined in the `agents/` directory of any supported agent (Claude, Cursor, CodeBuddy, WorkBuddy) are automatically synced across all agents via the shared tier (`shared/agents/`). The same deletion confirmation logic as skills applies — a custom agent is pruned from the repo only when all local agents have removed it.
-
-## Dynamic Agent Registration
-
-Custom agents can be registered at runtime via the `customAgents` field in `config.json`, without recompilation. Custom agents participate in sync identically to built-in agents and support all three entry types (`syncFiles`, `syncDirs`, `jsonFields`).
-
-## Sync Protocol for AI Agents (IMPORTANT — all agents must follow)
-
-When this skill is loaded by an AI agent, the agent MUST follow these rules:
-
-### After modifying skills or custom agents
-If you (the AI agent) create, modify, or delete any file under your `skills/` or `agents/` directory, you MUST immediately run:
+Default paths are in `~/.wangchuan/config.json`. To change (e.g. Claude to `~/.claude-internal`):
 ```bash
-wangchuan sync
+jq '.profiles.default.claude.workspacePath = "~/.claude-internal"' ~/.wangchuan/config.json > /tmp/wc-cfg.json && mv /tmp/wc-cfg.json ~/.wangchuan/config.json
+wangchuan sync -y
 ```
-This triggers cross-agent distribution with user confirmation — the user chooses which other agents receive the change.
 
-### After modifying memory or config
-If you update MEMORY.md, CLAUDE.md, settings.json, or any synced config file, run `wangchuan sync` to push changes to the cloud.
+## Sync Protocol — Rules agents MUST follow
 
 ### On session start
-Run `wangchuan status` first. If there are pending actions (distributions, deletions), run `wangchuan sync` interactively with `-y` flag to process them:
 ```bash
 wangchuan status
-wangchuan sync -y   # auto-confirm pending actions
+wangchuan sync -y   # process pending actions
 ```
-Check if the watch daemon is running. If not, suggest starting it:
+
+### After EVERY skill invocation (mandatory)
+After completing any user instruction, check if the watch daemon is running and start it if not:
 ```bash
-wangchuan watch
+# Check if watch is running, start if not (pull-only daemon)
+pgrep -f 'wangchuan.*watch' >/dev/null 2>&1 || nohup wangchuan watch >/dev/null 2>&1 &
 ```
-The watch daemon auto-detects file changes and syncs per-agent files. Shared resource distribution is deferred for interactive confirmation.
+This ensures cloud memories are always pulled in the background. Watch is pull-only — it never pushes.
 
 ### Rule summary
+
 | Event | Action |
 |-------|--------|
-| Created/modified/deleted a skill | Run `wangchuan sync -y` immediately |
-| Created/modified/deleted a custom agent | Run `wangchuan sync -y` immediately |
-| Updated memory or config | Run `wangchuan sync` |
-| Session start | Run `wangchuan status`, process pending if any, suggest `wangchuan watch` if not running |
+| Created/modified a **shared** skill or custom agent | Copy to all other agents → `wangchuan sync -y` |
+| Created/modified a **new/local** skill or custom agent | Ask user which agents → copy → `wangchuan sync -y` |
+| **Deleted** a skill or custom agent | **Always ask** → inform shared status → remove selected → `wangchuan sync -y` |
+| Created/modified an **MCP server** | Ask user which agents → jq write → `wangchuan sync -y` |
+| **Deleted** an MCP server | Ask user which agents → jq del → `wangchuan sync -y` |
+| Created/modified **memory** | Ask user → broadcast/copy if yes → `wangchuan sync -y` |
+| **Deleted** memory | Ask user which agents → rm → `wangchuan sync -y` |
+| Updated other config | `wangchuan sync -y` |
+| **Any skill invocation completes** | **Ensure watch daemon is running** (see above) |
 
-## Prerequisites
+### Environment awareness
 
-1. Node.js ≥ 18
-2. Git installed and configured (SSH key or HTTPS credentials)
-3. A **private** Git repo on any hosting platform (GitHub, GitLab, Gitee, Bitbucket, Gitea, or self-hosted)
+All push/pull/watch operations target the **current environment's branch only**. Key rules:
+- **Push/pull**: always bound to `cfg.environment` → the current env's git branch
+- **Watch**: pulls from current env only. After `env switch`, restart watch
+- **Cross-env access**: NOT supported — must `env switch` first, then sync
+- **Workspace leakage**: switching env does NOT delete local files from the previous env. After switch, stale files from old env may remain in `~/.claude/skills/` etc. Do NOT push these to the new env — run `wangchuan status -v` to check `localOnly` files first
+- **Pull from another env**: if user asks "pull work env's memory", must switch first: `wangchuan env switch work` → auto-syncs
 
-## Installation
+### --agent filter values
 
-### Install wangchuan CLI
-
-```bash
-npm install -g wangchuan
-```
-
-### First-time setup
-
-```bash
-# Interactive — auto-detects installed agents, creates repo via GitHub CLI if available
-wangchuan init
-
-# Or specify a repo URL directly (any Git hosting):
-wangchuan init --repo git@github.com:you/brain.git
-wangchuan init --repo git@gitlab.com:you/brain.git
-wangchuan init --repo git@gitee.com:you/brain.git
-```
-
-### Install this skill to an agent
-
-Copy the `wangchuan/` skill folder to your agent's skills directory:
-
-```bash
-# Claude
-cp -r wangchuan/ ~/.claude/skills/wangchuan/
-
-# OpenClaw
-cp -r wangchuan/ ~/.openclaw/workspace/skills/wangchuan/
-
-# Codex
-cp -r wangchuan/ ~/.codex/skills/wangchuan/
-
-# Or let wangchuan sync distribute it to all agents automatically:
-wangchuan sync
-```
-
-### Setting up Git repo (if you don't have one)
-
-Create a **private** repo on your preferred platform:
-
-| Platform | How to create |
-|----------|--------------|
-| **GitHub** | `wangchuan init` auto-creates via `gh` CLI, or: github.com → New repository → Private |
-| **GitLab** | gitlab.com → New project → Private |
-| **Gitee** | gitee.com → New repo → Private |
-| **Bitbucket** | bitbucket.org → Create repository → Private |
-| **Gitea** | Your instance → New Repository → Private |
-
-Then: `wangchuan init --repo <ssh-url>`
-
-### New machine setup
-
-```bash
-npm install -g wangchuan
-wangchuan init --repo <your-repo-url> --key <master-key-hex>
-```
-
-Get the master key from your original machine: `wangchuan doctor --key-export`
-
-### Migrating the master key
-
-⚠️ **`master.key` is the ONLY thing that cannot be recovered.** Back it up securely.
-
-```bash
-# On the source machine:
-wangchuan doctor --key-export    # prints wangchuan_<hex>
-
-# On the target machine:
-wangchuan init --repo <url> --key wangchuan_<hex>
-```
+| Agent | Key synced files |
+|-------|-----------------|
+| `openclaw` | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), memory/ (enc), skills/ |
+| `claude` | CLAUDE.md, settings.json (enc), .claude.json→mcpServers (enc), commands/, plugins/ |
+| `gemini` | settings.internal.json→security+model+general (enc), skills/ |
+| `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json→mcpServers (enc), settings.json→enabledPlugins (enc), plugins/ |
+| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), mcp.json→mcpServers (enc), skills/, extensions/ |
+| `cursor` | rules/, mcp.json→mcpServers (enc), cli-config.json→permissions+model (enc), extensions/ |
+| `codex` | MEMORY.md (enc), instructions.md, config.toml (enc), skills/, memories/ (enc) |

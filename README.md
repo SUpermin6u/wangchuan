@@ -8,7 +8,66 @@
 
 > In Chinese mythology, Wangchuan (忘川) is the River of Oblivion in the underworld — souls crossing it forget all memories of past lives. Wangchuan ensures your AI agent memories are never lost across environments.
 
-Wangchuan encrypts and syncs all your AI agents' configs, memories, and skills across machines and environments — switch laptops, change environments, and restore every agent's state with a single command.
+**Wangchuan is a skill for AI agents.** Install once, and any AI agent (OpenClaw, Claude, Gemini, Codex, ...) gains the ability to sync its configs, memories, skills, and MCP servers across all your machines — encrypted, versioned, and conflict-aware.
+
+---
+
+## Why a Skill?
+
+AI agents today run in isolated environments. When you switch machines, reset a container, or onboard a new laptop, every agent starts from zero — no memory, no skills, no MCP config.
+
+Wangchuan solves this by **becoming part of your agent's brain**:
+
+```
+You: "Initialize wangchuan"
+Agent: (installs CLI, asks for repo URL, auto-detects all local agents,
+        syncs everything to cloud, starts background pull daemon)
+
+You: "Create a new skill called xxx"
+Agent: (creates skill, asks which agents to distribute to,
+        copies to selected agents, pushes to cloud)
+
+You: "Switch to work environment"
+Agent: (syncs current changes, switches branch, pulls work env data,
+        checks for conflicts, restarts background daemon)
+```
+
+**The agent does everything.** You just talk to it. The skill file (`skill/SKILL.md`) teaches the agent exactly how to manage your memories — no manual CLI needed.
+
+### Skill Architecture
+
+```
+skill/
+├── SKILL.md                    ← Agent loads this (~100 lines, routing table)
+├── references/
+│   ├── resource-crud.md        ← Skills/agents/MCP/memory CRUD procedures
+│   ├── sync-conflict.md        ← Push/pull/conflict resolution
+│   ├── environment.md          ← Environment management, rollback, snapshots
+│   ├── inspect-status.md       ← Resource inspection, health diagnostics
+│   └── install-setup.md        ← Initialization, key management
+└── wangchuan-skill.sh          ← OpenClaw shell wrapper
+```
+
+The main SKILL.md is kept under 120 lines. When the agent encounters a specific task (e.g. "delete a skill"), it loads only the relevant reference file on demand — progressive disclosure, not a giant prompt dump.
+
+### Skill Benchmark
+
+Every skill change is validated against **51 test cases** (`test/skill-benchmark.md`) covering:
+
+- 29 user instructions (init, CRUD for 4 resource types, push/pull, rollback, env management)
+- 4 environment isolation scenarios (cross-env pull, workspace leakage, env selection on restore, watch restart)
+- Global rules (watch daemon auto-start, env-aware sync, non-TTY constraints)
+
+### Install the Skill
+
+```bash
+# Install CLI
+npm install -g wangchuan
+
+# The skill auto-distributes to all agents on first sync.
+# Or manually copy to an agent:
+cp -r skill/ ~/.claude/skills/wangchuan/
+```
 
 ---
 
@@ -17,19 +76,11 @@ Wangchuan encrypts and syncs all your AI agents' configs, memories, and skills a
 ```bash
 npm install -g wangchuan
 
-# 1. Initialize — auto-detects installed agents and runs first sync
+# Initialize — auto-detects installed agents, runs first sync
 wangchuan init
 
-# 2. Start background daemon (optional)
-wangchuan watch
-```
-
-On a new machine:
-
-```bash
+# On a new machine (any Git hosting):
 wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
-# Also works with GitLab, Gitee, Bitbucket, Gitea, or any Git hosting:
-# wangchuan init --repo git@gitlab.com:you/brain.git --key wangchuan_<hex>
 ```
 
 ---
@@ -41,7 +92,7 @@ wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
 | `init` | — | One-time setup — auto-detects agents, auto-creates repo (GitHub CLI), runs first sync | `--repo`, `--key`, `--force` |
 | `sync` | `s` | Smart bidirectional sync — THE daily command | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
-| `watch` | — | Background daemon for continuous sync | `-i, --interval <min>` |
+| `watch` | — | Pull-only background daemon for continuous cloud sync | `-i, --interval <min>` |
 | `doctor` | — | Diagnose + auto-fix everything | `--key-export`, `--key-rotate`, `--setup` |
 | `memory` | — | Browse/copy memories between agents | `list`, `show`, `copy`, `broadcast` |
 | `env` | — | Multi-environment management | `list`, `create`, `switch`, `current`, `delete` |
@@ -72,48 +123,33 @@ Agent paths are customizable in `~/.wangchuan/config.json`.
 - **AES-256-GCM** authenticated encryption — tamper-proof
 - Key stored locally at `~/.wangchuan/master.key` (never committed)
 - Ciphertext: `IV(12B) + AuthTag(16B) + CipherText` → Base64 → `.enc`
-- Auto-scan for leaked tokens before every sync
 
 ### Cross-Agent Sharing
 - Skills, MCP configs, and custom sub-agents auto-distributed to all agents
-- Custom agents in `agents/` directories synced across Claude/Cursor/CodeBuddy/WorkBuddy via `shared/agents/`
+- MCP configs merged into one shared cloud file (`shared/mcp/mcpServers.json.enc`)
 - Delete propagation — removed from all agents → pruned from repo
-- Existing entries preserved (no overwrite)
 
-### Snapshot Rollback
-- `wangchuan snapshot save [name]` — save a named snapshot before risky changes
-- `wangchuan snapshot list` — view all saved snapshots
-- `wangchuan snapshot restore <name>` — roll back to a previous snapshot
-- `wangchuan snapshot delete <name>` — remove a snapshot
-
-### Custom Agent Registration
-- Define custom agents in `config.json` via `customAgents` field — no recompilation needed
-- Custom agents participate in sync just like built-in agents
-
-### Extended Conflict Resolution
-- Three-way merge now supports `.json`, `.yaml`, `.yml` files in addition to `.md`/`.txt`
+### Three-Way Merge
+- Automatic conflict resolution for `.md`, `.txt`, `.json`, `.yaml`, `.yml` files
+- Non-overlapping edits → auto-merged silently
+- Overlapping conflicts → conflict markers written for user resolution
+- Watch daemon records unresolvable conflicts to `pending-conflicts.json` for next interactive session
 
 ### Multi-Environment
 - Create isolated environments: `wangchuan env create work`
 - Switch instantly: `wangchuan env switch work`
-- Each environment has its own agent configs
+- Git-branch-level isolation; shared local workspace with leakage detection
 
-### Watch Daemon
-- `wangchuan watch` runs continuous background sync
-- Configurable interval: `wangchuan watch -i 10`
-- PID singleton — only one instance per machine
+### Watch Daemon (Pull-Only)
+- `wangchuan watch` continuously pulls cloud changes in the background
+- Does **not** push — users must `wangchuan sync` to push manually
+- Auto-started by the skill after every interaction
+- Restarts automatically on environment switch
 
-### Memory Browsing
-- `wangchuan memory list` — overview of all agent memories
-- `wangchuan memory show <agent>` — list all files; fuzzy/substring matching with suggestions on mismatch
-- `wangchuan memory copy openclaw claude` — transfer memories
-- `wangchuan memory broadcast claude` — share to all agents
-
-### Doctor
-- Auto-discovers installed agents
-- Detects stale/phantom files
-- `--key-export` / `--key-rotate` for key management
-- `--setup` generates a migration one-liner for new machines
+### Snapshot Rollback
+- Auto-snapshots before every sync (safety net)
+- Named snapshots: `wangchuan snapshot save before-refactor`
+- Restore: `wangchuan snapshot restore <name>` (auto-pushes to cloud)
 
 ---
 
@@ -130,24 +166,7 @@ Wangchuan works with **any Git hosting** that supports SSH or HTTPS:
 | **Gitea** | `git@gitea.example.com:you/brain.git` |
 | **Self-hosted** | Any SSH/HTTPS Git URL |
 
-> **Tip**: If GitHub CLI (`gh`) is installed and authenticated, `wangchuan init` offers one-command repo creation. For other platforms, create a private repo first, then pass its URL to `wangchuan init --repo <url>`.
-
----
-
-## Supported Git Hosting
-
-Wangchuan works with **any Git hosting** that supports SSH or HTTPS:
-
-| Platform | Example Repo URL |
-|----------|-----------------|
-| **GitHub** | `git@github.com:you/brain.git` |
-| **GitLab** | `git@gitlab.com:you/brain.git` |
-| **Gitee** | `git@gitee.com:you/brain.git` |
-| **Bitbucket** | `git@bitbucket.org:you/brain.git` |
-| **Gitea** | `git@gitea.example.com:you/brain.git` |
-| **Self-hosted** | Any SSH/HTTPS Git URL |
-
-> **Tip**: If GitHub CLI (`gh`) is installed and authenticated, `wangchuan init` offers one-command repo creation. For other platforms, create a private repo first, then pass its URL to `wangchuan init --repo <url>`.
+> **Tip**: If GitHub CLI (`gh`) is installed, `wangchuan init` offers one-command repo creation.
 
 ---
 
@@ -157,7 +176,7 @@ Config at `~/.wangchuan/config.json`:
 
 ```jsonc
 {
-  "repo": "git@github.com:you/brain.git",  // or any Git hosting URL  // or any Git hosting URL
+  "repo": "git@github.com:you/brain.git",
   "branch": "main",
   "localRepoPath": "~/.wangchuan/repo",
   "keyPath": "~/.wangchuan/master.key",
@@ -181,10 +200,10 @@ Config at `~/.wangchuan/config.json`:
 
 ## Security
 
-1. `master.key` is in `.gitignore` — never accidentally committed
-2. Auto-scan for plaintext tokens (`api_key`, `sk-xxx`, `password`) before sync
+1. `master.key` is in `.gitignore` — never committed
+2. Auto-scan for plaintext tokens before sync
 3. Transfer keys via encrypted channels only
-4. ⚠️ **Losing `master.key` means losing access to all encrypted history — back it up!**
+4. ⚠️ **Losing `master.key` = losing all encrypted history — back it up!**
 
 ---
 

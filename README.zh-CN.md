@@ -8,7 +8,66 @@
 
 > 忘川是中国神话中冥界的遗忘之河，亡魂渡河饮水即忘前世一切记忆。 而 **忘川** 让你的 AI 智能体记忆在环境切换时永不遗失。
 
-忘川加密同步你所有 AI 智能体的配置、记忆和技能，跨机器、跨环境无缝迁移——换电脑、切环境，一条命令恢复全部 Agent 状态。
+**忘川是一个 AI 智能体技能。** 安装一次，任何 AI 智能体（OpenClaw、Claude、Gemini、Codex……）都能跨机器同步配置、记忆、技能和 MCP 服务 —— 加密、版本化、冲突感知。
+
+---
+
+## 为什么是技能？
+
+今天的 AI 智能体运行在孤立的环境里。换台电脑、重置容器、拿到新笔记本，每个 Agent 都要从零开始 —— 没记忆、没技能、没 MCP 配置。
+
+忘川的解法是**融入 Agent 的大脑**：
+
+```
+用户: "初始化忘川"
+Agent: (安装 CLI, 询问仓库地址, 自动探测本地全部 Agent,
+        全量同步到云端, 启动后台拉取守护)
+
+用户: "新增 xxx 技能"
+Agent: (创建技能, 询问分发到哪些 Agent,
+        复制到选中的 Agent, 推送到云端)
+
+用户: "切换到 work 环境"
+Agent: (同步当前变更, 切换分支, 拉取 work 环境数据,
+        检查冲突, 重启后台守护)
+```
+
+**Agent 负责一切。** 你只需要对话。技能文件（`skill/SKILL.md`）教会 Agent 如何管理你的记忆 —— 不需要手动敲 CLI。
+
+### 技能架构
+
+```
+skill/
+├── SKILL.md                    ← Agent 加载此文件（~100 行，路由表）
+├── references/
+│   ├── resource-crud.md        ← 技能/Agent/MCP/记忆 增删改查
+│   ├── sync-conflict.md        ← 推送/拉取/冲突解决
+│   ├── environment.md          ← 环境管理、回退、快照
+│   ├── inspect-status.md       ← 资源查看、健康诊断
+│   └── install-setup.md        ← 初始化、密钥管理
+└── wangchuan-skill.sh          ← OpenClaw Shell 包装器
+```
+
+主文件 SKILL.md 控制在 120 行以内。Agent 遇到具体任务（如"删除技能"）时，按需加载对应的参考文件 —— 渐进式加载，不是一股脑灌 prompt。
+
+### 技能基准测试
+
+每次技能变更都经过 **51 个测试用例**（`test/skill-benchmark.md`）验证：
+
+- 29 条用户指令（初始化、4 种资源的增删改查、推送/拉取、回退、环境管理）
+- 4 个环境隔离场景（跨环境拉取、工作空间泄漏、恢复时环境选择、watch 重启）
+- 全局规则（watch 自动启动、环境感知同步、非 TTY 约束）
+
+### 安装技能
+
+```bash
+# 安装 CLI
+npm install -g wangchuan
+
+# 首次同步后技能自动分发到所有 Agent
+# 或手动复制到某个 Agent：
+cp -r skill/ ~/.claude/skills/wangchuan/
+```
 
 ---
 
@@ -17,19 +76,11 @@
 ```bash
 npm install -g wangchuan
 
-# 1. 初始化 — 自动检测已安装的智能体并执行首次同步
+# 初始化 — 自动检测已安装的智能体并执行首次同步
 wangchuan init
 
-# 2. 启动后台守护进程（可选）
-wangchuan watch
-```
-
-在新机器上：
-
-```bash
+# 在新机器上（支持任意 Git 托管）：
 wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
-# 也支持 GitLab、Gitee、Bitbucket、Gitea 等任意 Git 托管：
-# wangchuan init --repo git@gitlab.com:you/brain.git --key wangchuan_<hex>
 ```
 
 ---
@@ -41,7 +92,7 @@ wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
 | `init` | — | 首次初始化 — 自动检测智能体，支持一键创建仓库（GitHub CLI），执行首次同步 | `--repo`、`--key`、`--force` |
 | `sync` | `s` | 智能双向同步 — 日常唯一命令 | `-a, --agent`、`-n, --dry-run`、`-o, --only`、`-x, --exclude` |
 | `status` | `st` | 一屏总览 + 健康评分 | `-v, --verbose` |
-| `watch` | — | 后台守护进程，持续自动同步 | `-i, --interval <分钟>` |
+| `watch` | — | 仅拉取的后台守护进程，持续同步云端变更 | `-i, --interval <分钟>` |
 | `doctor` | — | 诊断 + 自动修复所有问题 | `--key-export`、`--key-rotate`、`--setup` |
 | `memory` | — | 浏览/复制智能体记忆 | `list`、`show`、`copy`、`broadcast` |
 | `env` | — | 多环境管理 | `list`、`create`、`switch`、`current`、`delete` |
@@ -72,48 +123,33 @@ wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
 - **AES-256-GCM** 认证加密 — 防篡改
 - 密钥存储在本地 `~/.wangchuan/master.key`（永不提交）
 - 密文格式：`IV(12B) + AuthTag(16B) + CipherText` → Base64 → `.enc`
-- 每次同步前自动扫描泄露的 token
 
 ### 跨智能体共享
-- Skills、MCP 配置和自定义子智能体自动分发到所有智能体
-- `agents/` 目录中的自定义子智能体通过 `shared/agents/` 在 Claude/Cursor/CodeBuddy/WorkBuddy 间同步
+- 技能、MCP 配置和自定义子智能体自动分发到所有智能体
+- MCP 配置合并为一份共享云端文件（`shared/mcp/mcpServers.json.enc`）
 - 删除传播 — 所有智能体都删除后自动从仓库清理
-- 已有条目不会被覆盖
 
-### 快照回滚
-- `wangchuan snapshot save [name]` — 在危险操作前保存命名快照
-- `wangchuan snapshot list` — 查看所有已保存的快照
-- `wangchuan snapshot restore <name>` — 回滚到指定快照
-- `wangchuan snapshot delete <name>` — 删除快照
-
-### 自定义智能体注册
-- 在 `config.json` 中通过 `customAgents` 字段定义自定义智能体，无需重新编译
-- 自定义智能体与内置智能体一样参与同步
-
-### 扩展冲突解决
-- 三方合并现在支持 `.json`、`.yaml`、`.yml` 文件（除 `.md`/`.txt` 外）
+### 三路合并
+- 自动冲突解决，支持 `.md`、`.txt`、`.json`、`.yaml`、`.yml`
+- 不重叠编辑 → 静默合并
+- 重叠冲突 → 写入冲突标记供用户解决
+- Watch 守护记录无法自动解决的冲突到 `pending-conflicts.json`，下次交互时提示
 
 ### 多环境管理
 - 创建隔离环境：`wangchuan env create work`
 - 即时切换：`wangchuan env switch work`
-- 每个环境拥有独立的智能体配置
+- Git 分支级隔离；共享本地工作空间，自动检测泄漏
 
-### Watch 守护进程
-- `wangchuan watch` 持续后台同步
-- 可配置间隔：`wangchuan watch -i 10`
-- PID 单例 — 每台机器只运行一个实例
+### Watch 守护进程（仅拉取）
+- `wangchuan watch` 持续在后台拉取云端变更
+- **不会推送** — 用户需手动 `wangchuan sync` 推送
+- 技能每次交互后自动启动
+- 环境切换时自动重启
 
-### 记忆浏览
-- `wangchuan memory list` — 查看所有智能体记忆概览
-- `wangchuan memory show <agent>` — 列出所有文件；支持模糊/子串匹配，不匹配时给出建议
-- `wangchuan memory copy openclaw claude` — 在智能体间传输记忆
-- `wangchuan memory broadcast claude` — 将记忆广播到所有智能体
-
-### 诊断修复
-- 自动发现已安装的智能体
-- 检测残留/幻影文件
-- `--key-export` / `--key-rotate` 密钥管理
-- `--setup` 生成新机器迁移命令
+### 快照回滚
+- 每次同步前自动创建快照（安全网）
+- 命名快照：`wangchuan snapshot save before-refactor`
+- 恢复：`wangchuan snapshot restore <name>`（自动推送到云端）
 
 ---
 
@@ -130,24 +166,7 @@ wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
 | **Gitea** | `git@gitea.example.com:you/brain.git` |
 | **自建服务** | 任意 SSH/HTTPS Git 地址 |
 
-> **提示**：已安装 GitHub CLI（`gh`）时，`wangchuan init` 可一键创建私有仓库。其他平台请先创建私有仓库，然后 `wangchuan init --repo <url>` 传入地址即可。
-
----
-
-## 支持的 Git 托管
-
-忘川支持**任意 Git 托管**，只要支持 SSH 或 HTTPS 协议：
-
-| 平台 | 仓库地址示例 |
-|------|------------|
-| **GitHub** | `git@github.com:you/brain.git` |
-| **GitLab** | `git@gitlab.com:you/brain.git` |
-| **Gitee（码云）** | `git@gitee.com:you/brain.git` |
-| **Bitbucket** | `git@bitbucket.org:you/brain.git` |
-| **Gitea** | `git@gitea.example.com:you/brain.git` |
-| **自建服务** | 任意 SSH/HTTPS Git 地址 |
-
-> **提示**：已安装 GitHub CLI（`gh`）时，`wangchuan init` 可一键创建私有仓库。其他平台请先创建私有仓库，然后 `wangchuan init --repo <url>` 传入地址即可。
+> **提示**：已安装 GitHub CLI（`gh`）时，`wangchuan init` 可一键创建私有仓库。
 
 ---
 
@@ -157,7 +176,7 @@ wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
 
 ```jsonc
 {
-  "repo": "git@github.com:you/brain.git",  // 或任意 Git 托管地址  // 或任意 Git 托管地址
+  "repo": "git@github.com:you/brain.git",
   "branch": "main",
   "localRepoPath": "~/.wangchuan/repo",
   "keyPath": "~/.wangchuan/master.key",
@@ -182,7 +201,7 @@ wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
 ## 安全规范
 
 1. `master.key` 已加入 `.gitignore`，不会意外提交
-2. 同步前自动扫描明文 token（`api_key`、`sk-xxx`、`password` 等）
+2. 同步前自动扫描明文 token
 3. 迁移密钥请用加密方式传输
 4. ⚠️ **master.key 丢失将无法解密历史配置，请做好备份！**
 

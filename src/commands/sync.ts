@@ -87,6 +87,21 @@ export async function cmdSync({ agent, dryRun, only, exclude, yes, skipShared }:
     await processPendingDistributions(cfg, yes);
   }
 
+  // ── Check for pending conflicts from watch daemon ──────────────
+  if (!skipShared && (process.stdin.isTTY || yes)) {
+    const { loadPendingConflicts, clearPendingConflicts } = await import('./watch.js');
+    const conflicts = loadPendingConflicts();
+    if (conflicts.length > 0) {
+      logger.warn(t('sync.pendingConflicts', { count: conflicts.length }));
+      for (const c of conflicts) {
+        logger.warn(`  ${c.file} (${t('sync.pendingConflictDetectedAt', { time: c.detectedAt })})`);
+        if (c.localSnippet) logger.info(`    ${t('sync.pendingConflictLocal')}: ${c.localSnippet.slice(0, 80)}…`);
+        if (c.remoteSnippet) logger.info(`    ${t('sync.pendingConflictRemote')}: ${c.remoteSnippet.slice(0, 80)}…`);
+      }
+      clearPendingConflicts();
+    }
+  }
+
   // ── Check for pending deletions from previous non-interactive sync ──
   if (!skipShared && (process.stdin.isTTY || yes)) {
     const { loadPendingDeletions, clearPendingDeletions } = await import('../core/sync.js');

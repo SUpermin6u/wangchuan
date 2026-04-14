@@ -60,7 +60,7 @@ Nine user-facing commands: `init`, `sync`, `status`, `watch`, `doctor`, `memory`
 | `init` | — | One-time setup: auto-detects installed agents, auto-creates repo (GitHub CLI), runs first sync. Works with any Git hosting (GitHub/GitLab/Gitee/Bitbucket/Gitea) | `--repo`, `--key`, `--force` |
 | `sync` | `s` | Smart bidirectional sync (THE daily command) | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
-| `watch` | — | Background daemon for continuous sync | `-i, --interval <min>` |
+| `watch` | — | Pull-only background daemon for continuous cloud sync | `-i, --interval <min>` |
 | `doctor` | — | Diagnose + auto-fix all issues | `--key-rotate`, `--key-export`, `--setup` |
 | `memory` | — | Browse/copy memories between agents; `show` supports fuzzy/substring file matching | `list\|show\|copy\|broadcast` |
 | `env` | — | Multi-environment management | `list\|create\|switch\|current\|delete` |
@@ -122,7 +122,8 @@ Rules:
 
 | File | What to update |
 |------|---------------|
-| `skill/SKILL.md` | Command reference, flags, agent list, invocation examples |
+| `skill/SKILL.md` | Command reference, flags, agent list, version bump, routing table |
+| `skill/references/*.md` | Detailed procedures for affected resource types |
 | `CLAUDE.md` | Commands table, architecture description, agent count |
 | `README.md` | Commands table, features, quick start, agent list (English) |
 | `README.zh-CN.md` | Same as README.md but in Chinese |
@@ -138,6 +139,42 @@ grep -c 'wangchuan ' skill/SKILL.md
 grep -c "\.command(" bin/wangchuan.ts
 # These two numbers must be consistent
 ```
+
+## Skill Benchmark (IRON LAW — zero tolerance)
+
+**Every change to code or skill files (`skill/SKILL.md`, `skill/references/*.md`) MUST pass the Skill Benchmark before commit.**
+
+The benchmark file is at `test/skill-benchmark.md`. It contains 56 test cases (TC-01 through TC-56) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
+
+### What the benchmark tests
+
+Each TC specifies: user instruction → trigger keywords → expected agent behavior → critical constraints → anti-patterns.
+
+Coverage: initialization, sync, status, skills CRUD, custom agents CRUD, MCP CRUD, memory CRUD, push/pull with conflict resolution, environment management, rollback, cross-agent resource sync, and more.
+
+### When to run the benchmark
+
+- After modifying any file in `skill/` (SKILL.md or references/)
+- After modifying any sync/command code that changes user-visible behavior
+- Before every release
+
+### How to verify
+
+For each affected TC, mentally trace the flow:
+1. Does the trigger keyword in the TC match the skill's `Triggers:` list?
+2. Does the routing table in SKILL.md point to the correct reference file?
+3. Does the reference file contain the exact commands and decision flow described in the TC?
+4. Are all critical constraints satisfied (non-TTY flags, shared-registry handling, etc.)?
+5. Are all anti-patterns avoided?
+
+If any TC fails, fix the skill files before committing. If a code change introduces new behavior not covered by existing TCs, add new TCs to the benchmark first.
+
+### Skill version management
+
+The skill version (`version` field in `skill/SKILL.md` frontmatter) MUST be bumped when:
+- **Patch** (e.g. 1.0.0 → 1.0.1): fix trigger keywords, typos, clarify wording
+- **Minor** (e.g. 1.0.0 → 1.1.0): add new reference sections, new TCs, new routing entries
+- **Major** (e.g. 1.0.0 → 2.0.0): restructure SKILL.md, change routing table format, break existing agent behavior
 
 ## Release Checklist (MANDATORY — execute in order)
 
