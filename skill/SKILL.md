@@ -145,19 +145,24 @@ This triggers cross-agent distribution with user confirmation — the user choos
 If you update MEMORY.md, CLAUDE.md, settings.json, or any synced config file, run `wangchuan sync` to push changes to the cloud.
 
 ### On session start
+Run `wangchuan status` first. If there are pending actions (distributions, deletions), run `wangchuan sync` interactively with `-y` flag to process them:
+```bash
+wangchuan status
+wangchuan sync -y   # auto-confirm pending actions
+```
 Check if the watch daemon is running. If not, suggest starting it:
 ```bash
 wangchuan watch
 ```
-The watch daemon auto-detects file changes and triggers sync, serving as a safety net when the agent forgets to sync manually.
+The watch daemon auto-detects file changes and syncs per-agent files. Shared resource distribution is deferred for interactive confirmation.
 
 ### Rule summary
 | Event | Action |
 |-------|--------|
-| Created/modified/deleted a skill | Run `wangchuan sync` immediately |
-| Created/modified/deleted a custom agent | Run `wangchuan sync` immediately |
+| Created/modified/deleted a skill | Run `wangchuan sync -y` immediately |
+| Created/modified/deleted a custom agent | Run `wangchuan sync -y` immediately |
 | Updated memory or config | Run `wangchuan sync` |
-| Session start | Check `wangchuan status`, suggest `wangchuan watch` if not running |
+| Session start | Run `wangchuan status`, process pending if any, suggest `wangchuan watch` if not running |
 
 ## Prerequisites
 
