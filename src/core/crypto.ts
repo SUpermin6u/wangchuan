@@ -38,7 +38,10 @@ function loadKey(keyPath: string): Buffer {
 }
 
 /** Invalidate the key cache (required after key rotation) */
-export function clearKeyCache(): void { cachedKey = undefined; }
+export function clearKeyCache(): void {
+  if (cachedKey) cachedKey.key.fill(0);
+  cachedKey = undefined;
+}
 
 /** Compute SHA-256 fingerprint of the master key (for cross-machine validation) */
 export function keyFingerprint(keyPath: string): string {

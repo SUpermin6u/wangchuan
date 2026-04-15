@@ -105,6 +105,60 @@ describe('ensureMigrated — v2 config reconciliation', () => {
     assert.deepEqual(result.profiles.default.claude.syncFiles, latestClaudeFiles);
   });
 
+  it('preserves user-added syncDirs not in built-in definitions', () => {
+    const defaults = buildDefaultProfiles();
+    const latestDirs = defaults.claude.syncDirs ?? [];
+    const userCustomDir = { src: 'my-custom-dir/', encrypt: false } as const;
+
+    // User config has built-in dirs + one custom dir
+    const cfg = buildTestConfig({
+      claude: { syncDirs: [...latestDirs, userCustomDir] },
+    });
+    const result = ensureMigrated(cfg);
+    const dirs = result.profiles.default.claude.syncDirs ?? [];
+
+    // All built-in dirs present
+    for (const d of latestDirs) {
+      assert.ok(dirs.some(x => x.src === d.src), `built-in dir ${d.src} should be present`);
+    }
+    // User custom dir preserved
+    assert.ok(dirs.some(x => x.src === 'my-custom-dir/'), 'user custom syncDir should be preserved');
+  });
+
+  it('preserves user-added syncFiles not in built-in definitions', () => {
+    const defaults = buildDefaultProfiles();
+    const latestFiles = defaults.openclaw.syncFiles;
+    const userCustomFile = { src: 'MY_NOTES.md', encrypt: false } as const;
+
+    const cfg = buildTestConfig({
+      openclaw: { syncFiles: [...latestFiles, userCustomFile] },
+    });
+    const result = ensureMigrated(cfg);
+    const files = result.profiles.default.openclaw.syncFiles;
+
+    for (const f of latestFiles) {
+      assert.ok(files.some(x => x.src === f.src), `built-in file ${f.src} should be present`);
+    }
+    assert.ok(files.some(x => x.src === 'MY_NOTES.md'), 'user custom syncFile should be preserved');
+  });
+
+  it('preserves user-added jsonFields not in built-in definitions', () => {
+    const defaults = buildDefaultProfiles();
+    const latestFields = defaults.claude.jsonFields ?? [];
+    const userCustomField = { src: 'custom.json', fields: ['foo'], repoName: 'custom-sync.json', encrypt: true } as const;
+
+    const cfg = buildTestConfig({
+      claude: { jsonFields: [...latestFields, userCustomField] },
+    });
+    const result = ensureMigrated(cfg);
+    const fields = result.profiles.default.claude.jsonFields ?? [];
+
+    for (const f of latestFields) {
+      assert.ok(fields.some(x => x.src === f.src), `built-in field ${f.src} should be present`);
+    }
+    assert.ok(fields.some(x => x.src === 'custom.json'), 'user custom jsonField should be preserved');
+  });
+
   it('result contains all agent names', () => {
     const cfg = buildTestConfig();
     const result = ensureMigrated(cfg);

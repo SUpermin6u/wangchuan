@@ -324,6 +324,7 @@ function handleKeyExport(cfg: WangchuanConfig): void {
   const prefixed = raw.startsWith('wangchuan_') ? raw : 'wangchuan_' + raw;
   logger.info(t('key.export.hex', { hex: prefixed }));
   logger.warn(t('key.export.warning'));
+  logger.info(t('key.export.fileHint', { path: keyPath }));
 }
 
 function handleSetup(cfg: WangchuanConfig): void {
@@ -341,15 +342,12 @@ function handleSetup(cfg: WangchuanConfig): void {
   console.log(chalk.bold(`  ${t('setup.keyLabel')}`) + chalk.gray(prefixed.slice(0, 18) + '…' + prefixed.slice(-8)));
   console.log();
 
-  const command = `npx wangchuan init --repo ${repo} --key ${keyHex}`;
+  const command = `npx wangchuan init --repo ${repo} --key /path/to/exported-key.txt`;
   console.log(chalk.bold(`  ${t('setup.commandLabel')}`));
   console.log();
   console.log(`  ${chalk.green(command)}`);
   console.log();
-
-  logger.warn(t('setup.securityWarning'));
-  console.log();
-  logger.info(t('setup.clipboardHint'));
+  logger.info(t('setup.keyFileHint'));
 }
 
 // ── Doctor options ──────────────────────────────────────────────

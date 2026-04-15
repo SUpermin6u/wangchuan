@@ -446,6 +446,8 @@ export async function stageToRepo(
       if (validator.containsSensitiveData(content)) {
         logger.warn(`  ${t('sync.sensitiveData', { path: entry.srcAbs })}`);
         logger.warn(`   ${t('sync.suggestEncrypt')}`);
+        (result.skipped as string[]).push(entry.repoRel);
+        continue;
       }
     }
     if (entry.encrypt) {

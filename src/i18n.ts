@@ -316,6 +316,8 @@ const M: Msgs = {
   'watch.conflictNeedsManual': ['Conflict needs manual resolution: {file}', '冲突需手动解决: {file}'],
   'watch.conflictsSaved':      ['{count} conflict(s) saved — will prompt on next interactive sync', '{count} 个冲突已记录 — 下次交互式同步时提示处理'],
 
+  'sync.decryptFailed': ['Decrypt failed (skipped): {path} — {error}', '解密失败（已跳过）: {path} — {error}'],
+
   // ── sync-meta ─────────────────────────────────────────────────
   'sync.meta.lastSync':   ['Last synced: {time} from {hostname} ({env})', '上次同步: {time}，来自 {hostname}（{env}）'],
   'sync.meta.staleDays':  ['Warning: repo data is {days} days old', '警告: 仓库数据已有 {days} 天未更新'],
@@ -556,6 +558,8 @@ const M: Msgs = {
   'setup.keyNotFound':         ['Master key not found: {path}', '主密钥未找到: {path}'],
   'setup.securityWarning':     ['Warning: this command contains your master key — do not share via insecure channels (chat, email, etc.)', '警告: 此命令包含主密钥 — 请勿通过不安全渠道传输（聊天、邮件等）'],
   'setup.clipboardHint':       ['Copy the command above and paste it on the target machine', '复制上面的命令，粘贴到目标机器上执行'],
+  'setup.keyFileHint':         ['Save the key to a file: wangchuan doctor --key-export > ~/wangchuan-key.txt', '将密钥保存到文件: wangchuan doctor --key-export > ~/wangchuan-key.txt'],
+  'key.export.fileHint':       ['Save to file for transfer: wangchuan doctor --key-export > ~/wangchuan-key.txt', '保存到文件以便迁移: wangchuan doctor --key-export > ~/wangchuan-key.txt'],
 
   // ── snapshot command ──────────────────────────────────────────────
   'cli.cmd.snapshot':          ['Manage sync snapshots (save|list|restore|delete)', '管理同步快照 (save|list|restore|delete)'],

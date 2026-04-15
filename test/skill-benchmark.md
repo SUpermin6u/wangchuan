@@ -1,4 +1,4 @@
-# Wangchuan Skill Benchmark v1.4.0
+# Wangchuan Skill Benchmark v1.5.1
 
 Test cases for verifying an AI agent with the wangchuan skill loaded.
 

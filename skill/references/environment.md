@@ -64,7 +64,9 @@ When user says "新建忘川 xxx 环境" / "create xxx environment":
 ```bash
 wangchuan env list
 ```
-If the name already exists, inform the user and ask: "Environment 'xxx' already exists. Switch to it instead?"
+If the name already exists, inform the user and ask: "Environment 'xxx' already exists. Would you like to: (1) Import current env's memories into it, or (2) Just switch to it?"
+- Import: `wangchuan env switch <name>` → then `wangchuan sync -y` to push current data
+- Switch only: `wangchuan env switch <name>`
 
 **Step 2: Ask about data initialization.**
 Ask the user which option they prefer:
@@ -153,6 +155,35 @@ wangchuan env switch <target-env>   # switch → auto-pulls target env's data
 # After done, switch back:
 wangchuan env switch <original-env>
 ```
+
+## Saving a snapshot
+
+When user says "保存快照" / "save snapshot":
+
+```bash
+wangchuan snapshot save [name]
+```
+
+If no name provided, auto-generates a timestamp-based name. Report saved snapshot name.
+
+## Listing snapshots
+
+```bash
+wangchuan snapshot list
+```
+
+Shows all saved snapshots with timestamps and sizes.
+
+## Deleting a snapshot
+
+When user says "删除快照" / "delete snapshot":
+
+```bash
+wangchuan snapshot list          # show available
+wangchuan snapshot delete <name> # delete selected
+```
+
+Confirm with user before deleting.
 
 ## Rolling back (snapshots and git history)
 

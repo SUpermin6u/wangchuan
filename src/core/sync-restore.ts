@@ -337,8 +337,14 @@ export async function restoreFromRepo(
     // ── Write file ───────────────────────────────────────────
     fs.mkdirSync(path.dirname(entry.srcAbs), { recursive: true });
     if (entry.encrypt) {
-      cryptoEngine.decryptFile(srcRepo, entry.srcAbs, keyPath);
-      (result.decrypted as string[]).push(entry.repoRel);
+      try {
+        cryptoEngine.decryptFile(srcRepo, entry.srcAbs, keyPath);
+        (result.decrypted as string[]).push(entry.repoRel);
+      } catch (err) {
+        logger.warn(`  ${t('sync.decryptFailed', { path: entry.repoRel, error: (err as Error).message })}`);
+        (result.skipped as string[]).push(entry.repoRel);
+        continue;
+      }
     } else {
       fs.copyFileSync(srcRepo, entry.srcAbs);
     }

@@ -160,6 +160,16 @@ function applyConfigV2(cfg: WangchuanConfig): WangchuanConfig {
 }
 
 /**
+ * Merge two arrays by a key function: latest (built-in) entries take priority,
+ * user-only entries (not in latest) are appended to preserve customizations.
+ */
+function mergeByKey<T>(latest: readonly T[], user: readonly T[], key: (item: T) => string): T[] {
+  const latestKeys = new Set(latest.map(key));
+  const userOnly = user.filter(item => !latestKeys.has(key(item)));
+  return [...latest, ...userOnly];
+}
+
+/**
  * Reconcile user's local profiles with latest agent definitions.
  *
  * When wangchuan upgrades and agent definitions add new syncFiles/syncDirs/jsonFields,
@@ -185,13 +195,18 @@ function reconcileProfiles(cfg: WangchuanConfig): WangchuanConfig {
       continue;
     }
 
-    // Preserve user's enabled state and workspacePath, take latest sync definitions
+    // Merge: start from latest built-in definitions, then add user-only entries
+    // This ensures new built-in entries are always present, while user customizations are preserved.
+    const mergedSyncFiles = mergeByKey(latestProfile.syncFiles, userProfile.syncFiles, f => f.src);
+    const mergedSyncDirs  = mergeByKey(latestProfile.syncDirs ?? [], userProfile.syncDirs ?? [], d => d.src);
+    const mergedJsonFields = mergeByKey(latestProfile.jsonFields ?? [], userProfile.jsonFields ?? [], j => j.src);
+
     const merged: AgentProfile = {
       enabled:       userProfile.enabled,
       workspacePath: userProfile.workspacePath,
-      syncFiles:     latestProfile.syncFiles,
-      ...(latestProfile.syncDirs  ? { syncDirs:  latestProfile.syncDirs }  : {}),
-      ...(latestProfile.jsonFields ? { jsonFields: latestProfile.jsonFields } : {}),
+      syncFiles:     mergedSyncFiles,
+      ...(mergedSyncDirs.length  ? { syncDirs:  mergedSyncDirs }  : {}),
+      ...(mergedJsonFields.length ? { jsonFields: mergedJsonFields } : {}),
     };
 
     // Check if anything actually changed

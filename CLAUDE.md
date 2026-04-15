@@ -144,7 +144,7 @@ grep -c "\.command(" bin/wangchuan.ts
 
 **Every change to code or skill files (`skill/SKILL.md`, `skill/references/*.md`) MUST pass the Skill Benchmark before commit.**
 
-The benchmark file is at `test/skill-benchmark.md`. It contains 56 test cases (TC-01 through TC-56) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
+The benchmark file is at `test/skill-benchmark.md`. It contains 52 test cases (TC-01 through TC-52) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
 
 ### What the benchmark tests
 
@@ -184,8 +184,9 @@ Every release MUST complete ALL steps. Skipping any step is a release blocker.
 2. **Privacy check**: Verify no tokens, API keys, or passwords leaked in code or configs
 3. **Language check**: `grep -rP '[\x{4e00}-\x{9fff}]' src/ test/ --include='*.ts' | grep -v 'i18n.ts'` returns empty (except test data strings)
 4. **Typecheck + test**: `npm run typecheck && npm test` — all must pass
-5. **Bump version**: Update `package.json` version AND `bin/wangchuan.ts` `.version()` (semver: breaking → major, feature → minor, bugfix → patch)
-6. **Build**: `npm run build`
-7. **Commit**: git add + commit (include all doc files + version bump)
-8. **Push**: git push origin main
-9. **Publish**: `npm publish --registry https://registry.npmjs.org`
+5. **Skill Benchmark**: Trace ALL affected TCs in `test/skill-benchmark.md` against skill files. This is a BLOCKING step — if any TC fails, fix before proceeding. See "Skill Benchmark" section above for verification procedure.
+6. **Bump version**: Update `package.json` version AND `bin/wangchuan.ts` `.version()` (semver: breaking → major, feature → minor, bugfix → patch)
+7. **Build**: `npm run build`
+8. **Commit**: git add + commit (include all doc files + version bump)
+9. **Push**: git push origin main
+10. **Publish**: `npm publish --registry https://registry.npmjs.org`
