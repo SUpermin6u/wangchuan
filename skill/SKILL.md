@@ -1,11 +1,11 @@
 ---
 name: wangchuan
-version: 1.4.0
+version: 1.5.0
 description: >-
   Encrypt and sync AI agent configs, memories, skills, and MCP servers across environments via a private Git repo.
   Supports Claude, OpenClaw, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
   TRIGGER when: user mentions syncing AI memories/configs, wangchuan/忘川, cross-machine agent setup, backup/restore agent settings, memory sync, skill distribution, MCP server sync, agent migration, master key export, sync status, watch daemon, environment management, snapshot, pushing/pulling memories, conflict resolution, syncing between agents, rolling back/restoring versions, switching environments, health check, customizing agent paths, or any commands: init, sync, status, watch, doctor, memory, env, snapshot, lang.
-  Triggers: 忘川、wangchuan、同步记忆、同步配置、同步技能、同步MCP、初始化忘川、备份记忆、恢复记忆、迁移agent、导出密钥、轮换密钥、同步状态、健康检查、多环境、快照、跨机器同步、agent记忆、配置路径、查看技能、删除技能、新增技能、修改技能、自定义agent、MCP服务器、新增MCP、删除MCP、修改MCP、查看MCP、写记忆、删除记忆、修改记忆、查看记忆、广播记忆、复制记忆、推送记忆、拉取记忆、同步到agent、冲突、合并记忆、回退记忆、回滚、恢复版本、切换环境、忘川状态、新建环境、删除环境、查看环境、切换语言、sync memories、push memory、pull memory、rollback、switch environment、custom agent、MCP server、health status、rotate key、switch language.
+  Triggers: 忘川、wangchuan、同步记忆、同步配置、同步技能、同步MCP、初始化忘川、备份记忆、恢复记忆、迁移agent、导出密钥、轮换密钥、同步状态、健康检查、多环境、快照、跨机器同步、agent记忆、配置路径、查看技能、删除技能、新增技能、修改技能、自定义agent、MCP服务器、新增MCP、删除MCP、修改MCP、查看MCP、写记忆、删除记忆、修改记忆、查看记忆、广播记忆、复制记忆、推送记忆、拉取记忆、同步到agent、冲突、合并记忆、回退记忆、回滚、恢复版本、切换环境、忘川状态、新建环境、删除环境、查看环境、切换语言、升级忘川、更新忘川、sync memories、push memory、pull memory、rollback、switch environment、custom agent、MCP server、health status、rotate key、switch language、upgrade wangchuan、update wangchuan.
   DO NOT TRIGGER when: general git operations, unrelated CLI tools, or AI model APIs.
 ---
 
@@ -42,6 +42,7 @@ Aliases: `sync`→`s`, `status`→`st`, `snapshot`→`snap`. All support `--agen
 | Switch/create/list/delete environments, rollback, snapshots | [references/environment.md](references/environment.md) |
 | Inspect/check skills, agents, MCP, memory, or health status | [references/inspect-status.md](references/inspect-status.md) |
 | Initialize wangchuan, install, migrate key, new machine setup | [references/install-setup.md](references/install-setup.md) |
+| Upgrade/update wangchuan CLI and sync new profiles | [references/install-setup.md](references/install-setup.md) |
 
 **IMPORTANT**: Before executing any task below, **Read the corresponding reference file** for detailed instructions, bash commands, and decision flows. The reference files contain the complete procedures.
 
@@ -104,10 +105,10 @@ All push/pull/watch operations target the **current environment's branch only**.
 
 | Agent | Key synced files |
 |-------|-----------------|
-| `openclaw` | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), memory/ (enc), skills/ |
-| `claude` | CLAUDE.md, settings.json (enc), .claude.json→mcpServers (enc), commands/, plugins/ |
-| `gemini` | settings.internal.json→security+model+general (enc), skills/ |
-| `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, mcp.json→mcpServers (enc), settings.json→enabledPlugins (enc), plugins/ |
-| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), mcp.json→mcpServers (enc), skills/, extensions/ |
-| `cursor` | rules/, mcp.json→mcpServers (enc), cli-config.json→permissions+model (enc), extensions/ |
-| `codex` | MEMORY.md (enc), instructions.md, config.toml (enc), skills/, memories/ (enc) |
+| `openclaw` | MEMORY.md (enc), AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, USER.md (enc), HEARTBEAT.md, BOOTSTRAP.md, memory/ (enc), skills/, openclaw.json→agents+skills+ui (enc) |
+| `claude` | CLAUDE.md, settings.json (enc), plugins/installed_plugins.json, plugins/known_marketplaces.json, plugins/blocklist.json, commands/, skills/, agents/, .claude.json→mcpServers (enc) |
+| `gemini` | skills/, settings.internal.json→security+model+general+ide (enc) |
+| `codebuddy` | MEMORY.md (enc), CODEBUDDY.md, plugins/known_marketplaces.json, plugins/installed_plugins.json, skills/, mcp.json→mcpServers (enc), settings.json→enabledPlugins+hooks (enc) |
+| `workbuddy` | MEMORY.md (enc), IDENTITY.md, SOUL.md, USER.md (enc), BOOTSTRAP.md, extensions/extensions.json, plugins/known_marketplaces.json, skills/, mcp.json→mcpServers (enc), settings.json→enabledPlugins+hooks (enc) |
+| `cursor` | extensions/extensions.json, hooks.json, rules/, skills/, agents/, mcp.json→mcpServers (enc), cli-config.json→permissions+model+enabledPlugins+editor+approvalMode+sandbox+attribution+network+modelParameters (enc) |
+| `codex` | MEMORY.md (enc), instructions.md, AGENTS.md, config.toml (enc), skills/, memories/ (enc), agents/ |

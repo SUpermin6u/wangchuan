@@ -387,6 +387,19 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 
 ---
 
+## Upgrade (TC-52)
+
+### TC-52: Upgrade wangchuan
+| Field | Value |
+|-------|-------|
+| **Instruction** | "升级忘川" / "upgrade wangchuan" |
+| **Ref** | `references/install-setup.md` |
+| **Behavior** | 1. `npm update -g wangchuan`<br>2. `wangchuan --version` → report new version<br>3. `wangchuan sync -y` → reconcileProfiles auto-detects new sync entries, updates config.json, pulls cloud, pushes newly-discovered local files<br>4. Report: version, new sync entries (if any), files synced, **current env: xxx**<br>5. Ensure watch |
+| **Constraint** | Must use `npm update -g` (not `npm install -g`). Must run `sync -y` after upgrade (triggers reconcileProfiles). Must report version + what changed. |
+| **Anti-pattern** | Skipping `sync -y` after upgrade; manually editing config.json instead of letting reconcileProfiles handle it; not reporting the new version |
+
+---
+
 ## Non-TTY Constraints
 
 | Command | Required |

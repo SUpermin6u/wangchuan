@@ -12,6 +12,50 @@
 npm install -g wangchuan
 ```
 
+## Upgrade
+
+When user says "升级忘川" / "upgrade wangchuan":
+
+**Step 1: Upgrade CLI.**
+```bash
+npm update -g wangchuan
+```
+
+**Step 2: Verify new version.**
+```bash
+wangchuan --version
+```
+
+**Step 3: Sync (reconciles profiles + pushes new files).**
+
+After upgrade, the new version may include new/changed agent sync profiles (new syncDirs, syncFiles, jsonFields). The built-in `reconcileProfiles` mechanism automatically detects these changes when `sync` runs — it compares the built-in agent definitions against `config.json`, adds any missing entries, and saves the updated config. No manual config editing needed.
+
+```bash
+wangchuan sync -y
+```
+
+This single command:
+1. Auto-runs `reconcileProfiles` → detects new sync entries → updates `config.json`
+2. Pulls latest from cloud (current env branch)
+3. Discovers and pushes any newly-synced local files to cloud
+
+**Step 4: Report results.**
+Tell the user:
+- New version number
+- Any new sync entries added (visible in sync output as newly-discovered files)
+- Files synced (pulled/pushed)
+- Current environment name
+
+**Step 5: Ensure watch daemon running.**
+```bash
+pgrep -f 'wangchuan.*watch' >/dev/null 2>&1 || nohup wangchuan watch >/dev/null 2>&1 &
+```
+
+**Complete upgrade flow:**
+```
+npm update -g wangchuan → wangchuan --version → wangchuan sync -y → report → ensure watch
+```
+
 ## Initialization (when `~/.wangchuan/config.json` does not exist)
 
 **IMPORTANT: Interactive mode does NOT work in agent shell (non-TTY). Always pass flags explicitly.**
