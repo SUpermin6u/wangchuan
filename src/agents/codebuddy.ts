@@ -15,6 +15,10 @@ export const codebuddy: AgentDefinition = {
       { src: 'MEMORY.md',                        encrypt: true  },
       { src: 'CODEBUDDY.md',                     encrypt: false },
       { src: 'plugins/known_marketplaces.json',   encrypt: false },
+      { src: 'plugins/installed_plugins.json',   encrypt: false },
+    ],
+    syncDirs: [
+      { src: 'skills/', encrypt: false },
     ],
     jsonFields: [
       {

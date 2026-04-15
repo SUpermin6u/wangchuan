@@ -17,11 +17,14 @@ export const codex: AgentDefinition = {
     syncFiles: [
       { src: 'MEMORY.md',       encrypt: true  },
       { src: 'instructions.md', encrypt: false },
+      { src: 'AGENTS.md',       encrypt: false },
       { src: 'config.toml',     encrypt: true  },
     ],
     syncDirs: [
       { src: 'skills/',   encrypt: false },
       { src: 'memories/', encrypt: true  },
+      { src: 'agents/',   encrypt: false },
     ],
   },
+  sharedSkills: { dir: 'skills/' },
 };

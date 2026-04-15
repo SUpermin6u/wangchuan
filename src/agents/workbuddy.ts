@@ -18,6 +18,7 @@ export const workbuddy: AgentDefinition = {
       { src: 'USER.md',                 encrypt: true  },
       { src: 'BOOTSTRAP.md',            encrypt: false },  // Agent bootstrap/onboarding instructions
       { src: 'extensions/extensions.json', encrypt: false },
+      { src: 'plugins/known_marketplaces.json', encrypt: false },
     ],
     syncDirs: [
       { src: 'skills/', encrypt: false },

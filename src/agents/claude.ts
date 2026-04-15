@@ -16,9 +16,12 @@ export const claude: AgentDefinition = {
       { src: 'settings.json',                    encrypt: true  },
       { src: 'plugins/installed_plugins.json',   encrypt: false },
       { src: 'plugins/known_marketplaces.json',  encrypt: false },
+      { src: 'plugins/blocklist.json',           encrypt: false },
     ],
     syncDirs: [
       { src: 'commands/', encrypt: false },
+      { src: 'skills/',   encrypt: false },
+      { src: 'agents/',   encrypt: false },
     ],
     jsonFields: [
       {

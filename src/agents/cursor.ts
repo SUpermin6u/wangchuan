@@ -16,7 +16,9 @@ export const cursor: AgentDefinition = {
       { src: 'hooks.json',                encrypt: false },
     ],
     syncDirs: [
-      { src: 'rules/', encrypt: false },
+      { src: 'rules/',   encrypt: false },
+      { src: 'skills/',  encrypt: false },
+      { src: 'agents/',  encrypt: false },
     ],
     jsonFields: [
       {
@@ -27,12 +29,13 @@ export const cursor: AgentDefinition = {
       },
       {
         src:      'cli-config.json',
-        fields:   ['permissions', 'model', 'enabledPlugins'],
+        fields:   ['permissions', 'model', 'enabledPlugins', 'editor', 'approvalMode', 'sandbox', 'attribution', 'network', 'modelParameters'],
         repoName: 'cli-config-sync.json',
         encrypt:  true,
       },
     ],
   },
+  sharedSkills: { dir: 'skills/' },
   sharedMcp: { src: 'mcp.json', field: 'mcpServers' },
   sharedAgents: { dir: 'agents/' },
 };

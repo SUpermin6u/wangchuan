@@ -18,7 +18,7 @@ export const gemini: AgentDefinition = {
     jsonFields: [
       {
         src:      'settings.internal.json',
-        fields:   ['security', 'model', 'general'],
+        fields:   ['security', 'model', 'general', 'ide'],
         repoName: 'settings-sync.json',
         encrypt:  true,
       },

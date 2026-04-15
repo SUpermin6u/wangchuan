@@ -23,6 +23,7 @@ export const openclaw: AgentDefinition = {
     ],
     syncDirs: [
       { src: 'memory/', encrypt: true },
+      { src: 'skills/', encrypt: false },
     ],
     jsonFields: [
       // openclaw.json is at ~/.openclaw/ (one level up from workspace)
