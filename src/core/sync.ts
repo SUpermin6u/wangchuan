@@ -219,7 +219,9 @@ function buildAgentEntries(
       : path.join(wsPath, dir.src);
     if (!fs.existsSync(scanBase)) continue;
 
-    for (const relFile of walkDir(scanBase)) {
+    // Use raw walker for repo scanning (must see .enc files), filtered for workspace
+    const walker = repoDirBase ? walkDirBase : walkDir;
+    for (const relFile of walker(scanBase)) {
       // Skip files belonging to shared-registered resources (they go to shared/ tier)
       if (sharedDirs?.has(dir.src)) {
         const kind = sharedDirs.get(dir.src)!;
@@ -286,8 +288,9 @@ function buildSharedEntries(
       : path.join(wsPath, source.dir);
     if (!fs.existsSync(scanBase)) continue;
 
-    for (const relFile of walkDir(scanBase)) {
-      if (path.basename(relFile).startsWith('.')) continue;
+    // Use raw walker for repo scanning, filtered for workspace
+    const skillWalker = repoDirBase ? walkDirBase : walkDir;
+    for (const relFile of skillWalker(scanBase)) {
       // Only include files belonging to shared-registered resources
       const resName = resourceName(relFile);
       if (!isShared('skill', resName)) continue;
@@ -348,8 +351,9 @@ function buildSharedEntries(
         : path.join(wsPath, source.dir);
       if (!fs.existsSync(scanBase)) continue;
 
-      for (const relFile of walkDir(scanBase)) {
-        if (path.basename(relFile).startsWith('.')) continue;
+      // Use raw walker for repo scanning, filtered for workspace
+      const agentWalker = repoDirBase ? walkDirBase : walkDir;
+      for (const relFile of agentWalker(scanBase)) {
         // Only include agents registered in shared registry
         const resName = resourceName(relFile);
         if (!isShared('agent', resName)) continue;

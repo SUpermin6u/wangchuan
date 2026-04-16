@@ -14,7 +14,7 @@ import { keyFingerprint } from './crypto.js';
 import { jsonField }    from './json-field.js';
 import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
-import { walkDir }      from './sync.js';
+import { walkDir as walkDirRaw } from '../utils/fs.js';
 import { t }            from '../i18n.js';
 import chalk            from 'chalk';
 import { expandHome, buildFileEntries } from './sync.js';
@@ -206,8 +206,7 @@ export function detectStaleFiles(repoPath: string, entries: FileEntry[]): string
     const scanRoot = path.join(repoPath, topDir);
     if (!fs.existsSync(scanRoot)) continue;
 
-    for (const relFile of walkDir(scanRoot)) {
-      if (path.basename(relFile).startsWith('.')) continue;
+    for (const relFile of walkDirRaw(scanRoot)) {
       const repoRel = path.join(topDir, relFile);
       if (!activeRepoRels.has(repoRel)) {
         stale.push(repoRel);
