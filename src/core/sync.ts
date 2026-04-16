@@ -157,12 +157,17 @@ function globMatch(str: string, pattern: string): boolean {
   return new RegExp(regex).test(str);
 }
 
-/** Walk directory with .wangchuanignore filtering */
+/** OS-generated files that should never be synced */
+const OS_JUNK = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini', '.Spotlight-V100', '.Trashes']);
+
+/** Walk directory with OS junk and .wangchuanignore filtering */
 export function walkDir(dirAbs: string): string[] {
   const ignorePatterns = loadIgnorePatterns();
-  const filter = ignorePatterns.length > 0
-    ? (relPath: string) => !matchesIgnore(relPath, ignorePatterns)
-    : undefined;
+  const filter = (relPath: string) => {
+    if (OS_JUNK.has(path.basename(relPath))) return false;
+    if (ignorePatterns.length > 0 && matchesIgnore(relPath, ignorePatterns)) return false;
+    return true;
+  };
   return walkDirBase(dirAbs, filter);
 }
 

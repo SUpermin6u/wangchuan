@@ -503,16 +503,13 @@ export async function stageToRepo(
     }
   }
 
-  // Write sync metadata to repo root
-  writeSyncMeta(repoPath, cfg);
-
-  // Write integrity checksums for all synced files (with plaintext hashes)
-  if (result.synced.length > 0) {
+  // Only write metadata files when there are actual content changes
+  // (avoids empty commits from timestamp-only updates to sync-meta.json)
+  if (result.synced.length > 0 || result.deleted.length > 0) {
+    writeSyncMeta(repoPath, cfg);
     writeIntegrity(repoPath, result.synced, plaintextHashMap);
+    writeKeyFingerprint(repoPath, keyPath);
   }
-
-  // Write key fingerprint
-  writeKeyFingerprint(repoPath, keyPath);
 
   // Clear stage progress on successful completion
   clearStageProgress();
