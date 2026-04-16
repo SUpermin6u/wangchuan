@@ -160,10 +160,16 @@ function globMatch(str: string, pattern: string): boolean {
 /** OS-generated files that should never be synced */
 const OS_JUNK = new Set(['.DS_Store', 'Thumbs.db', 'desktop.ini', '.Spotlight-V100', '.Trashes']);
 
-/** Walk directory with OS junk and .wangchuanignore filtering */
+/** Check if any path segment starts with '.' (hidden dir/file) */
+function hasHiddenSegment(relPath: string): boolean {
+  return relPath.split(/[/\\]/).some(seg => seg.startsWith('.') && seg !== '.' && seg !== '..');
+}
+
+/** Walk directory with hidden path, OS junk, and .wangchuanignore filtering */
 export function walkDir(dirAbs: string): string[] {
   const ignorePatterns = loadIgnorePatterns();
   const filter = (relPath: string) => {
+    if (hasHiddenSegment(relPath)) return false;
     if (OS_JUNK.has(path.basename(relPath))) return false;
     if (ignorePatterns.length > 0 && matchesIgnore(relPath, ignorePatterns)) return false;
     return true;
