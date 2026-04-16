@@ -23,7 +23,7 @@ import { copyDirSync } from '../utils/fs.js';
 import { t }      from '../i18n.js';
 import { AGENT_DEFINITIONS, buildDefaultShared } from '../agents/index.js';
 import { AGENT_NAMES } from '../types.js';
-import type { WangchuanConfig, AgentProfiles, AgentProfile } from '../types.js';
+import type { WangchuanConfig, AgentProfiles, AgentProfile, JsonFieldEntry } from '../types.js';
 
 /** Recursively remove directory */
 function rmDirRecursive(dir: string): void {
@@ -170,6 +170,43 @@ function mergeByKey<T>(latest: readonly T[], user: readonly T[], key: (item: T) 
 }
 
 /**
+ * Specialized merge for jsonFields: uses composite key (src + repoName) and
+ * unions the `fields` arrays so both built-in additions and user customizations
+ * are preserved.
+ */
+function mergeJsonFields(
+  latest: readonly JsonFieldEntry[],
+  user: readonly JsonFieldEntry[],
+): JsonFieldEntry[] {
+  const result: JsonFieldEntry[] = [];
+  const userMap = new Map(user.map(j => [`${j.src}::${j.repoName}`, j]));
+  const seenKeys = new Set<string>();
+
+  // Start with latest, merging fields arrays where user has the same entry
+  for (const entry of latest) {
+    const key = `${entry.src}::${entry.repoName}`;
+    seenKeys.add(key);
+    const userEntry = userMap.get(key);
+    if (userEntry) {
+      // Union the fields arrays (built-in + user-added)
+      const mergedFields = [...new Set([...entry.fields, ...userEntry.fields])];
+      result.push({ ...entry, fields: mergedFields });
+    } else {
+      result.push(entry);
+    }
+  }
+
+  // Append user-only entries not in latest
+  for (const [key, entry] of userMap) {
+    if (!seenKeys.has(key)) {
+      result.push(entry);
+    }
+  }
+
+  return result;
+}
+
+/**
  * Reconcile user's local profiles with latest agent definitions.
  *
  * When wangchuan upgrades and agent definitions add new syncFiles/syncDirs/jsonFields,
@@ -199,7 +236,7 @@ function reconcileProfiles(cfg: WangchuanConfig): WangchuanConfig {
     // This ensures new built-in entries are always present, while user customizations are preserved.
     const mergedSyncFiles = mergeByKey(latestProfile.syncFiles, userProfile.syncFiles, f => f.src);
     const mergedSyncDirs  = mergeByKey(latestProfile.syncDirs ?? [], userProfile.syncDirs ?? [], d => d.src);
-    const mergedJsonFields = mergeByKey(latestProfile.jsonFields ?? [], userProfile.jsonFields ?? [], j => j.src);
+    const mergedJsonFields = mergeJsonFields(latestProfile.jsonFields ?? [], userProfile.jsonFields ?? []);
 
     const merged: AgentProfile = {
       enabled:       userProfile.enabled,

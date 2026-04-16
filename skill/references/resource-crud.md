@@ -4,7 +4,7 @@
 
 | Resource | Local path | Sharing model | Registry | Applicable agents |
 |----------|-----------|---------------|----------|-------------------|
-| **Skills** | `<workspace>/skills/<name>/` | Directory copy, shared-registry | `kind:'skill'` | OpenClaw, Claude, CodeBuddy, WorkBuddy, Gemini (5) |
+| **Skills** | `<workspace>/skills/<name>/` | Directory copy, shared-registry | `kind:'skill'` | All 7 agents (OpenClaw, Claude, Gemini, CodeBuddy, WorkBuddy, Cursor, Codex) |
 | **Custom agents** | `<workspace>/agents/<name>/` | Directory copy, shared-registry | `kind:'agent'` | Claude, Cursor, CodeBuddy, WorkBuddy (4) |
 | **MCP servers** | JSON field `mcpServers` in config file | JSON key merge, single shared file in cloud | None (auto) | Claude (`.claude.json`), OpenClaw (`config/mcporter.json`), CodeBuddy/WorkBuddy/Cursor (`mcp.json`) (5) |
 | **Memory** | `<workspace>/MEMORY.md` etc. | Per-agent file, manual copy/broadcast | None | OpenClaw/CodeBuddy/WorkBuddy/Codex (`MEMORY.md`); Claude (`CLAUDE.md`); shared (`SHARED.md`) |

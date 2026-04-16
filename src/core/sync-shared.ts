@@ -185,7 +185,7 @@ function detectResourceDistributions(
   sources: ReadonlyArray<{ readonly agent: string; readonly dir: string }>,
   profiles: AgentProfiles,
 ): PendingDistribution[] {
-  const { allFiles, allOwner, agentHas, allSourceAgents } = aggregateResources(sources, profiles);
+  const { allFiles, allOwner, agentHas, allSourceAgents, perAgent } = aggregateResources(sources, profiles);
   const items: PendingDistribution[] = [];
   const sharedNames = new Set(getSharedNames(kind));
 
@@ -245,11 +245,12 @@ function detectResourceDistributions(
     });
   }
 
-  // ── 3. Delete: shared resource removed from source agent → ask to delete from others ──
+  // ── 3. Delete: shared resource removed from an agent that previously had it ──
+  // Only consider agents that have at least one resource in this kind's directory
+  // (to avoid false positives from newly enabled agents with empty dirs)
   for (const name of sharedNames) {
-    // Collect agents that still have this resource
     const agentsWithResource: string[] = [];
-    const agentsWithoutResource: string[] = [];
+    const agentsDeletedResource: string[] = [];
 
     for (const agent of allSourceAgents) {
       const p = profiles[agent as keyof AgentProfiles];
@@ -257,16 +258,24 @@ function detectResourceDistributions(
       const source = sources.find(s => s.agent === agent);
       if (!source) continue;
       const dir = path.join(expandHome(p.workspacePath), source.dir, name);
+      const agentFiles = perAgent.get(agent);
+
+      // Check if the agent's base directory for this kind exists
+      // (distinguishes "active agent that deleted a resource" from "newly enabled agent with no data")
+      const baseDir = path.join(expandHome(p.workspacePath), source.dir);
+      const baseDirExists = fs.existsSync(baseDir);
+
       if (fs.existsSync(dir)) {
         agentsWithResource.push(agent);
-      } else {
-        agentsWithoutResource.push(agent);
+      } else if (baseDirExists) {
+        // Agent has the base dir (skills/ or agents/) but this resource is missing → likely deleted
+        agentsDeletedResource.push(agent);
       }
+      // else: agent's base dir doesn't exist → newly enabled, skip
     }
 
-    // If at least one agent removed it but others still have it → propagate delete
-    if (agentsWithoutResource.length > 0 && agentsWithResource.length > 0) {
-      const srcAgent = agentsWithoutResource[0]!;
+    if (agentsDeletedResource.length > 0 && agentsWithResource.length > 0) {
+      const srcAgent = agentsDeletedResource[0]!;
       for (const target of agentsWithResource) {
         items.push({
           kind,
@@ -279,8 +288,7 @@ function detectResourceDistributions(
       }
     }
 
-    // If ALL agents removed it → unregister from shared
-    if (agentsWithResource.length === 0) {
+    if (agentsWithResource.length === 0 && agentsDeletedResource.length > 0) {
       unregisterShared(kind, name);
     }
   }
@@ -513,9 +521,32 @@ function executeDistribution(
       logger.ok(`  ${t('sync.distApplied', { action: 'delete', file: resName, agent: targetAgent })}`);
     }
   } else {
-    if (!fs.existsSync(item.sourceAbs)) return;
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.copyFileSync(item.sourceAbs, targetPath);
-    logger.ok(`  ${t('sync.distApplied', { action: item.action, file: item.relFile, agent: targetAgent })}`);
+    // Copy entire resource directory (not just one file)
+    const resName = resourceName(item.relFile);
+    const srcSource = item.kind === 'skill'
+      ? shared.skills.sources.find(s => s.agent === item.sourceAgent)
+      : shared.agents?.sources.find(s => s.agent === item.sourceAgent);
+    if (!srcSource) return;
+    const srcAgentProfile = profiles[item.sourceAgent as keyof typeof profiles];
+    if (!srcAgentProfile) return;
+    const srcBaseDir = path.join(expandHome(srcAgentProfile.workspacePath), srcSource.dir, resName);
+    const targetResDir = path.join(targetDir, resName);
+
+    if (fs.existsSync(srcBaseDir)) {
+      // Copy entire resource directory
+      fs.mkdirSync(targetResDir, { recursive: true });
+      for (const relFile of walkDir(srcBaseDir)) {
+        const srcFile = path.join(srcBaseDir, relFile);
+        const dstFile = path.join(targetResDir, relFile);
+        fs.mkdirSync(path.dirname(dstFile), { recursive: true });
+        fs.copyFileSync(srcFile, dstFile);
+      }
+      logger.ok(`  ${t('sync.distApplied', { action: item.action, file: resName, agent: targetAgent })}`);
+    } else if (fs.existsSync(item.sourceAbs)) {
+      // Fallback: copy single file
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      fs.copyFileSync(item.sourceAbs, targetPath);
+      logger.ok(`  ${t('sync.distApplied', { action: item.action, file: item.relFile, agent: targetAgent })}`);
+    }
   }
 }

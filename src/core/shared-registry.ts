@@ -18,11 +18,15 @@ let registryPath = path.join(WANGCHUAN_DIR, 'shared-registry.json');
 /** Override registry path (for testing) */
 export function setRegistryPath(p: string): void {
   registryPath = p;
+  cachedRegistry = undefined;
+  cachedRegistryMtime = undefined;
 }
 
 /** Reset registry path to default */
 export function resetRegistryPath(): void {
   registryPath = path.join(WANGCHUAN_DIR, 'shared-registry.json');
+  cachedRegistry = undefined;
+  cachedRegistryMtime = undefined;
 }
 
 export interface SharedRegistryEntry {
@@ -40,11 +44,19 @@ interface SharedRegistryData {
   readonly entries: SharedRegistryEntry[];
 }
 
-/** Load the shared registry */
+/* ── In-memory cache (avoids redundant disk reads) ── */
+let cachedRegistry: SharedRegistryData | undefined;
+let cachedRegistryMtime: number | undefined;
+
+/** Load the shared registry (cached by mtime) */
 export function loadRegistry(): SharedRegistryData {
   try {
     if (!fs.existsSync(registryPath)) return { entries: [] };
-    return JSON.parse(fs.readFileSync(registryPath, 'utf-8')) as SharedRegistryData;
+    const mtime = fs.statSync(registryPath).mtimeMs;
+    if (cachedRegistry && cachedRegistryMtime === mtime) return cachedRegistry;
+    cachedRegistry = JSON.parse(fs.readFileSync(registryPath, 'utf-8')) as SharedRegistryData;
+    cachedRegistryMtime = mtime;
+    return cachedRegistry;
   } catch { return { entries: [] }; }
 }
 
@@ -52,6 +64,14 @@ export function loadRegistry(): SharedRegistryData {
 export function saveRegistry(data: SharedRegistryData): void {
   fs.mkdirSync(path.dirname(registryPath), { recursive: true });
   fs.writeFileSync(registryPath, JSON.stringify(data, null, 2), 'utf-8');
+  cachedRegistry = data;
+  cachedRegistryMtime = undefined; // force re-stat on next load
+}
+
+/** Clear the in-memory registry cache */
+export function clearRegistryCache(): void {
+  cachedRegistry = undefined;
+  cachedRegistryMtime = undefined;
 }
 
 /** Check if a resource is registered as shared */
@@ -62,8 +82,7 @@ export function isShared(kind: 'skill' | 'agent', name: string): boolean {
 
 /** Extract top-level resource name from a relFile (e.g. "wangchuan/SKILL.md" → "wangchuan") */
 export function resourceName(relFile: string): string {
-  const first = relFile.split(path.sep)[0] ?? relFile.split('/')[0];
-  return first ?? relFile;
+  return relFile.split(/[/\\]/)[0] ?? relFile;
 }
 
 /** Register a resource as shared */

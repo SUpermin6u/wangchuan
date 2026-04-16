@@ -18,6 +18,7 @@ import { logger }       from '../utils/logger.js';
 import { walkDir as walkDirBase } from '../utils/fs.js';
 import { t }            from '../i18n.js';
 import { isShared, resourceName, migrateExistingToRegistry } from './shared-registry.js';
+import { AGENT_DEFINITIONS } from '../agents/index.js';
 import type {
   WangchuanConfig,
   FileEntry,
@@ -184,6 +185,7 @@ function buildAgentEntries(
   name: AgentName | string,
   profile: AgentProfile | CustomAgentProfile,
   repoDirBase?: string,
+  sharedDirs?: Map<string, 'skill' | 'agent'>,
 ): FileEntry[] {
   const entries: FileEntry[] = [];
   const wsPath = expandHome(profile.workspacePath);
@@ -207,6 +209,12 @@ function buildAgentEntries(
     if (!fs.existsSync(scanBase)) continue;
 
     for (const relFile of walkDir(scanBase)) {
+      // Skip files belonging to shared-registered resources (they go to shared/ tier)
+      if (sharedDirs?.has(dir.src)) {
+        const kind = sharedDirs.get(dir.src)!;
+        const resName = resourceName(relFile);
+        if (isShared(kind, resName)) continue;
+      }
       const suffix    = dir.encrypt ? '.enc' : '';
       const plainFile = relFile.endsWith('.enc') ? relFile.slice(0, -4) : relFile;
       entries.push({
@@ -381,7 +389,12 @@ export function buildFileEntries(
   for (const name of AGENT_NAMES) {
     const p = profiles[name];
     if (!p.enabled || (agent && agent !== name)) continue;
-    entries.push(...buildAgentEntries(name, p, repoDirBase));
+    // Build sharedDirs map for this agent from its definition
+    const def = AGENT_DEFINITIONS.find(d => d.name === name);
+    const sharedDirs = new Map<string, 'skill' | 'agent'>();
+    if (def?.sharedSkills) sharedDirs.set(def.sharedSkills.dir, 'skill');
+    if (def?.sharedAgents) sharedDirs.set(def.sharedAgents.dir, 'agent');
+    entries.push(...buildAgentEntries(name, p, repoDirBase, sharedDirs.size > 0 ? sharedDirs : undefined));
   }
 
   if (cfg.customAgents) {
