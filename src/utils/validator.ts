@@ -11,10 +11,10 @@ import type { WangchuanConfig } from '../types.js';
 
 const SENSITIVE_PATTERNS: readonly RegExp[] = [
   /sk-[A-Za-z0-9]{20,}/,
-  /api[_-]?key\s*[:=]\s*["']?\S+/i,
-  /token\s*[:=]\s*["']?\S{16,}/i,
-  /password\s*[:=]\s*["']?\S+/i,
-  /secret\s*[:=]\s*["']?\S+/i,
+  /api[_-]?key\s*[:=]\s*["'][^"']{8,}/i,
+  /token\s*[:=]\s*["'][^"']{16,}/i,
+  /password\s*[:=]\s*["'][^"']{6,}/i,
+  /secret\s*[:=]\s*["'][^"']{16,}/i,
 ];
 
 interface Validator {
