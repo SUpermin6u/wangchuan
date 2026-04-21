@@ -18,6 +18,7 @@ import { walkDir as walkDirRaw } from '../utils/fs.js';
 import { t }            from '../i18n.js';
 import chalk            from 'chalk';
 import { expandHome, buildFileEntries } from './sync.js';
+import { migrateExistingToRegistry } from './shared-registry.js';
 import { distributeShared, savePendingDeletions } from './sync-shared.js';
 import type {
   WangchuanConfig,
@@ -409,12 +410,19 @@ export async function stageToRepo(
   skipShared?: boolean,
   skipStaleDetection?: boolean,
 ): Promise<StageResult> {
+  const repoPath = expandHome(cfg.localRepoPath);
+
+  // Ensure shared registry is populated from repo before distribution detection
+  // This fixes issue where after restore, existing shared skills are misidentified as "new"
+  if (!agent && !skipShared) {
+    migrateExistingToRegistry(repoPath);
+  }
+
   // Distribute shared resources to all agents before full push
   // Skip in watch mode — shared changes are deferred for interactive confirmation
   if (!agent && !skipShared) {
     distributeShared(cfg);
   }
-  const repoPath = expandHome(cfg.localRepoPath);
   const keyPath  = expandHome(cfg.keyPath);
 
   // Verify key fingerprint before pushing
