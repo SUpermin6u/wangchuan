@@ -26,18 +26,24 @@ npm update -g wangchuan
 wangchuan --version
 ```
 
-**Step 3: Sync (reconciles profiles + pushes new files).**
+**Step 3: Pull cloud first, then push local changes.**
 
 After upgrade, the new version may include new/changed agent sync profiles (new syncDirs, syncFiles, jsonFields). The built-in `reconcileProfiles` mechanism automatically detects these changes when `sync` runs — it compares the built-in agent definitions against `config.json`, adds any missing entries, and saves the updated config. No manual config editing needed.
 
 ```bash
+# First: pull cloud data to ensure local is up-to-date
 wangchuan sync -y
 ```
 
 This single command:
 1. Auto-runs `reconcileProfiles` → detects new sync entries → updates `config.json`
-2. Pulls latest from cloud (current env branch)
-3. Discovers and pushes any newly-synced local files to cloud
+2. **Pulls latest from cloud first** (current env branch) — ensures no cloud data is lost
+3. Then pushes any newly-synced local files to cloud
+
+If the first sync shows "no changes" but you expect new files to be discovered, run sync again — the first run updates config.json, the second picks up newly-discovered files:
+```bash
+wangchuan sync -y   # second sync if needed
+```
 
 **Step 4: Report results.**
 Tell the user:
