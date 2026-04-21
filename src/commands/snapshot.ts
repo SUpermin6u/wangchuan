@@ -26,7 +26,7 @@ const WANGCHUAN_DIR  = path.join(os.homedir(), '.wangchuan');
 const SNAPSHOTS_DIR  = path.join(WANGCHUAN_DIR, 'snapshots');
 const DEFAULT_MAX    = 10;
 
-export interface SnapshotOptions {
+interface SnapshotOptions {
   readonly action: string;
   readonly name?: string | undefined;
   readonly maxSnapshots?: number | undefined;

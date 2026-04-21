@@ -29,7 +29,7 @@ export function resetRegistryPath(): void {
   cachedRegistryMtime = undefined;
 }
 
-export interface SharedRegistryEntry {
+interface SharedRegistryEntry {
   /** Resource name (top-level dir name, e.g. "wangchuan", "ci-cd") */
   readonly name: string;
   /** Resource type */
@@ -61,7 +61,7 @@ export function loadRegistry(): SharedRegistryData {
 }
 
 /** Save the shared registry */
-export function saveRegistry(data: SharedRegistryData): void {
+function saveRegistry(data: SharedRegistryData): void {
   fs.mkdirSync(path.dirname(registryPath), { recursive: true });
   fs.writeFileSync(registryPath, JSON.stringify(data, null, 2), 'utf-8');
   cachedRegistry = data;
@@ -69,7 +69,7 @@ export function saveRegistry(data: SharedRegistryData): void {
 }
 
 /** Clear the in-memory registry cache */
-export function clearRegistryCache(): void {
+function clearRegistryCache(): void {
   cachedRegistry = undefined;
   cachedRegistryMtime = undefined;
 }

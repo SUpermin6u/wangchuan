@@ -57,7 +57,7 @@ function pruneAutoSnapshots(max: number): void {
   }
 }
 
-export interface SyncCommandResult {
+interface SyncCommandResult {
   readonly pulled: boolean;
   readonly pullResult?: RestoreResult | undefined;
   readonly pushed: boolean;

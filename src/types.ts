@@ -148,11 +148,6 @@ export type AgentName = (typeof AGENT_NAMES)[number];
 /** Sync tier identifier (built-in agents, shared, or custom agent names) */
 export type SyncTier = AgentName | 'shared' | (string & {});
 
-/** Shared mixin for all commands supporting --agent filtering */
-export interface AgentOptions {
-  readonly agent?: AgentName | string;
-}
-
 // ─── Pending distribution (cross-agent change confirmation) ──────
 
 /** A pending cross-agent distribution item awaiting user confirmation */
@@ -237,27 +232,20 @@ export interface FilterOptions {
   readonly exclude?: readonly string[] | undefined;
 }
 
-export interface PushOptions extends AgentOptions, FilterOptions {
-  readonly message?: string;
-  readonly dryRun?: boolean;
+export interface StatusOptions {
+  readonly agent?: AgentName | string;
 }
 
-export interface PullOptions extends AgentOptions, FilterOptions {}
-
-export interface StatusOptions extends AgentOptions {}
-
-export interface DiffCommandOptions extends AgentOptions {}
-
-export interface ListOptions extends AgentOptions {}
-
-export interface SyncOptions extends AgentOptions, FilterOptions {
+export interface SyncOptions extends FilterOptions {
+  readonly agent?: AgentName | string;
   readonly dryRun?: boolean;
   readonly yes?: boolean;
   /** Skip shared distribution (used by watch daemon) */
   readonly skipShared?: boolean;
 }
 
-export interface WatchOptions extends AgentOptions {
+export interface WatchOptions {
+  readonly agent?: AgentName | string;
   readonly interval?: number;
 }
 

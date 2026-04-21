@@ -10,7 +10,7 @@
 
 import chalk from 'chalk';
 
-export type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug';
+type LogLevel = 'silent' | 'error' | 'warn' | 'info' | 'debug';
 
 const LEVELS: Record<LogLevel, number> = { silent: -1, error: 3, warn: 2, info: 1, debug: 0 };
 

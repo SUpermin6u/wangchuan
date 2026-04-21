@@ -10,9 +10,9 @@ import { logger } from '../utils/logger.js';
 import { t }      from '../i18n.js';
 import type { WangchuanConfig } from '../types.js';
 
-export type WebhookEvent = 'push' | 'pull' | 'sync';
+type WebhookEvent = 'push' | 'pull' | 'sync';
 
-export interface WebhookPayload {
+interface WebhookPayload {
   readonly event: WebhookEvent;
   readonly timestamp: string;
   readonly hostname: string;

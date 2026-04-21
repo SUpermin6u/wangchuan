@@ -16,7 +16,7 @@ import { t }      from '../i18n.js';
 const WANGCHUAN_DIR = path.join(os.homedir(), '.wangchuan');
 const LOCK_PATH     = path.join(WANGCHUAN_DIR, 'sync-lock.json');
 
-export interface SyncLock {
+interface SyncLock {
   readonly startedAt: string;
   readonly pid: number;
 }

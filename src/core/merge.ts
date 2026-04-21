@@ -8,7 +8,7 @@
 
 import { buildLcsTable } from '../utils/lcs.js';
 
-export interface MergeResult {
+interface MergeResult {
   readonly merged: string;
   readonly hasConflicts: boolean;
 }

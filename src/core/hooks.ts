@@ -10,7 +10,7 @@ import { logger } from '../utils/logger.js';
 import { t }      from '../i18n.js';
 import type { WangchuanConfig } from '../types.js';
 
-export type HookType = 'postSync' | 'postPush' | 'postPull';
+type HookType = 'postSync' | 'postPush' | 'postPull';
 
 const HOOK_TIMEOUT_MS = 30_000;
 

@@ -18,7 +18,7 @@ import { t }    from '../i18n.js';
 import { diffText } from './linediff.js';
 
 /** Conflict resolution decision for each file during pull */
-export type ConflictDecision =
+type ConflictDecision =
   | 'overwrite'     // Overwrite local
   | 'skip'          // Skip (keep local)
   | 'overwrite_all' // Overwrite all subsequent

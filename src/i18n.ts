@@ -60,15 +60,9 @@ const M: Msgs = {
   'cli.cmd.init.repo':   ['Git repo URL (SSH or HTTPS)', 'Git 仓库地址'],
   'cli.cmd.init.key':    ['Import existing master key (hex string)', '导入已有的主密钥（十六进制字符串）'],
   'cli.cmd.init.force':  ['Force re-init (overwrite existing config)', '强制重新初始化'],
-  'cli.cmd.pull':        ['Pull and restore configs from remote repo', '从远端仓库拉取并还原配置到本地'],
   'cli.cmd.agent':       ['Filter by agent (openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex)', '只操作指定智能体 (openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex)'],
-  'cli.cmd.push':        ['Encrypt and push local configs to remote repo', '将本地配置加密后推送到远端仓库'],
-  'cli.cmd.push.msg':    ['Custom commit message', '自定义提交信息'],
   'cli.cmd.status':      ['Show sync state at a glance (--verbose for full detail)', '一览同步状态（--verbose 查看完整详情）'],
   'cli.cmd.status.verbose': ['Show full detail: file list, diff, history, health breakdown', '显示完整详情：文件清单、差异、历史、健康评分'],
-  'cli.cmd.diff':        ['Show line-level diff between local and repo', '显示本地与仓库的行级文件差异'],
-  'cli.cmd.list':        ['List all managed configs with local/repo status', '列出所有受管配置项及其状态'],
-  'cli.cmd.dump':        ['Generate plaintext snapshot to temp dir', '生成明文快照到临时目录'],
   'cli.cmd.lang':        ['Set display language (zh|en)', '设置显示语言 (zh|en)'],
   'cli.cmd.sync':        ['Smart bidirectional sync (pull if needed, then push)', '智能双向同步（有更新先拉取，再推送）'],
   'cli.cmd.watch':       ['Watch for file changes and auto-sync', '监听文件变更并自动同步'],
@@ -104,41 +98,8 @@ const M: Msgs = {
   'init.nextPull':        ['Next: wangchuan sync  (sync memories across environments)', '下一步: wangchuan sync  (同步记忆到各环境)'],
   'init.nextPush':        ['              wangchuan status  (check sync state)', '              wangchuan status  (查看同步状态)'],
 
-  // ── pull ────────────────────────────────────────────────────
-  'pull.banner':           ['Wangchuan · Pull', '忘川 · 拉取配置'],
-  'pull.filterAgent':      ['Filter agent: {agent}', '过滤智能体: {agent}'],
-  'pull.pulling':          ['Pulling from {repo} …', '从 {repo} 拉取 …'],
-  'pull.pulled':           ['Remote configs pulled', '远端配置已拉取'],
-  'pull.gitFailed':        ['Git pull failed', 'Git 拉取失败'],
-  'pull.gitFailedDetail':  ['Git pull failed: {error}', 'Git pull 失败: {error}'],
-  'pull.restoreFailed':    ['Restore failed: {error}', '还原失败: {error}'],
-  'pull.noConfigs':        ['No configs in repo yet, run wangchuan push first', '仓库中暂无配置，请先 push'],
-  'pull.decrypted':        ['[decrypted]', '[已解密]'],
-  'pull.skipped':          ['Skipped (not in repo): {count} files', '跳过（仓库中不存在）: {count} 个文件'],
-  'pull.localOnly':        ['Detected {count} local-only files:', '检测到 {count} 个本地独有文件：'],
-  'pull.suggestPush':      ['Run wangchuan push to sync', '如需同步到云端，请执行 wangchuan push'],
-  'pull.summary':          ['Synced {synced} files ({encrypted} encrypted, {conflicts} conflicts)', '共同步 {synced} 个文件（{encrypted} 个加密，{conflicts} 个冲突）'],
-
-  // ── push ────────────────────────────────────────────────────
-  'push.banner':              ['Wangchuan · Push', '忘川 · 推送配置'],
-  'push.filterAgent':         ['Filter agent: {agent}', '过滤智能体: {agent}'],
-  'push.commitMsgCustom':     ['sync: {message} [update {tag}{host}]', 'sync: {message} [更新 {tag}{host}]'],
-  'push.commitMsgDefault':    ['sync: update configs {tag}[{host}]', 'sync: 更新配置 {tag}[{host}]'],
-  'push.staging':             ['Encrypting and staging files …', '加密并准备配置文件 …'],
-  'push.staged':              ['Staged {count} files', '已准备 {count} 个文件'],
-  'push.stagingFailed':       ['Staging failed', '暂存文件失败'],
-  'push.stagingFailedDetail': ['Staging failed: {error}', '准备文件失败: {error}'],
-  'push.noFiles':             ['No syncable files found, check workspace paths', '没有可同步的文件，请检查工作区路径'],
-  'push.committing':          ['Committing and pushing …', '提交并推送到远端仓库 …'],
-  'push.pushed':              ['Pushed to {repo}', '已推送到 {repo}'],
-  'push.nothingToCommit':     ['Nothing to commit (repo is up to date)', '没有变更需要提交'],
-  'push.pushFailed':          ['Push failed, rolling back …', '推送失败，正在回滚 …'],
-  'push.rollbackFailed':      ['Rollback failed: {error}', '回滚失败: {error}'],
-  'push.pushFailedDetail':    ['Push failed: {error}', '推送失败: {error}'],
-  'push.encrypted':           ['[encrypted]', '[已加密]'],
-  'push.pruned':              ['[pruned]', '[已清理]'],
-  'push.prunedSummary':       [', pruned {count} stale', '，清理 {count} 个过期文件'],
-  'push.complete':            ['Push complete: {count} files{pruned}, commit: {sha}', '推送完成: {count} 个文件{pruned}，commit: {sha}'],
+  // ── push (used by sync) ──────────────────────────────────────
+  'push.unchangedSummary':     ['({count} unchanged, skipped)', '（{count} 个未变更，已跳过）'],
 
   // ── status ──────────────────────────────────────────────────
   'status.banner':         ['Wangchuan · Status', '忘川 · 同步状态'],
@@ -170,14 +131,10 @@ const M: Msgs = {
   'status.inventory':      ['Config inventory ({count} items):', '配置文件清单（{count} 项）：'],
   'status.fieldLabel':     ['[field]', '[字段]'],
 
-  // ── diff ────────────────────────────────────────────────────
-  'diff.banner':         ['Wangchuan · Diff', '忘川 · 文件差异'],
-  'diff.filterAgent':    ['Filter agent: {agent}', '过滤智能体: {agent}'],
+  // ── diff (used by status) ────────────────────────────────────
   'diff.newFile':        ['(new, not in repo)', '(新增，仓库中不存在)'],
   'diff.missingFile':    ['(missing locally)', '(本地缺失)'],
   'diff.cannotDecrypt':  ['[encrypted, cannot decrypt]', '[加密文件，无法解密比较]'],
-  'diff.repoVersion':    ['--- repo version', '--- 仓库版本'],
-  'diff.localVersion':   ['+++ local version', '+++ 本地版本'],
   'diff.noDiff':         ['All files match repo, no diff', '所有文件与仓库一致，无差异'],
   'diff.filesDiffer':    ['{count} files differ', '{count} 个文件有差异'],
 
@@ -189,17 +146,6 @@ const M: Msgs = {
   'list.fieldLabel':   ['[field]', '[字段]'],
   'list.totalFiles':   ['{count} config files', '共 {count} 个配置文件'],
   'list.legend':       ['✔ = exists  · = not in repo  [enc] = encrypted  [field] = JSON field extraction', '✔ = 存在  · = 仓库中尚无  [enc] = 加密  [字段] = JSON 字段提取'],
-
-  // ── dump ────────────────────────────────────────────────────
-  'dump.banner':           ['Wangchuan · Dump', '忘川 · 明文快照'],
-  'dump.skipJson':         ['Skipping JSON extraction (parse error): {path}', '跳过 JSON 字段提取: {path}'],
-  'dump.srcEncrypted':     ['[src encrypted]', '[原文件加密]'],
-  'dump.fieldExtraction':  ['[field extraction]', '[字段提取]'],
-  'dump.outputDir':        ['Output dir: ', '输出目录：'],
-  'dump.fileCount':        ['File count: ', '文件数量：'],
-  'dump.files':            ['{count} files', '{count} 个文件'],
-  'dump.skippedCount':     ['({count} skipped)', '({count} 个跳过)'],
-  'dump.warning':          ['Warning: this dir contains plaintext sensitive data, delete after inspection', '提示：含明文敏感信息，查看后请删除'],
 
   // ── validator ───────────────────────────────────────────────
   'validator.notInit': ['Wangchuan not initialized, run: wangchuan init --repo <url>', '忘川尚未初始化，请执行: wangchuan init --repo <url>'],
@@ -333,23 +279,6 @@ const M: Msgs = {
   'cli.cmd.sync.exclude': ['Exclude files matching these patterns', '排除匹配指定模式的文件'],
   'cli.cmd.sync.yes':     ['Auto-confirm all prompts (deletions, distributions)', '自动确认所有提示（删除、分发）'],
 
-  // ── agent command ──────────────────────────────────────────
-  'cli.cmd.agent.desc':      ['Manage agents (list|enable|disable|set-path|info)', '管理智能体 (list|enable|disable|set-path|info)'],
-  'agent.banner':            ['Wangchuan · Agents', '忘川 · 智能体管理'],
-  'agent.list.header':       ['Agents:', '智能体列表：'],
-  'agent.enabled':           ['enabled', '已启用'],
-  'agent.disabled':          ['disabled', '已禁用'],
-  'agent.alreadyEnabled':    ['Agent {name} is already enabled', '智能体 {name} 已处于启用状态'],
-  'agent.alreadyDisabled':   ['Agent {name} is already disabled', '智能体 {name} 已处于禁用状态'],
-  'agent.nowEnabled':        ['Agent {name} enabled', '智能体 {name} 已启用'],
-  'agent.nowDisabled':       ['Agent {name} disabled', '智能体 {name} 已禁用'],
-  'agent.unknownAction':     ['Unknown action: {action}. Use list|enable|disable|set-path|info', '未知操作: {action}，请使用 list|enable|disable|set-path|info'],
-  'agent.unknownAction2':    ['Unknown action: {action}. Use list|enable|disable|set-path|info', '未知操作: {action}，请使用 list|enable|disable|set-path|info'],
-  'agent.nameRequired':      ['Agent name is required', '需要指定智能体名称'],
-  'agent.pathRequired':      ['Path is required for set-path. Usage: wangchuan agent set-path <name> <path>', 'set-path 需要指定路径。用法: wangchuan agent set-path <name> <path>'],
-  'agent.pathSet':           ['Agent {name} workspace path set to {path}', '智能体 {name} 工作区路径已设置为 {path}'],
-  'agent.pathNotExist':      ['Warning: path does not exist yet: {path}', '警告: 路径尚不存在: {path}'],
-
   // ── conflict detection in status ──────────────────────────
   'status.conflictWarning':  ['Potential sync conflicts detected:', '检测到潜在同步冲突：'],
   'status.conflictFile':     ['⚠ {file} — modified locally since last sync, remote also updated', '⚠ {file} — 上次同步后本地有修改，远端也有更新'],
@@ -396,9 +325,7 @@ const M: Msgs = {
   'env.delete.deleting':      ['Deleting environment {name} …', '正在删除环境 {name} …'],
   'env.unknownAction':        ['Unknown action: {action}. Use list|create|switch|current|delete', '未知操作: {action}，请使用 list|create|switch|current|delete'],
 
-  // ── key command ──────────────────────────────────────────────
-  'cli.cmd.key.desc':         ['Manage master key (rotate|export|import)', '管理主密钥 (rotate|export|import)'],
-  'key.banner':               ['Wangchuan · Key Management', '忘川 · 密钥管理'],
+  // ── key management (used by doctor) ───────────────────────────
   'key.rotate.start':         ['Rotating master key …', '正在轮换主密钥 …'],
   'key.rotate.decrypting':    ['Decrypting {count} files with old key …', '使用旧密钥解密 {count} 个文件 …'],
   'key.rotate.reencrypting':  ['Re-encrypting with new key …', '使用新密钥重新加密 …'],
@@ -408,10 +335,7 @@ const M: Msgs = {
   'key.rotate.rolledBack':    ['Old key restored after failed rotation', '轮换失败，已恢复旧密钥'],
   'key.export.hex':           ['Master key (hex): {hex}', '主密钥（hex）: {hex}'],
   'key.export.warning':       ['Keep this key safe — anyone with it can decrypt your data', '请妥善保管此密钥，持有者可解密所有数据'],
-  'key.import.success':       ['Master key imported: {path}', '主密钥已导入: {path}'],
-  'key.import.invalidHex':    ['Invalid key format, expected 64 hex chars (256-bit)', '密钥格式无效，需要 64 位十六进制字符'],
-  'key.import.hexRequired':   ['Key hex string is required', '需要提供密钥十六进制字符串'],
-  'key.unknownAction':        ['Unknown action: {action}. Use rotate|export|import', '未知操作: {action}，请使用 rotate|export|import'],
+  'key.export.fileHint':       ['Save to file for transfer: wangchuan doctor --key-export > ~/wangchuan-key.txt', '保存到文件以便迁移: wangchuan doctor --key-export > ~/wangchuan-key.txt'],
 
   // ── integrity checksum ────────────────────────────────────────
   'integrity.writing':        ['Writing integrity checksums …', '写入完整性校验 …'],
@@ -437,23 +361,6 @@ const M: Msgs = {
   'backup.created':           ['Backup saved: {path}', '备份已保存: {path}'],
   'backup.rotated':           ['Rotated old backups (kept {kept}, removed {removed})', '清理旧备份（保留 {kept} 个，删除 {removed} 个）'],
 
-  // ── report command ────────────────────────────────────────────
-  'cli.cmd.report':         ['Show sync state summary report', '显示同步状态汇总报告'],
-  'cli.cmd.report.json':    ['Output as JSON', '以 JSON 格式输出'],
-  'report.banner':          ['Wangchuan · Report', '忘川 · 同步报告'],
-  'report.repo':            ['Repo:   ', '仓库：  '],
-  'report.branch':          ['Branch: ', '分支：  '],
-  'report.env':             ['Env:    ', '环境：  '],
-  'report.host':            ['Host:   ', '主机：  '],
-  'report.lastSync':        ['Last sync: ', '上次同步：'],
-  'report.noSync':          ['never', '从未同步'],
-  'report.agentsHeader':    ['Agents:', '智能体：'],
-  'report.totalFiles':      ['Total: {count} files', '合计: {count} 个文件'],
-  'report.encrypted':       ['encrypted', '加密'],
-  'report.plaintext':       ['plaintext', '明文'],
-  'report.localOnly':       ['{count} local-only files (not in repo):', '{count} 个本地独有文件（不在仓库中）：'],
-  'report.missing':         ['{count} missing files (in repo but not local):', '{count} 个缺失文件（在仓库中但本地没有）：'],
-
   // ── init (idempotent) ────────────────────────────────────────
   'init.alreadySame':       ['Already initialized with the same repo, nothing to do', '已使用相同仓库初始化，无需操作'],
   'init.differentRepo':     ['Already initialized with a different repo: {existing}', '已使用不同仓库初始化: {existing}'],
@@ -474,9 +381,6 @@ const M: Msgs = {
   'cli.cmd.doctor.keyRotate':  ['Rotate the master encryption key', '轮换主加密密钥'],
   'cli.cmd.doctor.keyExport':  ['Print master key hex for migration', '输出主密钥（用于迁移）'],
   'cli.cmd.doctor.setup':      ['Show one-liner init command for a new machine', '生成新机器初始化命令'],
-  'cli.cmd.history':           ['Show recent sync history', '显示最近的同步历史'],
-  'cli.cmd.history.limit':     ['Number of entries to show (default: 10)', '显示条数（默认: 10）'],
-  'cli.cmd.history.json':      ['Output as JSON', '以 JSON 格式输出'],
   'doctor.banner':             ['Wangchuan · Doctor', '忘川 · 健康检查'],
   'doctor.configOk':           ['Config file exists and is valid', '配置文件存在且有效'],
   'doctor.configMissing':      ['Config file not found: {path}', '配置文件未找到: {path}'],
@@ -502,11 +406,8 @@ const M: Msgs = {
   'doctor.ignoreOk':           ['.wangchuanignore loaded ({count} patterns)', '.wangchuanignore 已加载（{count} 条规则）'],
   'doctor.ignoreNotFound':     ['.wangchuanignore not found (optional)', '.wangchuanignore 未找到（可选）'],
 
-  // ── history command ────────────────────────────────────────────
-  'history.banner':            ['Wangchuan · Sync History', '忘川 · 同步历史'],
+  // ── history (used by status) ────────────────────────────────────
   'history.empty':             ['No sync history found', '暂无同步记录'],
-  'history.header':            ['Time                     Action  Agent     Files  Encrypted  Host', '时间                       操作    智能体    文件数  加密数     主机'],
-  'history.separator':         ['─────────────────────────────────────────────────────────────────', '─────────────────────────────────────────────────────────────────────'],
 
   'doctor.summary':            ['{pass} passed, {warn} warnings, {fail} failed', '{pass} 通过, {warn} 警告, {fail} 失败'],
   'doctor.fixStaleLock':       ['Fixed: removed stale sync lock (PID {pid})', '已修复: 删除过期同步锁 (PID {pid})'],
@@ -526,40 +427,17 @@ const M: Msgs = {
   'filter.only':               ['Filter --only: {patterns}', '过滤 --only: {patterns}'],
   'filter.exclude':            ['Filter --exclude: {patterns}', '过滤 --exclude: {patterns}'],
 
-  // ── push unchanged (incremental) ─────────────────────────────────
-  'push.unchangedSummary':     ['({count} unchanged, skipped)', '（{count} 个未变更，已跳过）'],
-
   // ── three-way merge ────────────────────────────────────────────────
   'merge.autoResolved':        ['Auto-merged (no conflicts): {file}', '自动合并（无冲突）: {file}'],
   'merge.conflictsFound':      ['Merge conflicts in {file} — edit to resolve markers', '合并冲突: {file} — 请编辑解决冲突标记'],
   'merge.conflictMarkers':     ['Conflict markers inserted', '已插入冲突标记'],
 
-  // ── summary command ────────────────────────────────────────────────
-  'cli.cmd.summary':           ['Show memory footprint summary', '显示记忆占用摘要'],
-  'cli.cmd.summary.json':      ['Output as JSON', '以 JSON 格式输出'],
-  'summary.banner':            ['Wangchuan · Summary', '忘川 · 记忆摘要'],
-  'summary.agentsHeader':      ['Per-agent breakdown:', '智能体分布：'],
-  'summary.sharedHeader':      ['Shared resources:', '共享资源：'],
-  'summary.skills':            ['Skills', '技能'],
-  'summary.mcpServers':        ['MCP servers', 'MCP 服务'],
-  'summary.encryption':        ['Encryption:', '加密统计：'],
-  'summary.encrypted':         ['encrypted', '加密'],
-  'summary.plaintext':         ['plaintext', '明文'],
-  'summary.encryptedRatio':    ['encrypted', '加密率'],
-  'summary.totalSize':         ['Total size', '总大小'],
-  'summary.recentHeader':      ['Top 5 recently modified:', '最近修改的 5 个文件：'],
-
-  // ── setup command ──────────────────────────────────────────────────
-  'cli.cmd.setup':             ['Generate setup command for a new machine', '生成新机器初始化命令'],
-  'setup.banner':              ['Wangchuan · Setup', '忘川 · 迁移向导'],
+  // ── setup (used by doctor) ──────────────────────────────────────
   'setup.repoLabel':           ['Repo:  ', '仓库：'],
   'setup.keyLabel':            ['Key:   ', '密钥：'],
   'setup.commandLabel':        ['Run this on the new machine:', '在新机器上执行以下命令：'],
   'setup.keyNotFound':         ['Master key not found: {path}', '主密钥未找到: {path}'],
-  'setup.securityWarning':     ['Warning: this command contains your master key — do not share via insecure channels (chat, email, etc.)', '警告: 此命令包含主密钥 — 请勿通过不安全渠道传输（聊天、邮件等）'],
-  'setup.clipboardHint':       ['Copy the command above and paste it on the target machine', '复制上面的命令，粘贴到目标机器上执行'],
   'setup.keyFileHint':         ['Save the key to a file: wangchuan doctor --key-export > ~/wangchuan-key.txt', '将密钥保存到文件: wangchuan doctor --key-export > ~/wangchuan-key.txt'],
-  'key.export.fileHint':       ['Save to file for transfer: wangchuan doctor --key-export > ~/wangchuan-key.txt', '保存到文件以便迁移: wangchuan doctor --key-export > ~/wangchuan-key.txt'],
 
   // ── snapshot command ──────────────────────────────────────────────
   'cli.cmd.snapshot':          ['Manage sync snapshots (save|list|restore|delete)', '管理同步快照 (save|list|restore|delete)'],
@@ -583,88 +461,12 @@ const M: Msgs = {
   'webhook.success':  ['Webhook OK: {url} ({status})', 'Webhook 成功: {url} ({status})'],
   'webhook.failed':   ['Webhook failed: {url} — {error}', 'Webhook 失败: {url} — {error}'],
 
-  // ── health command ───────────────────────────────────────────────
-  'cli.cmd.health':           ['Show memory health score', '显示记忆健康评分'],
-  'health.banner':            ['Wangchuan · Health', '忘川 · 健康评分'],
+  // ── health (used by status) ──────────────────────────────────────
   'health.freshness':         ['Freshness', '新鲜度'],
   'health.coverage':          ['Coverage', '覆盖率'],
   'health.integrity':         ['Integrity', '完整性'],
   'health.encryption':        ['Encryption', '加密率'],
   'health.overall':           ['Overall', '综合'],
-  'health.agentHeader':       ['Agent scores:', '智能体评分：'],
-  'health.lastSyncDaysAgo':   ['Last sync: {days} days ago', '上次同步: {days} 天前'],
-  'health.lastSyncToday':     ['Last sync: today', '上次同步: 今天'],
-  'health.noSyncHistory':     ['No sync history', '无同步记录'],
-
-  // ── report sync statistics ─────────────────────────────────────
-  'report.statsHeader':       ['Sync Statistics:', '同步统计：'],
-  'report.statsTotalSyncs':   ['Total syncs: {total} (push: {push}, pull: {pull}, sync: {sync})', '总同步次数: {total} (push: {push}, pull: {pull}, sync: {sync})'],
-  'report.statsAvgFiles':     ['Avg files per sync: {avg}', '平均每次同步文件数: {avg}'],
-  'report.statsMostActive':   ['Most active agent: {agent} ({count} files)', '最活跃智能体: {agent}（{count} 个文件）'],
-  'report.statsLast7Days':    ['Last 7 days: {sparkline}', '最近 7 天: {sparkline}'],
-  'report.statsNoHistory':    ['No sync history yet', '暂无同步记录'],
-
-  // ── search command ──────────────────────────────────────────────
-  'cli.cmd.search':            ['Search across synced memories', '搜索同步的记忆内容'],
-  'cli.cmd.search.ignoreCase': ['Case-insensitive search', '忽略大小写搜索'],
-  'cli.cmd.search.regex':      ['Treat query as regular expression', '将查询视为正则表达式'],
-  'cli.cmd.search.context':    ['Lines of context before/after match (default: 2)', '匹配行前后的上下文行数（默认: 2）'],
-  'search.banner':             ['Wangchuan · Search', '忘川 · 搜索'],
-  'search.filterAgent':        ['Filter agent: {agent}', '过滤智能体: {agent}'],
-  'search.searching':          ['Searching {count} files …', '搜索 {count} 个文件 …'],
-  'search.noResults':          ['No results found for: {query}', '未找到匹配内容: {query}'],
-  'search.summary':            ['Found {hits} matches in {files} files', '找到 {hits} 处匹配，分布在 {files} 个文件中'],
-
-  // ── config export/import command ────────────────────────────────
-  'cli.cmd.config':              ['Manage config (export|import|validate)', '管理配置 (export|import|validate)'],
-  'configMgmt.banner':           ['Wangchuan · Config', '忘川 · 配置管理'],
-  'configMgmt.exported':         ['Config exported to {path}', '配置已导出到 {path}'],
-  'configMgmt.exportHint':       ['Copy this file to another machine and run: wangchuan config import <file>', '将此文件复制到另一台机器并执行: wangchuan config import <file>'],
-  'configMgmt.imported':         ['Config imported from {path}', '配置已从 {path} 导入'],
-  'configMgmt.fileNotFound':     ['File not found: {path}', '文件不存在: {path}'],
-  'configMgmt.invalidFile':      ['Invalid config file: {error}', '配置文件无效: {error}'],
-  'configMgmt.importFileRequired': ['File path is required for import', 'import 操作需要指定文件路径'],
-  'configMgmt.unknownAction':    ['Unknown action: {action}. Use export|import|validate', '未知操作: {action}，请使用 export|import|validate'],
-
-  // ── changelog command ───────────────────────────────────────────
-  'cli.cmd.changelog':           ['Show sync changelog from git history', '显示 Git 历史中的同步变更日志'],
-  'cli.cmd.changelog.limit':     ['Number of commits to show (default: 5)', '显示的提交数量（默认: 5）'],
-  'changelog.banner':            ['Wangchuan · Changelog', '忘川 · 变更日志'],
-  'changelog.noRepo':            ['Sync repo not found, run wangchuan init first', '同步仓库不存在，请先执行 wangchuan init'],
-  'changelog.empty':             ['No commits found in sync repo', '同步仓库中没有提交记录'],
-  'changelog.firstCommit':       ['(initial commit)', '(初始提交)'],
-  'changelog.shown':             ['Showing {count} recent commits', '显示最近 {count} 条提交'],
-
-  // ── tag command ───────────────────────────────────────────────
-  'cli.cmd.tag':               ['Manage file tags (add|remove|list|find)', '管理文件标签 (add|remove|list|find)'],
-  'tag.banner':                ['Wangchuan · Tags', '忘川 · 标签管理'],
-  'tag.addUsage':              ['Usage: wangchuan tag add <file-pattern> <tags...>', '用法: wangchuan tag add <文件模式> <标签...>'],
-  'tag.removeUsage':           ['Usage: wangchuan tag remove <file-pattern> <tags...>', '用法: wangchuan tag remove <文件模式> <标签...>'],
-  'tag.findUsage':             ['Usage: wangchuan tag find <tag>', '用法: wangchuan tag find <标签>'],
-  'tag.noMatch':               ['No files match pattern: {pattern}', '没有文件匹配模式: {pattern}'],
-  'tag.added':                 ['Tagged {count} files with: {tags}', '已为 {count} 个文件添加标签: {tags}'],
-  'tag.removed':               ['Removed tags from {count} files: {tags}', '已从 {count} 个文件移除标签: {tags}'],
-  'tag.empty':                 ['No tagged files', '暂无标签文件'],
-  'tag.listSummary':           ['{tags} tags across {files} files', '{tags} 个标签，{files} 个文件'],
-  'tag.findEmpty':             ['No files found with tag: {tag}', '未找到标签为 {tag} 的文件'],
-  'tag.unknownAction':         ['Unknown action: {action}. Use add|remove|list|find', '未知操作: {action}，请使用 add|remove|list|find'],
-
-  // ── cleanup command ───────────────────────────────────────────
-  'cli.cmd.cleanup':           ['Detect stale/unused memory entries and suggest cleanup', '检测过期/未使用的记忆条目并建议清理'],
-  'cli.cmd.cleanup.auto':      ['Auto-disable agents with all phantom files', '自动禁用所有文件缺失的智能体'],
-  'cli.cmd.cleanup.days':      ['Stale threshold in days (default: 90)', '过期阈值天数（默认: 90）'],
-  'cleanup.banner':            ['Wangchuan · Cleanup', '忘川 · 过期清理'],
-  'cleanup.filterAgent':       ['Filter agent: {agent}', '过滤智能体: {agent}'],
-  'cleanup.staleHeader':       ['Stale (>{days}d not modified)', '过期（>{days}天 未修改）'],
-  'cleanup.dormantHeader':     ['Dormant (long inactive)', '休眠（长期未活动）'],
-  'cleanup.phantomHeader':     ['Phantom (configured but missing)', '幽灵（已配置但文件不存在）'],
-  'cleanup.ok':                ['OK', '正常'],
-  'cleanup.stale':             ['stale', '过期'],
-  'cleanup.dormant':           ['dormant', '休眠'],
-  'cleanup.phantom':           ['phantom', '幽灵'],
-  'cleanup.summary':           ['Total: {total} files — {ok} ok, {stale} stale, {dormant} dormant, {phantom} phantom', '合计: {total} 个文件 — {ok} 正常, {stale} 过期, {dormant} 休眠, {phantom} 幽灵'],
-  'cleanup.autoDisabled':      ['Auto-disabled agent: {agent} (all files phantom)', '已自动禁用智能体: {agent}（所有文件缺失）'],
-  'cleanup.noAutoAction':      ['No agents to auto-disable', '没有需要自动禁用的智能体'],
 
   // ── enhanced prompt ───────────────────────────────────────────
   'prompt.sizeCompare':        ['local: {local} → remote: {remote}', '本地: {local} → 远端: {remote}'],
@@ -672,70 +474,10 @@ const M: Msgs = {
   'prompt.merge':              ['Attempt merge', '尝试合并'],
   'prompt.moreChanges':        ['{count} more changes …', '还有 {count} 处变更 …'],
 
-  // ── template command ──────────────────────────────────────────
-  'cli.cmd.template':            ['Manage sync config templates (list|apply)', '管理同步配置模板 (list|apply)'],
-  'template.banner':             ['Wangchuan · Template', '忘川 · 配置模板'],
-  'template.list.header':        ['Available templates:', '可用模板：'],
-  'template.desc.minimal':       ['Claude only — minimal setup', '仅 Claude — 最小化配置'],
-  'template.desc.full':          ['All agents enabled — full sync', '全部智能体启用 — 完整同步'],
-  'template.desc.developer':     ['Claude + Cursor + CodeBuddy — developer focused', 'Claude + Cursor + CodeBuddy — 开发者向'],
-  'template.desc.personal':      ['OpenClaw + WorkBuddy — personal assistant', 'OpenClaw + WorkBuddy — 个人助手向'],
-  'template.applied':            ['Template applied: {name}', '模板已应用: {name}'],
-  'template.notFound':           ['Template not found: {name}. Run wangchuan template list', '模板不存在: {name}，执行 wangchuan template list 查看'],
-  'template.nameRequired':       ['Template name is required for apply', 'apply 操作需要指定模板名称'],
-  'template.unknownAction':      ['Unknown action: {action}. Use list|apply', '未知操作: {action}，请使用 list|apply'],
-
-  // ── batch command ──────────────────────────────────────────────
-  'cli.cmd.batch':               ['Run multiple commands in sequence', '按顺序执行多个命令'],
-  'cli.cmd.batch.continueOnError': ['Continue on error instead of stopping', '遇到错误时继续执行而非停止'],
-  'batch.banner':                ['Wangchuan · Batch', '忘川 · 批量执行'],
-  'batch.noCommands':            ['No commands specified', '未指定任何命令'],
-  'batch.unknownCommand':        ['Unknown command: {command}. Supported: {supported}', '未知命令: {command}，支持: {supported}'],
-  'batch.running':               ['Running {count} commands …', '执行 {count} 个命令 …'],
-  'batch.commandDone':           ['Done: {command} ({time})', '完成: {command} ({time})'],
-  'batch.commandFailed':         ['Failed: {command} — {error}', '失败: {command} — {error}'],
-  'batch.stopped':               ['Stopped: {passed} passed, {failed} failed, {remaining} skipped', '已停止: {passed} 通过, {failed} 失败, {remaining} 跳过'],
-  'batch.summary':               ['Batch complete: {total} commands — {passed} passed, {failed} failed', '批量执行完成: {total} 个命令 — {passed} 通过, {failed} 失败'],
-
   // ── agent discovery ────────────────────────────────────────────
   'doctor.discoveredAgent':      ['Agent {name} workspace found at {path} but agent is disabled — auto-enabling', '智能体 {name} 工作区存在于 {path}，但该智能体已禁用 — 自动启用'],
   'doctor.openclawProfiles':     ['Detected OpenClaw profile: {name} ({path}). Run `wangchuan agent set-path openclaw {path}/workspace` to sync this profile instead.', '检测到 OpenClaw 配置文件: {name} ({path})。执行 `wangchuan agent set-path openclaw {path}/workspace` 来同步该配置。'],
   'status.discoveredAgent':      ['Agent {name} found at {path} but disabled. Run `wangchuan doctor` to auto-enable', '智能体 {name} 存在于 {path}，但已禁用。执行 `wangchuan doctor` 自动启用'],
-
-  // ── config validate ──────────────────────────────────────────
-  'configValidate.agentField':       ['{agent}.{field}', '{agent}.{field}'],
-  'configValidate.expectedBoolean':  ['expected boolean', '应为 boolean'],
-  'configValidate.expectedNonEmptyString': ['expected non-empty string', '应为非空字符串'],
-  'configValidate.expectedArray':    ['expected array', '应为数组'],
-  'configValidate.syncFileEntry':    ['{agent}.syncFiles[{index}]', '{agent}.syncFiles[{index}]'],
-  'configValidate.syncFileFormat':   ['must have src (string) and encrypt (boolean)', '需要 src (string) 和 encrypt (boolean)'],
-  'configValidate.jsonFieldEntry':   ['{agent}.jsonFields[{index}]', '{agent}.jsonFields[{index}]'],
-  'configValidate.jsonFieldFormat':  ['must have src, fields (array), repoName, encrypt', '需要 src, fields (array), repoName, encrypt'],
-  'configValidate.sharedSkillRef':   ['shared.skills.sources → {agent}', 'shared.skills.sources → {agent}'],
-  'configValidate.sharedMcpRef':     ['shared.mcp.sources → {agent}', 'shared.mcp.sources → {agent}'],
-  'configValidate.sharedAgentRef':   ['shared.agents.sources → {agent}', 'shared.agents.sources → {agent}'],
-  'configValidate.unknownAgent':     ['unknown agent: {agent}', '未知智能体: {agent}'],
-  'configValidate.duplicateRepoName': ['duplicate repoName: {repoName}', '重复的 repoName: {repoName}'],
-  'configValidate.duplicateDetail':  ['used by both {agent1} and {agent2}', '同时被 {agent1} 和 {agent2} 使用'],
-  'configValidate.noDuplicateRepoNames': ['no duplicate repoNames', '无重复的 repoName'],
-  'configValidate.summary':          ['{pass} passed, {fail} failed', '{pass} 通过, {fail} 失败'],
-
-  // ── agent info ──────────────────────────────────────────────
-  'agentInfo.name':         ['Agent', '智能体'],
-  'agentInfo.enabled':      ['Status', '状态'],
-  'agentInfo.workspace':    ['Workspace', '工作区'],
-  'agentInfo.syncFiles':    ['Sync Files', '同步文件'],
-  'agentInfo.syncDirs':     ['Sync Dirs', '同步目录'],
-  'agentInfo.jsonFields':   ['JSON Fields', 'JSON 字段'],
-  'agentInfo.local':        ['local', '本地'],
-  'agentInfo.repo':         ['repo', '仓库'],
-  'agentInfo.missing':      ['missing', '缺失'],
-  'agentInfo.notInRepo':    ['not in repo', '仓库中无'],
-  'agentInfo.fields':       ['fields', '字段'],
-  'agentInfo.lastSync':     ['Last sync', '上次同步'],
-  'agentInfo.never':        ['never', '从未'],
-  'agentInfo.totalLocal':   ['Total local', '本地合计'],
-  'agentInfo.totalRepo':    ['Total repo', '仓库合计'],
 
   // ── hooks ──────────────────────────────────────────────────────
   'hooks.running':           ['Running {count} {type} hooks …', '执行 {count} 个 {type} 钩子 …'],
@@ -763,10 +505,6 @@ const M: Msgs = {
   'init.ghParseFailed':      ['Failed to parse repo URL from gh output: {output}', '无法从 gh 输出中解析仓库地址: {output}'],
   'init.ghNotAvailable':     ['GitHub CLI (gh) is not installed or not authenticated', 'GitHub CLI (gh) 未安装或未登录'],
   'init.ghCreateFailed':     ['Failed to create GitHub repo: {error}', '创建 GitHub 仓库失败: {error}'],
-
-  // ── completions ───────────────────────────────────────────────
-  'cli.cmd.completions':     ['Generate shell completion scripts (bash|zsh)', '生成 shell 补全脚本 (bash|zsh)'],
-  'completions.usage':       ['Usage: wangchuan completions bash|zsh', '用法: wangchuan completions bash|zsh'],
 
   // ── memory command ──────────────────────────────────────────────
   'cli.cmd.memory':            ['Browse and copy memory files across agents (list|show|copy|broadcast)', '浏览和跨智能体复制记忆文件 (list|show|copy|broadcast)'],
@@ -807,7 +545,7 @@ const M: Msgs = {
  * Translate a message key, optionally interpolating {param} placeholders.
  *
  * @example t('init.banner')
- * @example t('push.staged', { count: 26 })
+ * @example t('sync.staged', { count: 26 })
  */
 export function t(key: string, params?: Record<string, string | number>): string {
   const entry = M[key];

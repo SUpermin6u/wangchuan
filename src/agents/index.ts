@@ -40,7 +40,7 @@ export const AGENT_DEFINITIONS: readonly AgentDefinition[] = [
 ] as const;
 
 /** Derive AGENT_NAMES tuple from definitions (keeps type safety) */
-export const AGENT_NAMES_FROM_DEFS = AGENT_DEFINITIONS.map(d => d.name);
+const AGENT_NAMES_FROM_DEFS = AGENT_DEFINITIONS.map(d => d.name);
 
 // Runtime guard: AGENT_DEFINITIONS must match AGENT_NAMES in types.ts.
 // If you add/remove an agent, update BOTH AGENT_DEFINITIONS here AND AGENT_NAMES in types.ts.

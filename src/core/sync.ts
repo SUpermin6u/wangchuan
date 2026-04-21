@@ -102,7 +102,7 @@ export function loadIgnorePatterns(): string[] {
 }
 
 /** Reset the cached ignore patterns (for testing) */
-export function resetIgnoreCache(): void {
+function resetIgnoreCache(): void {
   cachedIgnorePatterns = undefined;
 }
 

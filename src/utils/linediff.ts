@@ -7,12 +7,12 @@
 
 import { buildLcsTable } from './lcs.js';
 
-export interface DiffLine {
+interface DiffLine {
   readonly type: 'context' | 'added' | 'removed';
   readonly content: string;
 }
 
-export interface FileDiff {
+interface FileDiff {
   readonly repoRel: string;
   readonly isEncrypted: boolean;
   readonly lines: readonly DiffLine[];

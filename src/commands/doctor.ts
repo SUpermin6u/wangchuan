@@ -352,7 +352,7 @@ function handleSetup(cfg: WangchuanConfig): void {
 
 // ── Doctor options ──────────────────────────────────────────────
 
-export interface DoctorOptions {
+interface DoctorOptions {
   readonly keyRotate?: boolean | undefined;
   readonly keyExport?: boolean | undefined;
   readonly setup?: boolean | undefined;

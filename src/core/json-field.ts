@@ -8,7 +8,7 @@
 type JsonObject = Record<string, unknown>;
 
 /** Extract specified top-level fields from an object */
-export function extractFields(obj: JsonObject, fields: readonly string[]): JsonObject {
+function extractFields(obj: JsonObject, fields: readonly string[]): JsonObject {
   const result: JsonObject = {};
   for (const f of fields) {
     if (f in obj) result[f] = obj[f];
@@ -17,7 +17,7 @@ export function extractFields(obj: JsonObject, fields: readonly string[]): JsonO
 }
 
 /** Shallow merge extracted fields back into target object (only overwrites extracted fields, preserves the rest) */
-export function mergeFields(target: JsonObject, partial: JsonObject): JsonObject {
+function mergeFields(target: JsonObject, partial: JsonObject): JsonObject {
   return { ...target, ...partial };
 }
 

@@ -29,14 +29,14 @@ const PENDING_CONFLICTS_PATH = path.join(WANGCHUAN_DIR, 'pending-conflicts.json'
 
 // ── Pending conflicts persistence ──────────────────────────────────
 
-export interface PendingConflict {
+interface PendingConflict {
   readonly file: string;
   readonly detectedAt: string;
   readonly localSnippet: string;
   readonly remoteSnippet: string;
 }
 
-export function savePendingConflicts(conflicts: readonly PendingConflict[]): void {
+function savePendingConflicts(conflicts: readonly PendingConflict[]): void {
   const existing = loadPendingConflicts();
   // Deduplicate by file path (keep newest)
   const map = new Map<string, PendingConflict>();
