@@ -60,62 +60,46 @@ npm update -g wangchuan → wangchuan --version → wangchuan sync -y → report
 
 **IMPORTANT: Interactive mode does NOT work in agent shell (non-TTY). Always pass flags explicitly.**
 
-Ask user: brand new setup or restoring existing repo?
-
-### Scenario A — Brand new setup
+**Brand new setup:**
 
 1. Guide user to create a **private** repo (or auto-create via `gh repo create wangchuan-sync --private`)
 2. Run: `wangchuan init --repo <url>`
 3. Auto: generates key → clones → detects agents → extracts shared resources → first sync
 4. **Remind user to back up key**: `wangchuan doctor --key-export`
 
-### Scenario B — Restore / new machine (may already have local agent data)
+## Restore (New Machine)
 
-This is a multi-step flow with a **mandatory backup checkpoint**. If the user doesn't confirm backup, **stop and do not proceed** — next time the skill is triggered, start from Step 1 again.
+When user says "恢复云端记忆" / "restore cloud memories" / "new machine setup with existing repo":
 
 **Step 1: Collect credentials.**
-Ask for **repo SSH URL** and **master key** (`wangchuan_<hex>`).
+Ask for **repo URL** and **master key** (`wangchuan_<hex>`).
 
-**Step 2: Init (clone only, no sync yet).**
+**Step 2: Check local data and warn.**
 ```bash
-wangchuan init --repo <url> --key <key>
-```
-Init clones the repo and auto-runs a first sync. But BEFORE that happens, the agent must handle Steps 3-5 manually. Since init auto-syncs, the agent should instead do a **manual init sequence** to control the flow:
-
-Actually, `wangchuan init` auto-syncs at the end and there's no flag to skip it. So the agent must do the backup warning BEFORE running init:
-
-**Step 3: Check if local agent data exists and warn about shared resource overwrites.**
-```bash
-# Check if any agent workspace has data
 for agent_dir in ~/.claude ~/.cursor ~/.openclaw/workspace ~/.codebuddy ~/.workbuddy ~/.codex ~/.gemini; do
   [ -d "$agent_dir" ] && echo "  ⚠️ Local data found: $agent_dir"
 done
 ```
-If local data exists, **inform the user**:
-- "⚠️ **Shared skills and custom agents in the cloud will OVERWRITE your local versions** (no merge — direct copy)."
-- "Your MCP servers will be safely merged (additive)."
-- "Your memory files (CLAUDE.md, MEMORY.md) will be preserved (local wins on conflict)."
-- "Your local-only files (skills, configs not in cloud) will be auto-pushed to cloud — please review after init."
+If local data exists, warn:
+- "Shared skills and custom agents from cloud will be downloaded to your local agents"
+- "MCP servers will be merged (additive)"
+- "Memory files from cloud will overwrite local versions"
+- "Local-only files will be pushed to cloud as additions (nothing deleted from cloud)"
 
-**Ask user: "Have you backed up your important local skills/agents? Confirm to proceed, or cancel to back up first."**
+Ask backup confirmation. If declined → STOP.
 
-If user says **cancel/not yet** → **STOP**. Do NOT run init. Tell user:
-```
-Please back up your local data first:
-  cp -r ~/.claude/skills/ ~/backup-claude-skills/
-  cp -r ~/.claude/agents/ ~/backup-claude-agents/
-  # (repeat for other agents as needed)
-Then say "初始化忘川" again to resume.
-```
-
-If user says **confirmed** → proceed to Step 4.
-
-**Step 4: Check cloud environments and let user choose.**
-After init, check if cloud repo has multiple environments:
+**Step 3: Run restore.**
 ```bash
-# Init first (this will clone + auto-sync to default branch)
-wangchuan init --repo <url> --key <key>
-# Then check for environments
+wangchuan restore --repo <url> --key <key>
+```
+This command:
+1. Clones repo, imports key
+2. Downloads cloud data → local (cloud is source of truth)
+3. Checks for multiple environments → lets user choose
+4. Pushes local additions to cloud (without deleting cloud data)
+
+**Step 4: Check environments (non-TTY explicit).**
+```bash
 wangchuan env list
 ```
 If multiple environments exist (e.g. `default`, `work`, `personal`):
@@ -125,19 +109,14 @@ If multiple environments exist (e.g. `default`, `work`, `personal`):
 
 If only `default` exists → no need to ask, already synced.
 
-**Step 5: Post-init review.**
+**Step 5: Post-restore review.**
 ```bash
 wangchuan status -v
 ```
-Report what was synced: pulled files, pushed files, any conflicts detected. If shared skills were overwritten, inform user which ones.
 
-**Complete flow summary:**
-```
-Ask credentials → Check local data exists?
-  → Yes: warn overwrites → ask backup confirmed?
-    → No: STOP (resume next time)
-    → Yes: init → check envs → user picks env → status -v → ensure watch
-  → No: init → check envs → user picks env → ensure watch
+**Step 6: Ensure watch daemon.**
+```bash
+pgrep -f 'wangchuan.*watch' >/dev/null 2>&1 || nohup wangchuan watch >/dev/null 2>&1 &
 ```
 
 ## Key management
@@ -146,7 +125,7 @@ Ask credentials → Check local data exists?
 # Export key (on source machine):
 wangchuan doctor --key-export    # prints wangchuan_<hex>
 # Import key (on target machine):
-wangchuan init --repo <url> --key wangchuan_<hex>
+wangchuan restore --repo <url> --key wangchuan_<hex>
 # Rotate key:
 wangchuan doctor --key-rotate
 # Generate setup one-liner for new machine:

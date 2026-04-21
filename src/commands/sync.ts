@@ -64,7 +64,7 @@ interface SyncCommandResult {
   readonly pushResult?: (CommitResult & { readonly stageResult?: StageResult | undefined }) | undefined;
 }
 
-export async function cmdSync({ agent, dryRun, only, exclude, yes, skipShared }: SyncOptions = {}): Promise<SyncCommandResult> {
+export async function cmdSync({ agent, dryRun, only, exclude, yes, skipShared, skipStaleDetection }: SyncOptions = {}): Promise<SyncCommandResult> {
   logger.banner(t('sync.banner'));
 
   let cfg = config.load();
@@ -136,7 +136,7 @@ export async function cmdSync({ agent, dryRun, only, exclude, yes, skipShared }:
   // ── Acquire sync lock ─────────────────────────────────────────
   await syncLock.acquire(repoPath);
   try {
-    const result = await runSync(cfg, repoPath, hostname, agent, dryRun, filter, yes, skipShared);
+    const result = await runSync(cfg, repoPath, hostname, agent, dryRun, filter, yes, skipShared, skipStaleDetection);
 
     // ── Check for pending distributions after push (requires user decision) ──
     if (!skipShared && (process.stdin.isTTY || yes)) {
@@ -159,6 +159,7 @@ async function runSync(
   filter: FilterOptions | undefined,
   yes: boolean | undefined,
   skipShared: boolean | undefined,
+  skipStaleDetection: boolean | undefined,
 ): Promise<SyncCommandResult> {
   let spinner = ora(t('sync.fetching')).start();
   let remoteAhead = 0;
@@ -210,7 +211,7 @@ async function runSync(
   spinner = ora(t('sync.staging')).start();
   let stageResult: StageResult;
   try {
-    stageResult = await syncEngine.stageToRepo(cfg, agent, filter, yes, skipShared);
+    stageResult = await syncEngine.stageToRepo(cfg, agent, filter, yes, skipShared, skipStaleDetection);
     spinner.succeed(t('sync.staged', { count: stageResult.synced.length }) +
       (stageResult.unchanged.length > 0 ? ' ' + t('push.unchangedSummary', { count: stageResult.unchanged.length }) : ''));
   } catch (err) {

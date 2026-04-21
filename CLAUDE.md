@@ -53,11 +53,12 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Commands (`src/commands/`)
 
-Nine user-facing commands: `init`, `sync`, `status`, `watch`, `doctor`, `memory`, `env`, `snapshot`, `lang`.
+Ten user-facing commands: `init`, `restore`, `sync`, `status`, `watch`, `doctor`, `memory`, `env`, `snapshot`, `lang`.
 
 | Command | Aliases | Purpose | Key flags |
 |---------|---------|---------|-----------|
-| `init` | — | One-time setup: auto-detects installed agents, auto-creates repo (GitHub CLI), runs first sync. Works with any Git hosting (GitHub/GitLab/Gitee/Bitbucket/Gitea) | `--repo`, `--key`, `--force` |
+| `init` | — | Brand new setup: auto-detects installed agents, auto-creates repo (GitHub CLI), runs first sync. Works with any Git hosting (GitHub/GitLab/Gitee/Bitbucket/Gitea) | `--repo`, `--force` |
+| `restore` | — | Restore from cloud on a new machine: imports key, pulls cloud data first (source of truth), then pushes local additions without deleting cloud data | `--repo`, `--key` |
 | `sync` | `s` | Smart bidirectional sync (THE daily command) | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
 | `watch` | — | Pull-only background daemon for continuous cloud sync | `-i, --interval <min>` |
@@ -144,7 +145,7 @@ grep -c "\.command(" bin/wangchuan.ts
 
 **Every change to code or skill files (`skill/SKILL.md`, `skill/references/*.md`) MUST pass the Skill Benchmark before commit.**
 
-The benchmark file is at `test/skill-benchmark.md`. It contains 52 test cases (TC-01 through TC-52) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
+The benchmark file is at `test/skill-benchmark.md`. It contains 53 test cases (TC-01 through TC-53) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
 
 ### What the benchmark tests
 

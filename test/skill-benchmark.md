@@ -1,4 +1,4 @@
-# Wangchuan Skill Benchmark v1.5.1
+# Wangchuan Skill Benchmark v1.6.0
 
 Test cases for verifying an AI agent with the wangchuan skill loaded.
 
@@ -24,10 +24,9 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "请初始化忘川" (指令1) |
 | **Ref** | `references/install-setup.md` |
-| **Behavior** | 1. `command -v wangchuan \|\| npm install -g wangchuan`<br>2. Ask user: brand new setup or restore existing?<br>3a. **New**: ask repo URL → `wangchuan init --repo <url>` → auto: generate key, clone, detect agents, extract shared, first sync → remind backup key `wangchuan doctor --key-export`<br>3b. **Restore**: ask repo URL + key → **check local agent data exists** → if yes: **warn "shared skills/agents will be overwritten by cloud, MCP merged, memory preserved, local-only pushed"** → **ask user to confirm backup** → user declines → **STOP, do not init, resume next trigger** → user confirms → `wangchuan init --repo <url> --key <key>` → **check `wangchuan env list` for multiple environments** → if multiple: list envs, ask user to choose → `env switch <chosen>` → `wangchuan status -v` to review<br>4. Ensure watch |
-| **Constraint** | Non-TTY: must pass `--repo`. Must warn and get backup confirmation before init on machine with existing data. Must list cloud envs and let user choose. If user doesn't confirm backup → STOP entirely, resume from scratch on next skill trigger. |
-| **Anti-pattern** | Running init without checking for existing local data; not warning about overwrites; proceeding without backup confirmation; ignoring multiple cloud environments |
-| **Anti-pattern** | Running bare `wangchuan init`; not distinguishing new vs restore; not asking for `--key` on restore |
+| **Behavior** | 1. `command -v wangchuan \|\| npm install -g wangchuan`<br>2. Ask repo URL → `wangchuan init --repo <url>` → auto: generate key, clone, detect agents, extract shared, first sync<br>3. Remind backup key: `wangchuan doctor --key-export`<br>4. Ensure watch |
+| **Constraint** | Non-TTY: must pass `--repo`. This TC covers brand new setup ONLY. For restore scenarios, see TC-53. |
+| **Anti-pattern** | Running bare `wangchuan init`; using `init` for restore (use `restore` instead); not reminding key backup |
 
 ### TC-02: Daily sync
 | Field | Value |
@@ -400,11 +399,25 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 
 ---
 
+## Restore (TC-53)
+
+### TC-53: Restore cloud memories to new machine
+| Field | Value |
+|-------|-------|
+| **Instruction** | "恢复云端记忆" / "新机器绑定忘川" / "restore cloud memories" |
+| **Ref** | `references/install-setup.md` |
+| **Behavior** | 1. Ask repo URL + master key<br>2. Check local data → warn about overwrites → ask backup confirmation<br>3. If declined → STOP<br>4. `wangchuan restore --repo <url> --key <key>`<br>5. Check `wangchuan env list` for multiple environments → if multiple: list, ask user to choose → `env switch <chosen>`<br>6. `wangchuan status -v` to review<br>7. Ensure watch |
+| **Constraint** | Must use `restore` (not `init`). Cloud is source of truth — local additions pushed, nothing deleted from cloud. Must warn about overwrites. Must ask backup confirmation — decline = STOP. |
+| **Anti-pattern** | Using `wangchuan init` for restore; deleting cloud data; skipping backup warning; not listing environments |
+
+---
+
 ## Non-TTY Constraints
 
 | Command | Required |
 |---------|----------|
 | `wangchuan init` | `--repo <url>` |
+| `wangchuan restore` | `--repo <url>` and `--key <key>` |
 | `wangchuan sync` | `-y` |
 | `wangchuan env create` | Auto-forks (OK) |
 | `wangchuan watch` | `nohup ... &` (background) |

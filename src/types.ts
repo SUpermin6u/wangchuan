@@ -223,7 +223,6 @@ export interface CommitResult {
 export interface InitOptions {
   readonly repo?: string;
   readonly force?: boolean;
-  readonly key?: string;
 }
 
 /** Mixin for --only / --exclude file filtering */
@@ -242,6 +241,13 @@ export interface SyncOptions extends FilterOptions {
   readonly yes?: boolean;
   /** Skip shared distribution (used by watch daemon) */
   readonly skipShared?: boolean;
+  /** Skip stale file detection (used by restore to avoid deleting cloud data) */
+  readonly skipStaleDetection?: boolean;
+}
+
+export interface RestoreOptions {
+  readonly repo?: string;
+  readonly key?: string;
 }
 
 export interface WatchOptions {

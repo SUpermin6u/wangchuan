@@ -2,11 +2,12 @@
 /**
  * wangchuan.ts — CLI entry
  *
- * Simplified CLI surface: 9 user-facing commands.
+ * Simplified CLI surface: 10 user-facing commands.
  * Philosophy: "foolproof AI memory sync" — minimize cognitive load.
  *
  * Commands:
  *   init     — One-time setup (interactive if no --repo)
+ *   restore  — Restore from cloud (import key + clone + pull)
  *   sync     — Smart bidirectional sync (the ONE daily command)
  *   status   — Show sync state at a glance (--verbose for full detail)
  *   doctor   — Diagnose + auto-fix issues (always runs --fix)
@@ -19,6 +20,7 @@
 
 import { Command } from 'commander';
 import { cmdInit }     from '../src/commands/init.js';
+import { cmdRestore }  from '../src/commands/restore.js';
 import { cmdStatus }   from '../src/commands/status.js';
 import { cmdSync }     from '../src/commands/sync.js';
 import { cmdEnv }      from '../src/commands/env.js';
@@ -50,17 +52,26 @@ const program = new Command();
 program
   .name('wangchuan')
   .description(t('cli.description'))
-  .version('5.11.0');
+  .version('5.12.0');
 
 // ── init ────────────────────────────────────────────────────────
 program
   .command('init')
   .description(t('cli.cmd.init'))
   .option('-r, --repo <url>', t('cli.cmd.init.repo'))
-  .option('-k, --key <master-key>', t('cli.cmd.init.key'))
   .option('--force', t('cli.cmd.init.force'), false)
-  .action(async (opts: { repo?: string; key?: string; force: boolean }) => {
+  .action(async (opts: { repo?: string; force: boolean }) => {
     await run(() => cmdInit(opts));
+  });
+
+// ── restore ────────────────────────────────────────────────────
+program
+  .command('restore')
+  .description(t('cli.cmd.restore'))
+  .option('-r, --repo <url>', t('cli.cmd.init.repo'))
+  .option('-k, --key <master-key>', t('cli.cmd.restore.key'))
+  .action(async (opts: { repo?: string; key?: string }) => {
+    await run(() => cmdRestore(opts));
   });
 
 // ── sync ────────────────────────────────────────────────────────

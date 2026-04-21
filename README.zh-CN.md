@@ -52,7 +52,7 @@ skill/
 
 ### 技能基准测试
 
-每次技能变更都经过 **51 个测试用例**（`test/skill-benchmark.md`）验证：
+每次技能变更都经过 **53 个测试用例**（`test/skill-benchmark.md`）验证：
 
 - 29 条用户指令（初始化、4 种资源的增删改查、推送/拉取、回退、环境管理）
 - 4 个环境隔离场景（跨环境拉取、工作空间泄漏、恢复时环境选择、watch 重启）
@@ -76,11 +76,11 @@ cp -r skill/ ~/.claude/skills/wangchuan/
 ```bash
 npm install -g wangchuan
 
-# 初始化 — 自动检测已安装的智能体并执行首次同步
+# 全新初始化 — 自动检测已安装的智能体，创建仓库，执行首次同步
 wangchuan init
 
-# 在新机器上（支持任意 Git 托管）：
-wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
+# 在新机器上恢复云端记忆 — 以云端为准，本地新增内容追加推送
+wangchuan restore --repo git@github.com:you/brain.git --key wangchuan_<hex>
 ```
 
 ---
@@ -89,7 +89,8 @@ wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
 
 | 命令 | 别名 | 描述 | 主要参数 |
 |------|------|------|----------|
-| `init` | — | 首次初始化 — 自动检测智能体，支持一键创建仓库（GitHub CLI），执行首次同步 | `--repo`、`--key`、`--force` |
+| `init` | — | 全新初始化 — 自动检测智能体，支持一键创建仓库（GitHub CLI），执行首次同步 | `--repo`、`--force` |
+| `restore` | — | 恢复云端记忆 — 导入密钥，先拉取云端数据，再推送本地新增内容 | `--repo`、`--key` |
 | `sync` | `s` | 智能双向同步 — 日常唯一命令 | `-a, --agent`、`-n, --dry-run`、`-o, --only`、`-x, --exclude` |
 | `status` | `st` | 一屏总览 + 健康评分 | `-v, --verbose` |
 | `watch` | — | 仅拉取的后台守护进程，持续同步云端变更 | `-i, --interval <分钟>` |

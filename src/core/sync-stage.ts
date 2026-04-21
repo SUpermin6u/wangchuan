@@ -354,6 +354,7 @@ export async function stageToRepo(
   filter?: FilterOptions,
   yes?: boolean,
   skipShared?: boolean,
+  skipStaleDetection?: boolean,
 ): Promise<StageResult> {
   // Distribute shared resources to all agents before full push
   // Skip in watch mode — shared changes are deferred for interactive confirmation
@@ -470,8 +471,8 @@ export async function stageToRepo(
     appendStageProgress(entry.repoRel);
   }
 
-  // ── Detect stale files in repo (full push only, skip when filtering) ──
-  if (!agent && !filter) {
+  // ── Detect stale files in repo (full push only, skip when filtering or explicitly disabled) ──
+  if (!agent && !filter && !skipStaleDetection) {
     const syncedEntries = entries.filter(e => fs.existsSync(e.srcAbs));
     const stale = detectStaleFiles(repoPath, syncedEntries);
     if (stale.length > 0) {

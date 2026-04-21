@@ -1,11 +1,11 @@
 ---
 name: wangchuan
-version: 1.5.1
+version: 1.6.0
 description: >-
   Encrypt and sync AI agent configs, memories, skills, and MCP servers across environments via a private Git repo.
   Supports Claude, OpenClaw, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
-  TRIGGER when: user mentions syncing AI memories/configs, wangchuan/忘川, cross-machine agent setup, backup/restore agent settings, memory sync, skill distribution, MCP server sync, agent migration, master key export, sync status, watch daemon, workspace leakage, environment management, snapshot, pushing/pulling memories, conflict resolution, syncing between agents, rolling back/restoring versions, switching environments, health check, customizing agent paths, or any commands: init, sync, status, watch, doctor, memory, env, snapshot, lang.
-  Triggers: 忘川、wangchuan、同步记忆、同步配置、同步技能、同步MCP、初始化忘川、备份记忆、恢复记忆、迁移agent、导出密钥、轮换密钥、同步状态、健康检查、多环境、快照、跨机器同步、agent记忆、配置路径、查看技能、删除技能、新增技能、修改技能、自定义agent、MCP服务器、新增MCP、删除MCP、修改MCP、查看MCP、写记忆、删除记忆、修改记忆、查看记忆、广播记忆、复制记忆、推送记忆、拉取记忆、同步到agent、冲突、合并记忆、回退记忆、回滚、恢复版本、切换环境、忘川状态、新建环境、删除环境、查看环境、切换语言、升级忘川、更新忘川、后台同步、启动watch、环境泄漏、旧环境文件、sync memories、push memory、pull memory、rollback、switch environment、custom agent、MCP server、health status、rotate key、switch language、upgrade wangchuan、update wangchuan.
+  TRIGGER when: user mentions syncing AI memories/configs, wangchuan/忘川, cross-machine agent setup, backup/restore agent settings, memory sync, skill distribution, MCP server sync, agent migration, master key export, sync status, watch daemon, workspace leakage, environment management, snapshot, pushing/pulling memories, conflict resolution, syncing between agents, rolling back/restoring versions, switching environments, health check, customizing agent paths, restore cloud memories, or any commands: init, restore, sync, status, watch, doctor, memory, env, snapshot, lang.
+  Triggers: 忘川、wangchuan、同步记忆、同步配置、同步技能、同步MCP、初始化忘川、备份记忆、恢复记忆、恢复云端记忆、绑定云端记忆、迁移agent、导出密钥、轮换密钥、同步状态、健康检查、多环境、快照、跨机器同步、agent记忆、配置路径、查看技能、删除技能、新增技能、修改技能、自定义agent、MCP服务器、新增MCP、删除MCP、修改MCP、查看MCP、写记忆、删除记忆、修改记忆、查看记忆、广播记忆、复制记忆、推送记忆、拉取记忆、同步到agent、冲突、合并记忆、回退记忆、回滚、恢复版本、切换环境、忘川状态、新建环境、删除环境、查看环境、切换语言、升级忘川、更新忘川、后台同步、启动watch、环境泄漏、旧环境文件、sync memories、push memory、pull memory、rollback、switch environment、custom agent、MCP server、health status、rotate key、switch language、upgrade wangchuan、update wangchuan、restore memory、restore cloud.
   DO NOT TRIGGER when: general git operations, unrelated CLI tools, or AI model APIs.
 ---
 
@@ -22,6 +22,7 @@ If `~/.wangchuan/config.json` does not exist → Read [references/install-setup.
 
 ```
 wangchuan init     [--repo <url>] [--key <path>]           One-time setup
+wangchuan restore  --repo <url> --key <key>                Restore cloud to new machine
 wangchuan sync     [-a <agent>] [-n] [-o <pat>] [-x <pat>] Smart bidirectional sync
 wangchuan status   [-v]                                     Health + diff summary
 wangchuan watch    [-i <min>]                               Pull-only background daemon
@@ -42,6 +43,7 @@ Aliases: `sync`→`s`, `status`→`st`, `snapshot`→`snap`. All support `--agen
 | Switch/create/list/delete environments, rollback, snapshots | [references/environment.md](references/environment.md) |
 | Inspect/check skills, agents, MCP, memory, or health status | [references/inspect-status.md](references/inspect-status.md) |
 | Initialize wangchuan, install, migrate key, new machine setup | [references/install-setup.md](references/install-setup.md) |
+| Restore cloud memories to new machine | [references/install-setup.md](references/install-setup.md) |
 | Upgrade/update wangchuan CLI and sync new profiles | [references/install-setup.md](references/install-setup.md) |
 
 **IMPORTANT**: Before executing any task below, **Read the corresponding reference file** for detailed instructions, bash commands, and decision flows. The reference files contain the complete procedures.
@@ -51,6 +53,7 @@ Aliases: `sync`→`s`, `status`→`st`, `snapshot`→`snap`. All support `--agen
 | Command | Constraint | Required |
 |---------|-----------|----------|
 | `wangchuan init` | Interactive prompt fails | Must pass `--repo <url>` |
+| `wangchuan restore` | Interactive prompt fails | Must pass `--repo <url>` and `--key <key>` |
 | `wangchuan sync` | Pending confirmations skipped | Must pass `-y` |
 | `wangchuan env create` | Memory import prompt fails | Auto-forks (OK) |
 

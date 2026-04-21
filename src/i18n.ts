@@ -539,6 +539,17 @@ const M: Msgs = {
   'status.watchRunning':       ['Watch daemon: running (PID {pid})', '监听守护进程: 运行中 (PID {pid})'],
   'status.watchNotRunning':    ['Watch daemon: not running — run `wangchuan watch` to start', '监听守护进程: 未运行 — 执行 `wangchuan watch` 启动'],
   'sync.skippedAgents':        ['Skipped agents (not installed): {agents}. Install them and run `wangchuan doctor` to enable.', '跳过的智能体（未安装）: {agents}。安装后执行 `wangchuan doctor` 启用。'],
+
+  // ── restore command ──────────────────────────────────────────────
+  'cli.cmd.restore':           ['Restore from cloud (import key + clone repo + pull all data)', '从云端恢复（导入密钥 + 克隆仓库 + 拉取所有数据）'],
+  'cli.cmd.restore.key':       ['Master key (hex string or file path)', '主密钥（十六进制字符串或文件路径）'],
+  'restore.banner':            ['Wangchuan · Restore', '忘川 · 云端恢复'],
+  'restore.repoRequired':     ['--repo is required for restore', '恢复操作需要 --repo 参数'],
+  'restore.keyRequired':      ['--key is required for restore (export from source machine: wangchuan doctor --key-export)', '恢复操作需要 --key 参数（从源机器导出: wangchuan doctor --key-export）'],
+  'restore.cloudRestore':     ['Restoring from cloud …', '正在从云端恢复 …'],
+  'restore.cloudRestored':    ['Cloud data restored to local', '云端数据已恢复到本地'],
+  'restore.complete':         ['Restore complete! All cloud data has been pulled to local.', '恢复完成！所有云端数据已拉取到本地。'],
+  'restore.syncingLocal':     ['Syncing local additions to cloud …', '正在将本地新增同步到云端 …'],
 };
 
 /**

@@ -16,7 +16,7 @@ import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
 import { t }            from '../i18n.js';
 import { AGENT_NAMES }  from '../types.js';
-import type { InitOptions, WangchuanConfig, AgentName } from '../types.js';
+import type { InitOptions, WangchuanConfig } from '../types.js';
 import ora from 'ora';
 import fs   from 'fs';
 import path from 'path';
@@ -133,7 +133,7 @@ async function promptCustomUrl(example?: string): Promise<string> {
   });
 }
 
-export async function cmdInit({ repo: repoArg, force = false, key }: InitOptions): Promise<WangchuanConfig> {
+export async function cmdInit({ repo: repoArg, force = false }: InitOptions): Promise<WangchuanConfig> {
   // If repo is not provided, prompt interactively (TTY only)
   let repo: string;
   if (repoArg) {
@@ -172,7 +172,7 @@ export async function cmdInit({ repo: repoArg, force = false, key }: InitOptions
 
     // Same repo but repo dir is missing — re-clone
     logger.info(t('init.repoMissing'));
-    await ensureKey(existing, key);
+    await ensureKey(existing, undefined);
     await cloneRepo(repo, existing.localRepoPath, existing.branch);
     logger.ok('\n' + t('init.complete'));
     return existing;
@@ -193,7 +193,7 @@ export async function cmdInit({ repo: repoArg, force = false, key }: InitOptions
     logger.warn(t('init.noAgentsDetected'));
   }
 
-  await ensureKey(cfg, key);
+  await ensureKey(cfg, undefined);
   await cloneRepo(repo, cfg.localRepoPath, cfg.branch);
 
   // ── Auto first sync ────────────────────────────────────────────
@@ -218,7 +218,7 @@ function normalizeRepo(url: string): string {
 }
 
 /** Ensure the master key exists (import, generate, or skip) */
-async function ensureKey(cfg: WangchuanConfig, key: string | undefined): Promise<void> {
+export async function ensureKey(cfg: WangchuanConfig, key: string | undefined): Promise<void> {
   if (key) {
     // Support key-from-file: if value is a file path, read key from it
     let rawKey = key.trim();
@@ -242,7 +242,7 @@ async function ensureKey(cfg: WangchuanConfig, key: string | undefined): Promise
 }
 
 /** Clone or fetch the repo */
-async function cloneRepo(repo: string, localPath: string, branch: string): Promise<void> {
+export async function cloneRepo(repo: string, localPath: string, branch: string): Promise<void> {
   const spinner = ora(t('init.cloningRepo', { repo })).start();
   try {
     await gitEngine.cloneOrFetch(repo, localPath, branch);

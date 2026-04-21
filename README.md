@@ -52,7 +52,7 @@ The main SKILL.md is kept under 120 lines. When the agent encounters a specific 
 
 ### Skill Benchmark
 
-Every skill change is validated against **51 test cases** (`test/skill-benchmark.md`) covering:
+Every skill change is validated against **53 test cases** (`test/skill-benchmark.md`) covering:
 
 - 29 user instructions (init, CRUD for 4 resource types, push/pull, rollback, env management)
 - 4 environment isolation scenarios (cross-env pull, workspace leakage, env selection on restore, watch restart)
@@ -76,11 +76,11 @@ cp -r skill/ ~/.claude/skills/wangchuan/
 ```bash
 npm install -g wangchuan
 
-# Initialize — auto-detects installed agents, runs first sync
+# Brand new — auto-detects installed agents, creates repo, runs first sync
 wangchuan init
 
-# On a new machine (any Git hosting):
-wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
+# Restore on a new machine — cloud is source of truth, local additions pushed
+wangchuan restore --repo git@github.com:you/brain.git --key wangchuan_<hex>
 ```
 
 ---
@@ -89,7 +89,8 @@ wangchuan init --repo git@github.com:you/brain.git --key wangchuan_<hex>
 
 | Command | Aliases | Description | Key Flags |
 |---------|---------|-------------|-----------|
-| `init` | — | One-time setup — auto-detects agents, auto-creates repo (GitHub CLI), runs first sync | `--repo`, `--key`, `--force` |
+| `init` | — | Brand new setup — auto-detects agents, auto-creates repo (GitHub CLI), runs first sync | `--repo`, `--force` |
+| `restore` | — | Restore from cloud — imports key, pulls cloud data first, then pushes local additions | `--repo`, `--key` |
 | `sync` | `s` | Smart bidirectional sync — THE daily command | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
 | `watch` | — | Pull-only background daemon for continuous cloud sync | `-i, --interval <min>` |
