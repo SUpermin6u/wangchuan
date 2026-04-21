@@ -17,7 +17,6 @@ import { logger }       from '../utils/logger.js';
 import { t }            from '../i18n.js';
 import { AGENT_NAMES }  from '../types.js';
 import type { InitOptions, WangchuanConfig, AgentName } from '../types.js';
-import { autoDetectAgents } from '../agents/index.js';
 import ora from 'ora';
 import fs   from 'fs';
 import path from 'path';
@@ -40,7 +39,7 @@ function createRepoViaGh(): string {
   logger.info(t('init.ghCreating'));
   let stdout: string;
   try {
-    stdout = execSync('gh repo create wangchuan-sync --private --confirm', {
+    stdout = execSync('gh repo create wangchuan-sync --private --clone=false', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
@@ -56,7 +55,8 @@ function createRepoViaGh(): string {
   }
   const httpsUrl = match[0]!;
   // Convert to SSH URL for better auth experience
-  const sshUrl = httpsUrl.replace('https://github.com/', 'git@github.com:') + '.git';
+  const cleanUrl = httpsUrl.replace(/\.git$/, '');
+  const sshUrl = cleanUrl.replace('https://github.com/', 'git@github.com:') + '.git';
   logger.ok(t('init.ghCreated', { url: sshUrl }));
   return sshUrl;
 }

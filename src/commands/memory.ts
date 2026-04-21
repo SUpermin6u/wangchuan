@@ -27,7 +27,7 @@ export async function cmdMemory({ action, args, agent, file }: MemoryOptions): P
 
   switch (action) {
     case 'list':      return memoryList(cfg, agent);
-    case 'show':      return memoryShow(cfg, args);
+    case 'show':      return memoryShow(cfg, args, file);
     case 'copy':      return memoryCopy(cfg, args, file);
     case 'broadcast': return memoryBroadcast(cfg, args, file);
     default:
@@ -88,7 +88,7 @@ function memoryList(cfg: WangchuanConfig, agent?: AgentName): void {
 
 // ── show ──────────────────────────────────────────────────────────
 
-function memoryShow(cfg: WangchuanConfig, args: readonly string[]): void {
+function memoryShow(cfg: WangchuanConfig, args: readonly string[], filePattern?: string): void {
   if (args.length < 1) {
     throw new Error(t('memory.argsRequired', { action: 'show' }));
   }
@@ -96,8 +96,11 @@ function memoryShow(cfg: WangchuanConfig, args: readonly string[]): void {
 
   const entries = getAgentFileEntries(cfg, agentName);
 
+  // Resolve filename from positional arg or --file option
+  const fileName = args[1] ?? filePattern;
+
   // When no filename is provided, list available files for this agent
-  if (!args[1]) {
+  if (!fileName) {
     console.log(chalk.bold(`  ${t('memory.show.fileList', { agent: agentName })}`));
     console.log();
     if (entries.length === 0) {
@@ -108,61 +111,66 @@ function memoryShow(cfg: WangchuanConfig, args: readonly string[]): void {
       const exists = fs.existsSync(e.srcAbs);
       const statusIcon = exists ? chalk.green('\u2713') : chalk.red('\u2717');
       const statusLabel = exists ? t('memory.show.exists') : t('memory.show.missing');
-      const fileName = path.basename(e.srcAbs);
+      const baseName = path.basename(e.srcAbs);
       const encLabel = e.encrypt ? chalk.magenta(' [enc]') : '';
       if (exists) {
         const stat = fs.statSync(e.srcAbs);
         const size = formatSize(stat.size);
-        console.log(`    ${statusIcon} ${chalk.white(fileName)}  ${chalk.gray(size)}  ${chalk.gray(statusLabel)}${encLabel}`);
+        console.log(`    ${statusIcon} ${chalk.white(baseName)}  ${chalk.gray(size)}  ${chalk.gray(statusLabel)}${encLabel}`);
       } else {
-        console.log(`    ${statusIcon} ${chalk.gray(fileName)}  ${chalk.gray(statusLabel)}${encLabel}`);
+        console.log(`    ${statusIcon} ${chalk.gray(baseName)}  ${chalk.gray(statusLabel)}${encLabel}`);
       }
     }
     console.log();
     return;
   }
 
-  const fileName = args[1]!;
-  const entry = entries.find(e => path.basename(e.srcAbs) === fileName || e.repoRel.endsWith(fileName));
+  // 1) Exact match on basename or repoRel suffix
+  let entry = entries.find(e => path.basename(e.srcAbs) === fileName || e.repoRel.endsWith(fileName));
 
-  if (!entry || !fs.existsSync(entry.srcAbs)) {
-    // Fuzzy match: substring against basenames and repoRels
+  // 2) Fuzzy match: substring against basenames and repoRels
+  if (!entry) {
     const lowerInput = fileName.toLowerCase();
-    const suggestions = entries
-      .filter(e => {
-        const base = path.basename(e.srcAbs).toLowerCase();
-        const rel = e.repoRel.toLowerCase();
-        return base.includes(lowerInput) || rel.includes(lowerInput);
-      })
-      .map(e => path.basename(e.srcAbs));
+    const fuzzyMatches = entries.filter(e => {
+      const base = path.basename(e.srcAbs).toLowerCase();
+      const rel = e.repoRel.toLowerCase();
+      return base.includes(lowerInput) || rel.includes(lowerInput);
+    });
 
-    if (suggestions.length > 0) {
+    if (fuzzyMatches.length === 1) {
+      entry = fuzzyMatches[0]!;
+    } else if (fuzzyMatches.length > 1) {
       throw new Error(t('memory.show.fuzzyHint', {
         agent: agentName,
         file: fileName,
-        suggestions: suggestions.join(', '),
+        suggestions: fuzzyMatches.map(e => path.basename(e.srcAbs)).join(', '),
       }));
+    } else {
+      throw new Error(t('memory.show.notFound', { agent: agentName, file: fileName }));
     }
+  }
+
+  // Check availability: local file OR encrypted repo file must exist
+  const repoPath = syncEngine.expandHome(cfg.localRepoPath);
+  const repoAbs = path.join(repoPath, entry.repoRel);
+  const localExists = fs.existsSync(entry.srcAbs);
+  const repoExists = fs.existsSync(repoAbs);
+  if (!localExists && !repoExists) {
     throw new Error(t('memory.show.notFound', { agent: agentName, file: fileName }));
   }
 
   console.log(chalk.bold(`  ${t('memory.show.header', { agent: agentName, file: fileName })}`));
   console.log();
 
-  if (entry.encrypt) {
+  if (entry.encrypt && repoExists) {
+    // Prefer decrypted repo content (canonical source of truth)
     const keyPath = syncEngine.expandHome(cfg.keyPath);
-    const repoPath = syncEngine.expandHome(cfg.localRepoPath);
-    const repoAbs = path.join(repoPath, entry.repoRel);
-    if (fs.existsSync(repoAbs)) {
-      const decrypted = cryptoEngine.decryptString(
-        fs.readFileSync(repoAbs, 'utf-8').trim(), keyPath,
-      );
-      console.log(decrypted);
-    } else {
-      // Encrypt from local source for display
-      console.log(fs.readFileSync(entry.srcAbs, 'utf-8'));
-    }
-  } else {
+    const decrypted = cryptoEngine.decryptString(
+      fs.readFileSync(repoAbs, 'utf-8').trim(), keyPath,
+    );
+    console.log(decrypted);
+  } else if (localExists) {
+    // Plain text or unsynced local file
     console.log(fs.readFileSync(entry.srcAbs, 'utf-8'));
   }
 }
