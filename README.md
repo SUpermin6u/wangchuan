@@ -21,14 +21,18 @@ Wangchuan solves this by **becoming part of your agent's brain**:
 ```
 You: "Initialize wangchuan"
 Agent: (installs CLI, asks for repo URL, auto-detects all local agents,
-        syncs everything to cloud, starts background pull daemon)
+        pulls cloud data, reminds to back up key)
+
+You: "Restore cloud memories on this machine"
+Agent: (asks for repo URL + master key, warns about local data overwrites,
+        downloads all cloud memories/skills/configs to local agents)
 
 You: "Create a new skill called xxx"
 Agent: (creates skill, asks which agents to distribute to,
-        copies to selected agents, pushes to cloud)
+        copies to selected agents, asks if you want to sync to cloud)
 
 You: "Switch to work environment"
-Agent: (syncs current changes, switches branch, pulls work env data,
+Agent: (asks about unsynced changes, switches branch, pulls work env data,
         checks for conflicts, restarts background daemon)
 ```
 

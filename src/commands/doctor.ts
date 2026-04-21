@@ -300,21 +300,8 @@ async function handleKeyRotate(cfg: WangchuanConfig): Promise<void> {
     return;
   }
 
-  try {
-    await gitEngine.commitAndPush(repoPath, 'security: rotate master key', resolveGitBranch(cfg));
-  } catch (err) {
-    fs.writeFileSync(keyPath, oldKeyHex, { mode: 0o600, encoding: 'utf-8' });
-    for (const [relFile, plaintext] of decryptedContents) {
-      const absPath = path.join(repoPath, relFile);
-      const reEncrypted = cryptoEngine.encryptString(plaintext, keyPath);
-      fs.writeFileSync(absPath, reEncrypted, 'utf-8');
-    }
-    spinner.fail(t('key.rotate.failed', { error: (err as Error).message }));
-    logger.warn(t('key.rotate.rolledBack'));
-    return;
-  }
-
   spinner.succeed(t('key.rotate.complete', { count: encFiles.length }));
+  logger.info(t('doctor.keyRotateHint'));
 }
 
 function handleKeyExport(cfg: WangchuanConfig): void {

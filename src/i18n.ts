@@ -95,6 +95,7 @@ const M: Msgs = {
   'init.autoSync':        ['Running first sync...', '正在执行首次同步...'],
   'init.autoSyncDone':    ['First sync completed', '首次同步完成'],
   'init.autoSyncFailed':  ['First sync failed (you can retry with wangchuan sync): {error}', '首次同步失败（可稍后执行 wangchuan sync 重试）: {error}'],
+  'init.syncHint':        ['Run `wangchuan sync` when ready to push local data to cloud', '准备好后运行 `wangchuan sync` 将本地数据推送到云端'],
   'init.nextPull':        ['Next: wangchuan sync  (sync memories across environments)', '下一步: wangchuan sync  (同步记忆到各环境)'],
   'init.nextPush':        ['              wangchuan status  (check sync state)', '              wangchuan status  (查看同步状态)'],
 
@@ -322,6 +323,7 @@ const M: Msgs = {
   'env.deleted':              ['Environment deleted: {name}', '环境已删除: {name}'],
   'env.create.creating':      ['Creating environment {name} …', '正在创建环境 {name} …'],
   'env.switch.switching':     ['Switching to environment {name} …', '正在切换到环境 {name} …'],
+  'env.switch.syncHint':      ['Run `wangchuan sync` to push changes to this environment', '运行 `wangchuan sync` 将变更推送到此环境'],
   'env.delete.deleting':      ['Deleting environment {name} …', '正在删除环境 {name} …'],
   'env.unknownAction':        ['Unknown action: {action}. Use list|create|switch|current|delete', '未知操作: {action}，请使用 list|create|switch|current|delete'],
 
@@ -333,6 +335,7 @@ const M: Msgs = {
   'key.rotate.noFiles':       ['No encrypted files found in repo', '仓库中没有加密文件'],
   'key.rotate.failed':        ['Key rotation failed: {error}', '密钥轮换失败: {error}'],
   'key.rotate.rolledBack':    ['Old key restored after failed rotation', '轮换失败，已恢复旧密钥'],
+  'doctor.keyRotateHint':     ['Run `wangchuan sync` to push re-encrypted files to cloud', '运行 `wangchuan sync` 将重新加密的文件推送到云端'],
   'key.export.hex':           ['Master key (hex): {hex}', '主密钥（hex）: {hex}'],
   'key.export.warning':       ['Keep this key safe — anyone with it can decrypt your data', '请妥善保管此密钥，持有者可解密所有数据'],
   'key.export.fileHint':       ['Save to file for transfer: wangchuan doctor --key-export > ~/wangchuan-key.txt', '保存到文件以便迁移: wangchuan doctor --key-export > ~/wangchuan-key.txt'],
@@ -447,6 +450,7 @@ const M: Msgs = {
   'snapshot.restored':         ['Snapshot restored: {name}', '快照已恢复: {name}'],
   'snapshot.pushing':          ['Pushing restored snapshot to cloud …', '正在将恢复的快照推送到云端 …'],
   'snapshot.pushedToCloud':    ['Restored snapshot pushed to cloud — other machines will pull this version', '已推送到云端 — 其他机器下次同步将拉取此版本'],
+  'snapshot.restoreHint':      ['Run `wangchuan sync` to push restored state to cloud', '运行 `wangchuan sync` 将恢复的状态推送到云端'],
   'snapshot.deleted':          ['Snapshot deleted: {name}', '快照已删除: {name}'],
   'snapshot.notFound':         ['Snapshot not found: {name}', '快照不存在: {name}'],
   'snapshot.listHeader':       ['Snapshots:', '快照列表：'],
@@ -548,6 +552,7 @@ const M: Msgs = {
   'restore.keyRequired':      ['--key is required for restore (export from source machine: wangchuan doctor --key-export)', '恢复操作需要 --key 参数（从源机器导出: wangchuan doctor --key-export）'],
   'restore.cloudRestore':     ['Restoring from cloud …', '正在从云端恢复 …'],
   'restore.cloudRestored':    ['Cloud data restored to local', '云端数据已恢复到本地'],
+  'restore.configRestored':   ['Restored workspace paths from cloud config snapshot', '已从云端配置快照恢复工作区路径'],
   'restore.complete':         ['Restore complete! All cloud data has been pulled to local.', '恢复完成！所有云端数据已拉取到本地。'],
   'restore.syncingLocal':     ['Syncing local additions to cloud …', '正在将本地新增同步到云端 …'],
 };

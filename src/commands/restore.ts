@@ -50,8 +50,15 @@ export async function cmdRestore({ repo, key }: RestoreOptions): Promise<void> {
   // ── Clone repo ─────────────────────────────────────────────────
   await cloneRepo(repo, cfg.localRepoPath, cfg.branch);
 
-  // ── Pull remote to ensure we have latest ───────────────────────
+  // ── Apply config snapshot from cloud (workspacePath, enabled) ──
   const repoPath = syncEngine.expandHome(cfg.localRepoPath);
+  const { applyConfigSnapshot } = await import('../core/sync-stage.js');
+  if (applyConfigSnapshot(repoPath, cfg)) {
+    config.save(cfg);
+    logger.ok(t('restore.configRestored'));
+  }
+
+  // ── Pull remote to ensure we have latest ───────────────────────
   const branch = resolveGitBranch(cfg);
   try {
     const remoteAhead = await gitEngine.fetchAndCheckRemoteAhead(repoPath, branch);
@@ -73,15 +80,6 @@ export async function cmdRestore({ repo, key }: RestoreOptions): Promise<void> {
       count: pullResult.synced.length,
       encrypted: pullResult.decrypted.length,
     }));
-  }
-
-  // ── Push local additions (skip stale detection to protect cloud data) ──
-  logger.info(t('restore.syncingLocal'));
-  try {
-    const { cmdSync } = await import('./sync.js');
-    await cmdSync({ yes: true, skipStaleDetection: true });
-  } catch (err) {
-    logger.warn(t('init.autoSyncFailed', { error: (err as Error).message }));
   }
 
   logger.ok('\n' + t('restore.complete'));

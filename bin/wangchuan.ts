@@ -52,7 +52,7 @@ const program = new Command();
 program
   .name('wangchuan')
   .description(t('cli.description'))
-  .version('5.12.0');
+  .version('5.13.0');
 
 // ── init ────────────────────────────────────────────────────────
 program

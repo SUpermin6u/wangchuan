@@ -65,7 +65,7 @@ When user says "新建忘川 xxx 环境" / "create xxx environment":
 wangchuan env list
 ```
 If the name already exists, inform the user and ask: "Environment 'xxx' already exists. Would you like to: (1) Import current env's memories into it, or (2) Just switch to it?"
-- Import: `wangchuan env switch <name>` → then `wangchuan sync -y` to push current data
+- Import: `wangchuan env switch <name>` → then ask user if they want to sync: `wangchuan sync -y`
 - Switch only: `wangchuan env switch <name>`
 
 **Step 2: Ask about data initialization.**
@@ -118,7 +118,7 @@ When user says "切换到 xxx 环境" / "switch to work environment":
 ```bash
 wangchuan status
 ```
-- **Few changes (≤3 files)**: warn briefly, push first: `wangchuan sync -y`
+- **Few changes (≤3 files)**: warn briefly, ask user: "Push changes before switching?" If yes: `wangchuan sync -y`
 - **Many changes or conflicts**: `wangchuan status -v` → show diff → ask "Push current changes first, or discard and switch?"
 
 **Step 2: Switch.**
@@ -211,16 +211,17 @@ cd ~/.wangchuan/repo && git show <hash>:<file-path>
 
 **Step 3: Execute.**
 
-Snapshot restore (auto-pushes to cloud):
+Snapshot restore (restores locally, ask user to sync):
 ```bash
 wangchuan snapshot restore <name>
 ```
+Tell user: "Snapshot restored locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
 
 Single file from git (needs sync after):
 ```bash
 cd ~/.wangchuan/repo && git checkout <hash> -- <file-path>
-wangchuan sync -y
 ```
+Tell user: "File restored locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
 
 Undo last sync:
 ```bash

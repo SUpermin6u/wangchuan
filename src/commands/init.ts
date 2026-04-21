@@ -12,6 +12,7 @@
 import { config }       from '../core/config.js';
 import { cryptoEngine } from '../core/crypto.js';
 import { gitEngine }    from '../core/git.js';
+import { syncEngine }   from '../core/sync.js';
 import { validator }    from '../utils/validator.js';
 import { logger }       from '../utils/logger.js';
 import { t }            from '../i18n.js';
@@ -196,18 +197,19 @@ export async function cmdInit({ repo: repoArg, force = false }: InitOptions): Pr
   await ensureKey(cfg, undefined);
   await cloneRepo(repo, cfg.localRepoPath, cfg.branch);
 
-  // ── Auto first sync ────────────────────────────────────────────
-  if (detectedAgents.length > 0) {
-    logger.info(t('init.autoSync'));
+  // ── Pull-only: restore cloud data to local (no push) ───────────
+  const repoPath = syncEngine.expandHome(cfg.localRepoPath);
+  const metaPath = path.join(repoPath, 'sync-meta.json');
+  if (fs.existsSync(metaPath)) {
+    // Repo has existing data — pull it down
     try {
-      const { cmdSync } = await import('./sync.js');
-      await cmdSync();
-      logger.ok(t('init.autoSyncDone'));
+      await syncEngine.restoreFromRepo(cfg);
     } catch (err) {
       logger.warn(t('init.autoSyncFailed', { error: (err as Error).message }));
     }
   }
 
+  logger.info(t('init.syncHint'));
   logger.ok('\n' + t('init.complete'));
   return cfg;
 }

@@ -1,4 +1,4 @@
-# Wangchuan Skill Benchmark v1.6.0
+# Wangchuan Skill Benchmark v1.7.0
 
 Test cases for verifying an AI agent with the wangchuan skill loaded.
 
@@ -24,8 +24,8 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "请初始化忘川" (指令1) |
 | **Ref** | `references/install-setup.md` |
-| **Behavior** | 1. `command -v wangchuan \|\| npm install -g wangchuan`<br>2. Ask repo URL → `wangchuan init --repo <url>` → auto: generate key, clone, detect agents, extract shared, first sync<br>3. Remind backup key: `wangchuan doctor --key-export`<br>4. Ensure watch |
-| **Constraint** | Non-TTY: must pass `--repo`. This TC covers brand new setup ONLY. For restore scenarios, see TC-53. |
+| **Behavior** | 1. `command -v wangchuan \|\| npm install -g wangchuan`<br>2. Ask repo URL → `wangchuan init --repo <url>` → auto: generate key, clone, detect agents, extract shared, pull cloud data<br>3. Remind backup key: `wangchuan doctor --key-export`<br>4. Tell user: "Initialization complete. Run `wangchuan sync` when ready to push local data to cloud."<br>5. Ensure watch |
+| **Constraint** | Non-TTY: must pass `--repo`. This TC covers brand new setup ONLY. For restore scenarios, see TC-53. Init only pulls — no auto-push. |
 | **Anti-pattern** | Running bare `wangchuan init`; using `init` for restore (use `restore` instead); not reminding key backup |
 
 ### TC-02: Daily sync
@@ -91,8 +91,8 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "创建一个work环境" |
 | **Ref** | `references/environment.md` |
-| **Behavior** | 1. `wangchuan env list` — check if name exists<br>2. **If exists** → ask: "Already exists. Import current env's memories into it, or just switch?"<br>3. **If new** → ask: "Fork current env's data (all memories/skills/MCP/agents), or start empty?"<br>4. Fork: `wangchuan env create work` (non-TTY auto-forks)<br>5. Ask: switch to new env? → `wangchuan env switch work` if yes<br>6. Ensure watch (restart if switched) |
-| **Constraint** | Must ask about data init choice. Must handle "already exists" case. Non-TTY auto-forks. |
+| **Behavior** | 1. `wangchuan env list` — check if name exists<br>2. **If exists** → ask: "Already exists. Import current env's memories into it, or just switch?"<br>3. **If new** → ask: "Fork current env's data (all memories/skills/MCP/agents), or start empty?"<br>4. Fork: `wangchuan env create work` (non-TTY auto-forks)<br>5. Ask: switch to new env? → `wangchuan env switch work` if yes<br>6. No auto-push — tell user: "Environment created locally. Run `wangchuan sync` when ready to push."<br>7. Ensure watch (restart if switched) |
+| **Constraint** | Must ask about data init choice. Must handle "already exists" case. Non-TTY auto-forks. No auto-push after create. |
 | **Anti-pattern** | Creating without asking data init; ignoring existing name |
 
 ### TC-10: Create env — from specific source
@@ -108,9 +108,9 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "切换到work环境" |
 | **Ref** | `references/environment.md` |
-| **Behavior** | 1. **Pre-flight**: `wangchuan status` to detect unsynced changes<br>&nbsp;&nbsp;- Few changes (≤3): warn briefly, `wangchuan sync -y` first<br>&nbsp;&nbsp;- **Many changes or conflicts**: `wangchuan status -v` → show full diff → **ask user to confirm**: "N unsynced changes detected. Push first, or discard and switch?"<br>2. `wangchuan env switch work` (auto-pulls new env data)<br>3. **Post-switch**: check conflict markers (`grep '<<<<<<< LOCAL'`) + check `localOnly` stale files (`status -v`) → warn user<br>4. **Restart watch**: `pkill -f 'wangchuan.*watch'; nohup wangchuan watch ...` |
-| **Constraint** | Must sync before switch. Large conflicts require explicit user confirmation. Must warn stale files. Must restart watch. |
-| **Anti-pattern** | Switching without syncing; not confirming on large conflicts; not restarting watch |
+| **Behavior** | 1. **Pre-flight**: `wangchuan status` to detect unsynced changes<br>&nbsp;&nbsp;- Few changes (≤3): warn briefly, ask user: "Push changes before switching?" If yes: `wangchuan sync -y`<br>&nbsp;&nbsp;- **Many changes or conflicts**: `wangchuan status -v` → show full diff → **ask user to confirm**: "N unsynced changes detected. Push first, or discard and switch?"<br>2. `wangchuan env switch work` (auto-pulls new env data)<br>3. **Post-switch**: check conflict markers (`grep '<<<<<<< LOCAL'`) + check `localOnly` stale files (`status -v`) → warn user<br>4. **Restart watch**: `pkill -f 'wangchuan.*watch'; nohup wangchuan watch ...` |
+| **Constraint** | Must ask before syncing pre-switch. Large conflicts require explicit user confirmation. Must warn stale files. Must restart watch. No auto-push after switch. |
+| **Anti-pattern** | Switching without asking about unsynced changes; auto-pushing without user confirmation; not confirming on large conflicts; not restarting watch |
 
 ### TC-12: List envs with health (指令26)
 | Field | Value |
@@ -140,8 +140,8 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "拉取work环境的记忆" |
 | **Ref** | `references/environment.md` + `references/sync-conflict.md` |
-| **Behavior** | 1. Explain: cross-env pull not supported directly, must switch<br>2. `wangchuan sync -y` (push current env first)<br>3. `wangchuan env switch work` (auto-pulls work data)<br>4. Post-switch: check conflicts + stale files<br>5. Ask: switch back to original?<br>6. Restart watch |
-| **Constraint** | No `--from-env` flag. Must sync current before switch. |
+| **Behavior** | 1. Explain: cross-env pull not supported directly, must switch<br>2. Ask user: "Push current env's changes before switching?" If yes: `wangchuan sync -y`<br>3. `wangchuan env switch work` (auto-pulls work data)<br>4. Post-switch: check conflicts + stale files<br>5. Ask: switch back to original?<br>6. Restart watch |
+| **Constraint** | No `--from-env` flag. Must ask before pushing current env. |
 
 ### TC-16: Workspace leakage (环境问题③)
 | Field | Value |
@@ -183,8 +183,8 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "回退记忆" / "撤销上次同步" / "恢复删除的技能" |
 | **Ref** | `references/environment.md` |
-| **Behavior** | 1. **Clarify intent** — ask which scenario:<br>&nbsp;&nbsp;a) Undo last sync → find auto-snapshot<br>&nbsp;&nbsp;b) Restore to a time point → `wangchuan snapshot list`<br>&nbsp;&nbsp;c) Recover a **deleted** config/skill → `git log --name-status` to find deletion commit<br>&nbsp;&nbsp;d) Revert a **modified** config → `git log + git show` to find change commit<br>&nbsp;&nbsp;e) Revert an **added** config → `git log` to find addition<br>2. Present candidate versions to user with timestamps/content<br>3. User confirms → execute:<br>&nbsp;&nbsp;- Snapshot: `wangchuan snapshot restore <name>` (auto-pushes to cloud)<br>&nbsp;&nbsp;- Single file: `cd ~/.wangchuan/repo && git checkout <hash> -- <file>` → `wangchuan sync -y`<br>4. Ensure watch |
-| **Constraint** | Must help user identify which version to roll back to. `snapshot restore` auto-pushes. `git checkout` needs `sync -y`. |
+| **Behavior** | 1. **Clarify intent** — ask which scenario:<br>&nbsp;&nbsp;a) Undo last sync → find auto-snapshot<br>&nbsp;&nbsp;b) Restore to a time point → `wangchuan snapshot list`<br>&nbsp;&nbsp;c) Recover a **deleted** config/skill → `git log --name-status` to find deletion commit<br>&nbsp;&nbsp;d) Revert a **modified** config → `git log + git show` to find change commit<br>&nbsp;&nbsp;e) Revert an **added** config → `git log` to find addition<br>2. Present candidate versions to user with timestamps/content<br>3. User confirms → execute:<br>&nbsp;&nbsp;- Snapshot: `wangchuan snapshot restore <name>` (restores locally)<br>&nbsp;&nbsp;- Single file: `cd ~/.wangchuan/repo && git checkout <hash> -- <file>`<br>4. Tell user: "Restored locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`<br>5. Ensure watch |
+| **Constraint** | Must help user identify which version to roll back to. No auto-push after restore — ask user first. |
 
 ### TC-21: Dry-run
 | Field | Value |
@@ -201,7 +201,7 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 | Field | Value |
 |-------|-------|
 | **Instruction** | "claude配置路径是~/.claude-internal" |
-| **Behavior** | jq update `profiles.default.claude.workspacePath` → `sync -y` (to **current env**) → ensure watch |
+| **Behavior** | jq update `profiles.default.claude.workspacePath` → tell user: "Path updated locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**) → ensure watch |
 | **Constraint** | Only change `workspacePath` — all other paths resolve relative to it. |
 
 ### TC-23: Switch language
@@ -221,7 +221,7 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 | Field | Value |
 |-------|-------|
 | **Instruction** | (auto on session start) |
-| **Behavior** | `wangchuan status` → `sync -y` if pending → ensure watch |
+| **Behavior** | `wangchuan status` → `sync -n` for preview → if pending changes, ask user before `sync -y` → ensure watch |
 
 ---
 
@@ -232,40 +232,40 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "新增 xxx 技能" |
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. Create skill files<br>2. New skill → always ask: All / specific agents / no distribution<br>3. User picks All → cp to all enabled agents with skills/ dir<br>4. `wangchuan sync -y` → pushed to **current env**<br>5. Ensure watch |
+| **Behavior** | 1. Create skill files<br>2. New skill → always ask: All / specific agents / no distribution<br>3. User picks All → cp to all enabled agents with skills/ dir<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` → pushed to **current env**<br>5. Ensure watch |
 | **Constraint** | New skill is never shared — always ask. Sync targets current env. |
 
 ### TC-27: Create skill — specific
-| Same as TC-26, user picks subset → cp selected → `sync -y` (to **current env**) |
+| Same as TC-26, user picks subset → cp selected → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**) |
 
 ### TC-28: Create skill — no distribution
-| Same as TC-26, user declines → only current agent's copy → `sync -y` (to **current env**) |
+| Same as TC-26, user declines → only current agent's copy → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**) |
 
 ### TC-29: Modify shared skill (指令3 - shared)
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. Check `shared-registry.json` → SHARED<br>2. Auto-cp to all agents (user already opted in)<br>3. `wangchuan sync -y` → pushed to **current env**<br>4. Ensure watch |
+| **Behavior** | 1. Check `shared-registry.json` → SHARED<br>2. Auto-cp to all agents (user already opted in)<br>3. Tell user: "Changes saved locally and distributed. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` → pushed to **current env**<br>4. Ensure watch |
 | **Constraint** | Shared = auto-distribute, no ask. |
 
 ### TC-30: Modify non-shared skill (指令3 - non-shared)
-| Same decision flow as TC-26: ask All/specific/no → `sync -y` (to **current env**) |
+| Same decision flow as TC-26: ask All/specific/no → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**) |
 
 ### TC-31: Delete shared skill — all (指令5 - shared, all)
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. Check shared → inform user: "**SHARED skill**"<br>2. **Always ask** (even for shared): All / specific / Cancel<br>3. All → rm from all agents + unregister from shared-registry + `sync -y` → cloud `shared/skills/xxx/` auto-pruned<br>4. Pushed to **current env**<br>5. Ensure watch |
+| **Behavior** | 1. Check shared → inform user: "**SHARED skill**"<br>2. **Always ask** (even for shared): All / specific / Cancel<br>3. All → rm from all agents + unregister from shared-registry<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` → cloud `shared/skills/xxx/` auto-pruned<br>5. Pushed to **current env**<br>6. Ensure watch |
 
 ### TC-32: Delete shared skill — partial (指令5 - shared, partial)
 | Field | Value |
 |-------|-------|
-| **Behavior** | 1. Inform SHARED → ask → user picks subset<br>2. rm from selected agents + **unregister (demote)** from shared-registry<br>3. `sync -y` → cloud `shared/skills/xxx/` pruned. Remaining agents keep local copies independently (no longer tracked as shared)<br>4. Pushed to **current env** → ensure watch |
+| **Behavior** | 1. Inform SHARED → ask → user picks subset<br>2. rm from selected agents + **unregister (demote)** from shared-registry<br>3. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` → cloud `shared/skills/xxx/` pruned. Remaining agents keep local copies independently (no longer tracked as shared)<br>4. Pushed to **current env** → ensure watch |
 
 ### TC-33: Delete non-shared skill (指令5 - non-shared)
 | Field | Value |
 |-------|-------|
-| **Behavior** | 1. Check shared → inform: "**LOCAL skill**"<br>2. Ask: All / specific / Cancel<br>3. rm from selected → `sync -y` → cloud removes agent-specific copy directly (no shared-registry involved)<br>4. Pushed to **current env** → ensure watch |
+| **Behavior** | 1. Check shared → inform: "**LOCAL skill**"<br>2. Ask: All / specific / Cancel<br>3. rm from selected<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` → cloud removes agent-specific copy directly (no shared-registry involved)<br>5. Pushed to **current env** → ensure watch |
 | **Constraint** | Non-shared skill: no unregister needed, cloud removes `agents/<name>/skills/` entries via stale detection. |
 
 ### TC-34: Inspect skill (指令6)
@@ -279,13 +279,13 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 ## Custom Agent CRUD (TC-35 ~ TC-38)
 
 ### TC-35: Create custom agent
-| Same as TC-26, but **only 4 agents** (Claude/Cursor/CodeBuddy/WorkBuddy). **Ref**: `references/resource-crud.md`. Sync to **current env**. |
+| Same as TC-26, but **only 4 agents** (Claude/Cursor/CodeBuddy/WorkBuddy). **Ref**: `references/resource-crud.md`. Ask user before sync. Sync to **current env**. |
 
 ### TC-36: Modify shared custom agent
-| Same as TC-29, but for `agents/` dir. Use `kind:'agent'` in registry check. Sync to **current env**. |
+| Same as TC-29, but for `agents/` dir. Use `kind:'agent'` in registry check. Ask user before sync. Sync to **current env**. |
 
 ### TC-37: Delete custom agent
-| Same as TC-31/32, but `kind:'agent'`. Only 4 agents. Sync to **current env**. |
+| Same as TC-31/32, but `kind:'agent'`. Only 4 agents. Ask user before sync. Sync to **current env**. |
 
 ### TC-38: Inspect custom agent
 | Same as TC-34, but check `agents/` dirs, only 4 agents, `kind:'agent'` in registry. |
@@ -298,17 +298,17 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. jq add to current agent's config<br>2. Ask: All / specific / no (5 MCP-enabled agents, different config files each)<br>3. jq write to selected<br>4. `sync -y` (to **current env**)<br>5. Ensure watch |
+| **Behavior** | 1. jq add to current agent's config<br>2. Ask: All / specific / no (5 MCP-enabled agents, different config files each)<br>3. jq write to selected<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**)<br>5. Ensure watch |
 | **Constraint** | Cloud: one merged `shared/mcp/mcpServers.json.enc`. Different config files per agent (.claude.json / mcp.json / mcporter.json). |
 
 ### TC-40: Modify MCP
-| Same as TC-39 but update existing key. List which agents have the key first. Sync to **current env**. |
+| Same as TC-39 but update existing key. List which agents have the key first. Ask user before sync. Sync to **current env**. |
 
 ### TC-41: Delete MCP
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. List which agents have the key<br>2. Ask: All / specific / Cancel<br>3. `jq 'del(.mcpServers["xxx"])'` on selected agents<br>4. `sync -y` (to **current env**)<br>5. Ensure watch |
+| **Behavior** | 1. List which agents have the key<br>2. Ask: All / specific / Cancel<br>3. `jq 'del(.mcpServers["xxx"])'` on selected agents<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**)<br>5. Ensure watch |
 | **Constraint** | MCP auto-merge is **additive-only** — `jq del()` is the ONLY way to propagate removal. |
 
 ### TC-42: Inspect MCP
@@ -325,17 +325,17 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. Write to current agent's memory file<br>2. Ask: broadcast all / copy specific / no<br>3. `wangchuan memory broadcast/copy` if yes<br>4. `sync -y` (to **current env**)<br>5. Ensure watch |
+| **Behavior** | 1. Write to current agent's memory file<br>2. Ask: broadcast all / copy specific / no<br>3. `wangchuan memory broadcast/copy` if yes<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**)<br>5. Ensure watch |
 | **Constraint** | Claude=`CLAUDE.md`, OpenClaw/CodeBuddy/WorkBuddy/Codex=`MEMORY.md`. Cursor/Gemini have no memory. |
 
 ### TC-44: Modify memory (指令16)
-| Same as TC-43 but edit existing → ask sync → `sync -y` (to **current env**) |
+| Same as TC-43 but edit existing → ask sync → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**) |
 
 ### TC-45: Delete memory (指令17)
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. `wangchuan memory list`<br>2. Ask: All / specific / Cancel<br>3. rm selected → `sync -y` (to **current env**)<br>4. Ensure watch |
+| **Behavior** | 1. `wangchuan memory list`<br>2. Ask: All / specific / Cancel<br>3. rm selected<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**)<br>5. Ensure watch |
 
 ### TC-46: Inspect memory (指令18/21)
 | Field | Value |
@@ -365,13 +365,13 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/environment.md` + `references/sync-conflict.md` |
-| **Behavior** | 1. Explain: must switch env first (no `--from-env`)<br>2. `sync -y` current env first (save changes)<br>3. `env switch <target>` (auto-pulls target data)<br>4. Post-switch: check conflicts + stale files<br>5. Ask: switch back?<br>6. Restart watch |
+| **Behavior** | 1. Explain: must switch env first (no `--from-env`)<br>2. Ask user: "Push current env's changes before switching?" If yes: `sync -y`<br>3. `env switch <target>` (auto-pulls target data)<br>4. Post-switch: check conflicts + stale files<br>5. Ask: switch back?<br>6. Restart watch |
 
 ### TC-50: Sync between agents (指令22)
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/sync-conflict.md` |
-| **Behavior** | 1. **Clarify**: if user says "记忆" → memory only; if "配置" → ask which: Memory / Skills / MCP / Custom agents / All<br>2. Execute per type: `memory copy` / `cp skills/` / `jq merge mcpServers` / `cp agents/`<br>3. `sync -y` (to **current env**)<br>4. Ensure watch |
+| **Behavior** | 1. **Clarify**: if user says "记忆" → memory only; if "配置" → ask which: Memory / Skills / MCP / Custom agents / All<br>2. Execute per type: `memory copy` / `cp skills/` / `jq merge mcpServers` / `cp agents/`<br>3. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**)<br>4. Ensure watch |
 | **Constraint** | "配置" is ambiguous — must ask. Different mechanisms per type. Not all agents support all types. |
 
 ---
@@ -393,9 +393,9 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "升级忘川" / "upgrade wangchuan" |
 | **Ref** | `references/install-setup.md` |
-| **Behavior** | 1. `npm update -g wangchuan`<br>2. `wangchuan --version` → report new version<br>3. `wangchuan sync -y` → reconcileProfiles auto-detects new sync entries, updates config.json, **pulls cloud first**, then pushes newly-discovered local files. Run twice if first sync only updates config.<br>4. Report: version, new sync entries (if any), files synced, **current env: xxx**<br>5. Ensure watch |
-| **Constraint** | Must use `npm update -g` (not `npm install -g`). Must run `sync -y` after upgrade (triggers reconcileProfiles). Cloud must be pulled before pushing. Must report version + what changed. |
-| **Anti-pattern** | Skipping `sync -y` after upgrade; manually editing config.json instead of letting reconcileProfiles handle it; not reporting the new version; pushing without pulling cloud first |
+| **Behavior** | 1. `npm update -g wangchuan`<br>2. `wangchuan --version` → report new version<br>3. Tell user: "Upgrade complete. Run `wangchuan sync` to pull cloud data and push newly-discovered local files." → if user confirms: `wangchuan sync -y` → reconcileProfiles auto-detects new sync entries, updates config.json, **pulls cloud first**, then pushes newly-discovered local files. Run twice if first sync only updates config.<br>4. Report: version, new sync entries (if any), files synced, **current env: xxx**<br>5. Ensure watch |
+| **Constraint** | Must use `npm update -g` (not `npm install -g`). Sync is NOT automatic after upgrade — must ask user. Cloud must be pulled before pushing. Must report version + what changed. |
+| **Anti-pattern** | Auto-syncing after upgrade without asking; manually editing config.json instead of letting reconcileProfiles handle it; not reporting the new version; pushing without pulling cloud first |
 
 ---
 

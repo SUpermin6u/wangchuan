@@ -101,14 +101,9 @@ async function cmdEnvCreate(cfg: WangchuanConfig, repoPath: string, name?: strin
       const currentEnv = cfg.environment ?? 'default';
       logger.ok(t('env.create.imported', { env: currentEnv }));
     } else {
-      // Clear all files in the new branch for an empty environment
+      // Clear all files in the new branch for an empty environment (local only)
       const clearSpinner = ora(t('env.create.clearing')).start();
-      try {
-        await gitEngine.commitAndPush(repoPath, `env: create empty environment '${name}'`, branch);
-        clearSpinner.succeed(t('env.create.empty', { name }));
-      } catch {
-        clearSpinner.succeed(t('env.create.empty', { name }));
-      }
+      clearSpinner.succeed(t('env.create.empty', { name }));
     }
   } else {
     // Non-interactive: fork with memories (default behavior)
@@ -160,10 +155,9 @@ async function cmdEnvSwitch(cfg: WangchuanConfig, repoPath: string, name?: strin
 
   logger.ok(t('env.switched', { name }));
 
-  // Auto-sync to pull the new environment's memories into workspace
-  logger.info(t('env.switch.syncing'));
-  const { cmdSync } = await import('./sync.js');
-  await cmdSync();
+  // Pull-only: restore the new environment's data to workspace (no push)
+  await syncEngine.restoreFromRepo(updated);
+  logger.info(t('env.switch.syncHint'));
 }
 
 // ── delete ────────────────────────────────────────────────────────────

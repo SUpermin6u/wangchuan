@@ -343,6 +343,59 @@ export function clearStageProgress(): void {
   if (fs.existsSync(STAGE_PROGRESS_PATH)) fs.unlinkSync(STAGE_PROGRESS_PATH);
 }
 
+/** Write config snapshot to repo for cross-machine restore (workspacePath, enabled, lang) */
+export function writeConfigSnapshot(repoPath: string, cfg: WangchuanConfig): void {
+  const profiles: Record<string, { workspacePath: string; enabled: boolean }> = {};
+  for (const [name, profile] of Object.entries(cfg.profiles.default)) {
+    profiles[name] = {
+      workspacePath: (profile as { workspacePath: string }).workspacePath,
+      enabled: (profile as { enabled: boolean }).enabled,
+    };
+  }
+  const snapshot = {
+    profiles: { default: profiles },
+    ...(cfg.lang ? { lang: cfg.lang } : {}),
+  };
+  fs.writeFileSync(
+    path.join(repoPath, 'config-snapshot.json'),
+    JSON.stringify(snapshot, null, 2),
+    'utf-8',
+  );
+}
+
+/** Read config snapshot from repo and merge workspacePath/enabled into config */
+export function applyConfigSnapshot(repoPath: string, cfg: WangchuanConfig): boolean {
+  const snapshotPath = path.join(repoPath, 'config-snapshot.json');
+  if (!fs.existsSync(snapshotPath)) return false;
+  try {
+    const snapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8')) as {
+      profiles?: { default?: Record<string, { workspacePath?: string; enabled?: boolean }> };
+      lang?: string;
+    };
+    const snapshotProfiles = snapshot.profiles?.default;
+    if (!snapshotProfiles) return false;
+
+    let changed = false;
+    const currentProfiles = cfg.profiles.default as unknown as Record<string, Record<string, unknown>>;
+    for (const [name, snap] of Object.entries(snapshotProfiles)) {
+      if (!currentProfiles[name]) continue;
+      if (snap.workspacePath && currentProfiles[name]!['workspacePath'] !== snap.workspacePath) {
+        currentProfiles[name]!['workspacePath'] = snap.workspacePath;
+        changed = true;
+      }
+      if (snap.enabled !== undefined && currentProfiles[name]!['enabled'] !== snap.enabled) {
+        currentProfiles[name]!['enabled'] = snap.enabled;
+        changed = true;
+      }
+    }
+    if (snapshot.lang && !(cfg as unknown as Record<string, unknown>)['lang']) {
+      (cfg as unknown as Record<string, unknown>)['lang'] = snapshot.lang;
+      changed = true;
+    }
+    return changed;
+  } catch { return false; }
+}
+
 // ── Main push function ─────────────────────────────────────────────
 
 /**
@@ -509,6 +562,7 @@ export async function stageToRepo(
     writeSyncMeta(repoPath, cfg);
     writeIntegrity(repoPath, result.synced, plaintextHashMap);
     writeKeyFingerprint(repoPath, keyPath);
+    writeConfigSnapshot(repoPath, cfg);
   }
 
   // Clear stage progress on successful completion

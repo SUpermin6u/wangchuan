@@ -26,12 +26,14 @@ npm update -g wangchuan
 wangchuan --version
 ```
 
-**Step 3: Pull cloud first, then push local changes.**
+**Step 3: Pull cloud first, then sync local changes when ready.**
 
 After upgrade, the new version may include new/changed agent sync profiles (new syncDirs, syncFiles, jsonFields). The built-in `reconcileProfiles` mechanism automatically detects these changes when `sync` runs — it compares the built-in agent definitions against `config.json`, adds any missing entries, and saves the updated config. No manual config editing needed.
 
+Tell the user: "Upgrade complete. Run `wangchuan sync` to pull cloud data and push any newly-discovered local files." When the user confirms:
+
 ```bash
-# First: pull cloud data to ensure local is up-to-date
+# Pull cloud data and push local changes
 wangchuan sync -y
 ```
 
@@ -44,6 +46,8 @@ If the first sync shows "no changes" but you expect new files to be discovered, 
 ```bash
 wangchuan sync -y   # second sync if needed
 ```
+
+**Note**: Sync is NOT automatic after upgrade. The user must explicitly request it.
 
 **Step 4: Report results.**
 Tell the user:
@@ -59,7 +63,7 @@ pgrep -f 'wangchuan.*watch' >/dev/null 2>&1 || nohup wangchuan watch >/dev/null 
 
 **Complete upgrade flow:**
 ```
-npm update -g wangchuan → wangchuan --version → wangchuan sync -y → report → ensure watch
+npm update -g wangchuan → wangchuan --version → ask user to sync → wangchuan sync -y (if confirmed) → report → ensure watch
 ```
 
 ## Initialization (when `~/.wangchuan/config.json` does not exist)
@@ -70,8 +74,9 @@ npm update -g wangchuan → wangchuan --version → wangchuan sync -y → report
 
 1. Guide user to create a **private** repo (or auto-create via `gh repo create wangchuan-sync --private`)
 2. Run: `wangchuan init --repo <url>`
-3. Auto: generates key → clones → detects agents → extracts shared resources → first sync
+3. Auto: generates key → clones → detects agents → extracts shared resources → pulls cloud data
 4. **Remind user to back up key**: `wangchuan doctor --key-export`
+5. After init, tell user: "Initialization complete. Run `wangchuan sync` when ready to push local data to cloud."
 
 ## Restore (New Machine)
 

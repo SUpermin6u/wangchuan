@@ -12,10 +12,8 @@ import fs   from 'fs';
 import path from 'path';
 import os   from 'os';
 import { config }         from '../core/config.js';
-import { resolveGitBranch } from '../core/config.js';
 import { ensureMigrated } from '../core/migrate.js';
 import { syncEngine }     from '../core/sync.js';
-import { gitEngine }      from '../core/git.js';
 import { validator }      from '../utils/validator.js';
 import { logger }         from '../utils/logger.js';
 import { copyDirSync }    from '../utils/fs.js';
@@ -197,10 +195,8 @@ export async function cmdSnapshot({ action, name, maxSnapshots }: SnapshotOption
       await snapshotRestore(repoPath, name);
       // Restore files to workspace
       await syncEngine.restoreFromRepo(cfg);
-      // Push rolled-back state to cloud so other machines get the restored version
-      logger.info(t('snapshot.pushing'));
-      await gitEngine.commitAndPush(repoPath, `snapshot: restore '${name}'`, resolveGitBranch(cfg));
-      logger.ok(t('snapshot.pushedToCloud'));
+      // Hint user to push manually
+      logger.info(t('snapshot.restoreHint'));
       break;
     case 'delete':
       if (!name) throw new Error(t('snapshot.nameRequired'));

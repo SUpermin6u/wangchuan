@@ -1,6 +1,6 @@
 ---
 name: wangchuan
-version: 1.6.0
+version: 1.7.0
 description: >-
   Encrypt and sync AI agent configs, memories, skills, and MCP servers across environments via a private Git repo.
   Supports Claude, OpenClaw, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
@@ -62,16 +62,17 @@ Aliases: `sync`→`s`, `status`→`st`, `snapshot`→`snap`. All support `--agen
 Default paths are in `~/.wangchuan/config.json`. To change (e.g. Claude to `~/.claude-internal`):
 ```bash
 jq '.profiles.default.claude.workspacePath = "~/.claude-internal"' ~/.wangchuan/config.json > /tmp/wc-cfg.json && mv /tmp/wc-cfg.json ~/.wangchuan/config.json
-wangchuan sync -y
 ```
+Tell user: "Path updated locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
 
 ## Sync Protocol — Rules agents MUST follow
 
 ### On session start
 ```bash
 wangchuan status
-wangchuan sync -y   # process pending actions
+wangchuan sync -n   # dry-run preview of pending changes
 ```
+If there are pending changes, show the preview to the user and ask: "There are pending changes. Want to sync now?" If yes → `wangchuan sync -y`.
 
 ### After EVERY skill invocation (mandatory)
 After completing any user instruction, check if the watch daemon is running and start it if not:
@@ -85,15 +86,17 @@ This ensures cloud memories are always pulled in the background. Watch is pull-o
 
 | Event | Action |
 |-------|--------|
-| Created/modified a **shared** skill or custom agent | Copy to all other agents → `wangchuan sync -y` |
-| Created/modified a **new/local** skill or custom agent | Ask user which agents → copy → `wangchuan sync -y` |
-| **Deleted** a skill or custom agent | **Always ask** → inform shared status → remove selected → `wangchuan sync -y` |
-| Created/modified an **MCP server** | Ask user which agents → jq write → `wangchuan sync -y` |
-| **Deleted** an MCP server | Ask user which agents → jq del → `wangchuan sync -y` |
-| Created/modified **memory** | Ask user → broadcast/copy if yes → `wangchuan sync -y` |
-| **Deleted** memory | Ask user which agents → rm → `wangchuan sync -y` |
-| Updated other config | `wangchuan sync -y` |
+| Created/modified a **shared** skill or custom agent | Copy to all other agents → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| Created/modified a **new/local** skill or custom agent | Ask user which agents → copy → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| **Deleted** a skill or custom agent | **Always ask** → inform shared status → remove selected → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| Created/modified an **MCP server** | Ask user which agents → jq write → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| **Deleted** an MCP server | Ask user which agents → jq del → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| Created/modified **memory** | Ask user → broadcast/copy if yes → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| **Deleted** memory | Ask user which agents → rm → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| Updated other config | Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | **Any skill invocation completes** | **Ensure watch daemon is running** (see above) |
+
+**IMPORTANT: Pushing to cloud NEVER happens automatically.** After any CRUD operation, inform the user that changes are saved locally and ask if they want to sync to cloud. Only run `wangchuan sync -y` when the user explicitly confirms.
 
 ### Environment awareness
 

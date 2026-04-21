@@ -4,6 +4,8 @@
 
 `wangchuan sync` is **bidirectional**: pull first, then push. `wangchuan watch` is **pull-only** — it periodically pulls cloud changes but never pushes. Users must run `wangchuan sync` manually to push local changes.
 
+**IMPORTANT: Pushing to cloud NEVER happens automatically.** The agent should only suggest `wangchuan sync -y` when the user explicitly asks to sync/push. After CRUD operations, inform the user that changes are saved locally and ask if they want to sync.
+
 Flow of `sync`: **auto-snapshot** → fetch remote → if remote ahead → git pull → three-way merge → then stage + push local changes.
 Flow of `watch`: fetch remote → if remote ahead → git pull → restore to local → record unresolved conflicts.
 
@@ -57,10 +59,12 @@ When user says "sync A's config to B", intent may be ambiguous.
 **Step 1: Clarify** — ask which resources: Memory / Skills / MCP servers / Custom agents / All.
 
 **Step 2: Execute per type:**
-- **Memory**: `wangchuan memory copy <source> <target>` → `wangchuan sync -y`
-- **Skills**: `cp -r "${SRC_WS}/skills/"* "${DST_WS}/skills/"` → `wangchuan sync -y`
-- **MCP**: read mcpServers from source, jq merge into target → `wangchuan sync -y`
-- **Custom agents**: `cp -r "${SRC_WS}/agents/"* "${DST_WS}/agents/"` → `wangchuan sync -y`
+- **Memory**: `wangchuan memory copy <source> <target>`
+- **Skills**: `cp -r "${SRC_WS}/skills/"* "${DST_WS}/skills/"`
+- **MCP**: read mcpServers from source, jq merge into target
+- **Custom agents**: `cp -r "${SRC_WS}/agents/"* "${DST_WS}/agents/"`
+
+After completing the local operations, tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
 
 Get workspace paths:
 ```bash
