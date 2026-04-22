@@ -1,6 +1,6 @@
 {
   "name": "wangchuan",
-  "version": "5.15.0",
+  "version": "6.0.0",
   "description": "忘川 · AI 记忆同步系统 — 智能体记忆永不遗失",
   "bin": {
     "wangchuan": "./dist/bin/wangchuan.js"

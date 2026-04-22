@@ -82,12 +82,10 @@ export async function cmdSync({ agent, dryRun, only, exclude, yes, skipShared, s
 
   // ── Check for pending distributions from previous sync (requires user decision) ──
   // Skip in watch mode (skipShared) — pending actions saved for next interactive session
-  if (!skipShared && (process.stdin.isTTY || yes)) {
+  if (!skipShared && process.stdin.isTTY) {
     const { processPendingDistributions } = await import('../core/sync.js');
-    await processPendingDistributions(cfg, yes);
+    await processPendingDistributions(cfg);
   }
-
-  // ── Check for pending conflicts from watch daemon ──────────────
   if (!skipShared && (process.stdin.isTTY || yes)) {
     const { loadPendingConflicts, clearPendingConflicts } = await import('./watch.js');
     const conflicts = loadPendingConflicts();
@@ -139,9 +137,9 @@ export async function cmdSync({ agent, dryRun, only, exclude, yes, skipShared, s
     const result = await runSync(cfg, repoPath, hostname, agent, dryRun, filter, yes, skipShared, skipStaleDetection);
 
     // ── Check for pending distributions after push (requires user decision) ──
-    if (!skipShared && (process.stdin.isTTY || yes)) {
+    if (!skipShared && process.stdin.isTTY) {
       const { processPendingDistributions } = await import('../core/sync.js');
-      await processPendingDistributions(cfg, yes);
+      await processPendingDistributions(cfg);
     }
 
     return result;

@@ -6,7 +6,7 @@
 |----------|-----------|---------------|----------|-------------------|
 | **Skills** | `<workspace>/skills/<name>/` | Directory copy, shared-registry | `kind:'skill'` | All 7 agents (OpenClaw, Claude, Gemini, CodeBuddy, WorkBuddy, Cursor, Codex) |
 | **Custom agents** | `<workspace>/agents/<name>/` | Directory copy, shared-registry | `kind:'agent'` | Claude, Cursor, CodeBuddy, WorkBuddy (4) |
-| **MCP servers** | JSON field `mcpServers` in config file | JSON key merge, single shared file in cloud | None (auto) | Claude (`.claude.json`), OpenClaw (`config/mcporter.json`), CodeBuddy/WorkBuddy/Cursor (`mcp.json`) (5) |
+| **MCP servers** | JSON field `mcpServers` in config file | Agent-specific by default, manual jq copy | None | Claude (`.claude.json`), OpenClaw (`config/mcporter.json`), CodeBuddy/WorkBuddy/Cursor (`mcp.json`) (5) |
 | **Memory** | `<workspace>/MEMORY.md` etc. | Per-agent file, manual copy/broadcast | None | OpenClaw/CodeBuddy/WorkBuddy/Codex (`MEMORY.md`); Claude (`CLAUDE.md`); shared (`SHARED.md`) |
 
 ---
@@ -44,7 +44,7 @@ cp -r ~/.claude/agents/my-reviewer/ ~/.codebuddy/agents/my-reviewer/
 ```
 Tell user: "Changes saved locally and distributed to all agents. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
 
-**Step 2b: New / agent-local** — ask the user before distributing:
+**Step 2b: New / agent-local** — resource stays in the current agent by default. Only distribute if user **explicitly asks** to share:
 ```bash
 # List enabled agents for skills:
 jq -r '.profiles.default | to_entries[] | select(.value.enabled) | "\(.key) → \(.value.workspacePath)/skills/"' ~/.wangchuan/config.json
@@ -53,10 +53,10 @@ for a in claude cursor codebuddy workbuddy; do
   jq -r --arg a "$a" '.profiles.default[$a] | select(.enabled) | "\($a) → \(.workspacePath)/agents/"' ~/.wangchuan/config.json
 done
 ```
-Present options:
+If user asks to share, present options:
 - **All agents** — copy to every applicable agent's dir (registers as shared)
 - **Specific agents** — copy only to selected
-- **No distribution** — keep local only
+- **No distribution** (default) — keep in current agent only
 
 After copying, tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
 
@@ -108,20 +108,18 @@ wangchuan sync -y
 
 ## Creating, modifying, or deleting MCP servers
 
-MCP servers are JSON fields (`mcpServers`). They have **no shared registry** — wangchuan auto-merges on sync. But agent should give user control.
+MCP servers are JSON fields (`mcpServers`). Each agent's MCP config is **independent** — there is no auto-merge or auto-distribution across agents. The cloud stores a merged backup file for disaster recovery, but local configs are NOT auto-merged from it.
 
 **Creating or modifying:**
 1. Edit the current agent's MCP config file:
    - Claude: `~/.claude/.claude.json` → `mcpServers`
    - CodeBuddy/WorkBuddy/Cursor: `~/<workspace>/mcp.json` → `mcpServers`
    - OpenClaw: `~/.openclaw/workspace/config/mcporter.json` → `mcpServers`
-2. Ask user: "Sync this MCP server to other agents?"
-   - **All**: write same entry to every MCP-enabled agent's config via jq
-   - **Specific**: write to selected only
-   - **No**: keep local
+2. Resource stays in the current agent by default. Only copy to other agents if the user **explicitly asks**.
+   - If user asks to share: ask which agents → jq write to selected
 3. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
 
-Example — add server to another agent:
+Example — manually copy a server to another agent:
 ```bash
 SERVER_JSON=$(jq '.mcpServers["my-db"]' ~/.claude/.claude.json)
 jq --argjson srv "$SERVER_JSON" '.mcpServers["my-db"] = $srv' ~/.codebuddy/mcp.json > /tmp/mcp.json && mv /tmp/mcp.json ~/.codebuddy/mcp.json
@@ -133,7 +131,7 @@ jq --argjson srv "$SERVER_JSON" '.mcpServers["my-db"] = $srv' ~/.codebuddy/mcp.j
 3. Remove via `jq 'del(.mcpServers["xxx"])'` from selected agents
 4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
 
-**Note**: wangchuan's MCP auto-merge is **additive only** (never deletes keys). Agent-side `jq del()` is the only way to propagate removal.
+**Note**: `jq del()` is the only way to remove an MCP server from an agent's config. There is no auto-propagation of deletions across agents.
 
 ---
 

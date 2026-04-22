@@ -337,7 +337,7 @@ describe('stageToRepo → restoreFromRepo round-trip', () => {
 // ── distributeShared tests (verified via pending-distributions.json) ─
 
 describe('cross-agent skill sharing', () => {
-  it('Claude adds skill → pending distribution created for OpenClaw and CodeBuddy', async () => {
+  it('Claude adds skill → stays agent-specific, no auto-distribution pending', async () => {
     writeFile(path.join(WS_CL, 'skills', 'new-skill.md'), '# New Skill');
     // OpenClaw does not have this skill
     const ocSkillPath = path.join(WS_OC, 'skills', 'new-skill.md');
@@ -360,25 +360,24 @@ describe('cross-agent skill sharing', () => {
 
     await syncEngine.stageToRepo(cfg);
 
-    // distributeShared should NOT copy skill to OpenClaw (pending instead)
+    // New skill should NOT be copied to other agents
     assert.ok(
       !fs.existsSync(ocSkillPath),
-      'OpenClaw should NOT receive Claude new-skill.md directly (pending distribution)',
+      'OpenClaw should NOT receive Claude new-skill.md (resources are agent-specific by default)',
+    );
+    assert.ok(
+      !fs.existsSync(cbSkillPath),
+      'CodeBuddy should NOT receive Claude new-skill.md (resources are agent-specific by default)',
     );
 
-    // Pending distributions should contain add entries for OpenClaw and CodeBuddy
+    // No pending distributions should be created for unregistered resources
     const pending = loadPendingDistributions();
     const skillAdds = pending.filter(
       (p: PendingDistribution) => p.kind === 'skill' && p.action === 'add' && p.relFile === 'new-skill.md',
     );
-    assert.ok(skillAdds.length > 0, 'Should have pending add distribution for new-skill.md');
+    assert.equal(skillAdds.length, 0, 'No auto-distribution pending for agent-specific skill');
 
-    // Check target agents include openclaw and codebuddy
-    const allTargets = skillAdds.flatMap((p: PendingDistribution) => [...p.targetAgents]);
-    assert.ok(allTargets.includes('openclaw'), 'OpenClaw should be a target');
-    assert.ok(allTargets.includes('codebuddy'), 'CodeBuddy should be a target');
-
-    // Repo shared/skills/ should NOT have it yet (not registered as shared)
+    // Repo shared/skills/ should NOT have it (not registered as shared)
     assert.ok(!fs.existsSync(path.join(REPO, 'shared', 'skills', 'new-skill.md')),
       'Unregistered skill should not appear in shared repo');
 
@@ -419,7 +418,7 @@ describe('cross-agent skill sharing', () => {
 });
 
 describe('cross-agent MCP sharing', () => {
-  it('Claude adds MCP server → push distributes to OpenClaw', async () => {
+  it('Claude adds MCP server → stays agent-specific, not distributed to OpenClaw', async () => {
     writeFile(path.join(WS_CL, '.claude.json'), JSON.stringify({
       mcpServers: { playwright: { type: 'stdio' }, newServer: { type: 'sse' } },
       tipsHistory: {},
@@ -435,21 +434,17 @@ describe('cross-agent MCP sharing', () => {
     const cfg = mkCfg();
     await syncEngine.stageToRepo(cfg);
 
-    // OpenClaw mcporter.json should contain newServer
+    // OpenClaw mcporter.json should NOT contain newServer (MCP is agent-specific)
     const ocMcp = JSON.parse(
       fs.readFileSync(path.join(WS_OC, 'config', 'mcporter.json'), 'utf-8'),
     );
     assert.ok(
-      'newServer' in ocMcp.mcpServers,
-      'OpenClaw should receive Claude newServer',
-    );
-    assert.deepStrictEqual(
-      ocMcp.mcpServers.newServer,
-      { type: 'sse' },
+      !('newServer' in ocMcp.mcpServers),
+      'OpenClaw should NOT receive Claude newServer (MCP is agent-specific)',
     );
   });
 
-  it('MCP distribution syncs updated config to other agents (newest mtime wins)', async () => {
+  it('MCP configs stay agent-specific, no cross-agent merge on push', async () => {
     // Write Claude's config FIRST (older mtime)
     writeFile(path.join(WS_CL, '.claude.json'), JSON.stringify({
       mcpServers: { playwright: { type: 'stdio', version: 'claude' } },
@@ -458,7 +453,7 @@ describe('cross-agent MCP sharing', () => {
     // Small delay to ensure different mtime
     await new Promise(r => setTimeout(r, 50));
 
-    // Write OpenClaw's config SECOND (newer mtime) — this version should win
+    // Write OpenClaw's config SECOND (newer mtime)
     writeFile(path.join(WS_OC, 'config', 'mcporter.json'), JSON.stringify({
       mcpServers: { playwright: { type: 'stdio', version: 'openclaw-updated' } },
     }, null, 2));
@@ -470,11 +465,12 @@ describe('cross-agent MCP sharing', () => {
     const cfg = mkCfg();
     await syncEngine.stageToRepo(cfg);
 
-    // Newer version (openclaw-updated) should propagate to Claude
+    // Claude's config should NOT be modified by OpenClaw's version (no auto-merge)
     const clMcp = JSON.parse(
       fs.readFileSync(path.join(WS_CL, '.claude.json'), 'utf-8'),
     );
-    assert.equal(clMcp.mcpServers.playwright.version, 'openclaw-updated');
+    assert.equal(clMcp.mcpServers.playwright.version, 'claude',
+      'Claude MCP should retain its own version, no cross-agent merge');
   });
 });
 

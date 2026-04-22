@@ -6,6 +6,8 @@
 
 **IMPORTANT: Pushing to cloud NEVER happens automatically.** The agent should only suggest `wangchuan sync -y` when the user explicitly asks to sync/push. After CRUD operations, inform the user that changes are saved locally and ask if they want to sync.
 
+**IMPORTANT: Sync pushes each agent's files independently.** There is no cross-agent auto-distribution during sync. Each agent's resources (skills, MCP servers, custom agents) are synced to/from their own directory in the cloud repo. Sharing resources across agents is a separate, explicit user action.
+
 Flow of `sync`: **auto-snapshot** → fetch remote → if remote ahead → git pull → three-way merge → then stage + push local changes.
 Flow of `watch`: fetch remote → if remote ahead → git pull → restore to local → record unresolved conflicts.
 

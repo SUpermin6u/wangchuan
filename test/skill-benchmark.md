@@ -1,4 +1,4 @@
-# Wangchuan Skill Benchmark v1.9.0
+# Wangchuan Skill Benchmark v2.0.0
 
 Test cases for verifying an AI agent with the wangchuan skill loaded.
 
@@ -232,14 +232,15 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 |-------|-------|
 | **Instruction** | "新增 xxx 技能" |
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. Create skill files<br>2. New skill → always ask: All / specific agents / no distribution<br>3. User picks All → cp to all enabled agents with skills/ dir<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` → pushed to **current env**<br>5. Ensure watch |
-| **Constraint** | New skill is never shared — always ask. Sync targets current env. |
+| **Behavior** | 1. Create skill files in current agent's skills/ dir<br>2. Skill stays in current agent by default — do NOT prompt to distribute<br>3. Only if user **explicitly asks** to share → ask: All / specific agents / no distribution<br>4. User picks All → cp to all enabled agents with skills/ dir + register in shared-registry<br>5. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` → pushed to **current env**<br>6. Ensure watch |
+| **Constraint** | New skill is agent-specific by default. No auto-distribution prompt. Sync targets current env. |
+| **Anti-pattern** | Auto-distributing new skill without user asking; prompting "share to other agents?" on creation |
 
 ### TC-27: Create skill — specific
-| Same as TC-26, user picks subset → cp selected → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**) |
+| Same as TC-26, user explicitly asks to share to subset → cp selected → register in shared-registry → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**) |
 
 ### TC-28: Create skill — no distribution
-| Same as TC-26, user declines → only current agent's copy → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**) |
+| Same as TC-26, user does not ask to share → only current agent's copy → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**). This is the default behavior. |
 
 ### TC-29: Modify shared skill (指令3 - shared)
 | Field | Value |
@@ -279,7 +280,7 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 ## Custom Agent CRUD (TC-35 ~ TC-38)
 
 ### TC-35: Create custom agent
-| Same as TC-26, but **only 4 agents** (Claude/Cursor/CodeBuddy/WorkBuddy). **Ref**: `references/resource-crud.md`. Ask user before sync. Sync to **current env**. |
+| Same as TC-26, but **only 4 agents** (Claude/Cursor/CodeBuddy/WorkBuddy). **Ref**: `references/resource-crud.md`. Agent stays in current agent by default — only distribute if user explicitly asks. Ask user before sync. Sync to **current env**. |
 
 ### TC-36: Modify shared custom agent
 | Same as TC-29, but for `agents/` dir. Use `kind:'agent'` in registry check. Ask user before sync. Sync to **current env**. |
@@ -298,18 +299,19 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/resource-crud.md` |
-| **Behavior** | 1. jq add to current agent's config<br>2. Ask: All / specific / no (5 MCP-enabled agents, different config files each)<br>3. jq write to selected<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**)<br>5. Ensure watch |
-| **Constraint** | Cloud: one merged `shared/mcp/mcpServers.json.enc`. Different config files per agent (.claude.json / mcp.json / mcporter.json). |
+| **Behavior** | 1. jq add to current agent's config<br>2. MCP stays in current agent by default — do NOT prompt to copy to other agents<br>3. Only if user **explicitly asks** to share → ask: which agents? (5 MCP-enabled agents, different config files each) → jq write to selected<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**)<br>5. Ensure watch |
+| **Constraint** | Each agent's MCP config is independent. No auto-distribution or auto-merge. Cloud stores a merged backup but local configs are NOT auto-merged. Different config files per agent (.claude.json / mcp.json / mcporter.json). |
+| **Anti-pattern** | Auto-distributing MCP to other agents; prompting "sync to other agents?" on creation; auto-merging MCP configs across agents |
 
 ### TC-40: Modify MCP
-| Same as TC-39 but update existing key. List which agents have the key first. Ask user before sync. Sync to **current env**. |
+| Same as TC-39 but update existing key. MCP stays in current agent by default. Only copy to other agents if user explicitly asks. List which agents have the key first. Sync to **current env**. |
 
 ### TC-41: Delete MCP
 | Field | Value |
 |-------|-------|
 | **Ref** | `references/resource-crud.md` |
 | **Behavior** | 1. List which agents have the key<br>2. Ask: All / specific / Cancel<br>3. `jq 'del(.mcpServers["xxx"])'` on selected agents<br>4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `sync -y` (to **current env**)<br>5. Ensure watch |
-| **Constraint** | MCP auto-merge is **additive-only** — `jq del()` is the ONLY way to propagate removal. |
+| **Constraint** | `jq del()` is the only way to remove an MCP server. No auto-propagation of deletions across agents. |
 
 ### TC-42: Inspect MCP
 | Field | Value |

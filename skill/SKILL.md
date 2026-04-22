@@ -1,6 +1,6 @@
 ---
 name: wangchuan
-version: 1.9.0
+version: 2.0.0
 description: >-
   Encrypt and sync AI agent configs, memories, skills, and MCP servers across environments via a private Git repo.
   Supports Claude, OpenClaw, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
@@ -87,15 +87,17 @@ This ensures cloud memories are always pulled in the background. Watch is pull-o
 | Event | Action |
 |-------|--------|
 | Created/modified a **shared** skill or custom agent | Copy to all other agents → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
-| Created/modified a **new/local** skill or custom agent | Ask user which agents → copy → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| Created/modified a **new/local** skill or custom agent | Resource stays in current agent by default. Only distribute if user **explicitly asks** to share → ask which agents → copy → register in shared-registry → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | **Deleted** a skill or custom agent | **Always ask** → inform shared status → remove selected → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
-| Created/modified an **MCP server** | Ask user which agents → jq write → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
+| Created/modified an **MCP server** | Resource stays in current agent by default. Each agent's MCP config is independent. Only copy to other agents if user **explicitly asks** → ask which agents → jq write → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | **Deleted** an MCP server | Ask user which agents → jq del → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | Created/modified **memory** | Ask user → broadcast/copy if yes → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | **Deleted** memory | Ask user which agents → rm → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | **Files deleted from cloud** detected on pull | Automatically deleted from local workspace (cloud is source of truth). All changes preserved in git history for rollback. |
 | Updated other config | Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | **Any skill invocation completes** | **Ensure watch daemon is running** (see above) |
+
+**IMPORTANT: Resources are agent-specific by default.** Skills, custom agents, and MCP servers are NOT auto-distributed or auto-merged across agents. They stay in the agent where they were created. Cross-agent sharing only happens when the user explicitly requests it.
 
 **IMPORTANT: Pushing to cloud NEVER happens automatically.** After any CRUD operation, inform the user that changes are saved locally and ask if they want to sync to cloud. Only run `wangchuan sync -y` when the user explicitly confirms.
 

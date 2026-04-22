@@ -31,15 +31,15 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 ### Sync Principles
 
 - **Repo is the single source of truth**: on push, entries absent from all local agents are pruned from repo; on pull, entries absent from repo are not distributed
-- **Auto-share on add**: any agent adds a skill or MCP server → auto-distributed to all agents on push
+- **Agent-specific by default**: resources (skills, MCP servers, custom agents) stay in their agent's directory unless the user explicitly shares them. There is no auto-distribution or auto-merge across agents.
 - **Delete propagation**: all agents delete a skill/MCP → pruned from repo on push → disappears on pull in other environments
-- **Custom agent distribution**: custom sub-agents in `agents/` directories are auto-shared across Claude/Cursor/CodeBuddy/WorkBuddy via `shared/agents/`, with the same deletion confirmation as skills
+- **Custom agent distribution**: custom sub-agents in `agents/` directories can be shared across Claude/Cursor/CodeBuddy/WorkBuddy via `shared/agents/` when the user explicitly requests it, with deletion confirmation
 - **No overwrite**: when distributing skills/MCP/agents, existing entries in the target agent are preserved
 - **localOnly detection on pull**: files present locally but missing from repo trigger a push suggestion
 
 ### Core Engines (`src/core/`)
 
-- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven built-in agents + any `customAgents` from config + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `distributeShared` distributes skills/MCP/custom agents to all agents before push. `pruneRepoStaleFiles` cleans stale files from repo after push (skipped when `--only`/`--exclude` filter is active to prevent data loss). `stageToRepo` compares plaintext before re-encrypting to eliminate spurious diffs from random IV. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations. Sync lock uses `{ flag: 'wx' }` for atomic exclusive creation.
+- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven built-in agents + any `customAgents` from config + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `pruneRepoStaleFiles` cleans stale files from repo after push (skipped when `--only`/`--exclude` filter is active to prevent data loss). `stageToRepo` compares plaintext before re-encrypting to eliminate spurious diffs from random IV. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations. Sync lock uses `{ flag: 'wx' }` for atomic exclusive creation.
 - **json-field.ts** — JSON field-level extraction and merge. `extractFields` picks specified fields from a large JSON; `mergeFields` merges fields back without destroying other content. Used for `.claude.json` to sync only `mcpServers` while ignoring tipsHistory/projects etc.
 - **crypto.ts** — AES-256-GCM encryption. Ciphertext format: `[IV 12B][AuthTag 16B][CipherText] → Base64 → .enc`. Key stored at `~/.wangchuan/master.key` (0o600 permissions). `loadKey()` caches in memory to eliminate redundant disk reads; `clearKeyCache()` resets cache for key rotation.
 - **git.ts** — simple-git wrapper. `cloneOrFetch` is idempotent; `commitAndPush` returns `{committed: false}` when nothing changed; `rollback` runs `git reset --soft HEAD~1` on failure.
@@ -145,7 +145,7 @@ grep -c "\.command(" bin/wangchuan.ts
 
 **Every change to code or skill files (`skill/SKILL.md`, `skill/references/*.md`) MUST pass the Skill Benchmark before commit.**
 
-The benchmark file is at `test/skill-benchmark.md`. It contains 53 test cases (TC-01 through TC-53) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
+The benchmark file is at `test/skill-benchmark.md`. It contains 54 test cases (TC-01 through TC-54) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
 
 ### What the benchmark tests
 

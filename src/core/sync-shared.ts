@@ -17,12 +17,10 @@ import { expandHome, walkDir } from './sync.js';
 import { logger }       from '../utils/logger.js';
 import { t }            from '../i18n.js';
 import {
-  isShared,
   resourceName,
   registerShared,
   unregisterShared,
   getSharedNames,
-  loadRegistry,
 } from './shared-registry.js';
 import type {
   WangchuanConfig,
@@ -175,10 +173,11 @@ function aggregateResources(
  *
  * NEW LOGIC (shared registry):
  * 1. For already-shared resources: detect add/update/delete across agents
- * 2. For new resources (only in one agent, not yet shared): generate 'add' pending
- *    so user can choose to share them
- * 3. For delete: when a shared resource is removed from ONE agent, ask user
+ * 2. For delete: when a shared resource is removed from ONE agent, ask user
  *    whether to delete it from ALL other agents that still have it
+ *
+ * Resources are agent-specific by default. Only explicitly shared resources
+ * (registered in shared-registry.json) are distributed.
  */
 function detectResourceDistributions(
   kind: 'skill' | 'agent',
@@ -220,32 +219,7 @@ function detectResourceDistributions(
     }
   }
 
-  // ── 2. New resources (single agent, not yet shared): ask user to share ──
-  const seenNewResources = new Set<string>();
-  for (const [relFile, srcAbs] of allFiles) {
-    const resName = resourceName(relFile);
-    if (sharedNames.has(resName)) continue;
-
-    const owners = agentHas.get(relFile) ?? new Set<string>();
-    if (owners.size !== 1) continue; // only prompt for single-agent resources
-    if (seenNewResources.has(resName)) continue; // one prompt per resource
-
-    const sourceAgent = allOwner.get(relFile) ?? '';
-    const otherAgents = allSourceAgents.filter(a => a !== sourceAgent);
-    if (otherAgents.length === 0) continue;
-
-    seenNewResources.add(resName);
-    items.push({
-      kind,
-      action: 'add',
-      relFile,
-      sourceAgent,
-      targetAgents: otherAgents,
-      sourceAbs: srcAbs,
-    });
-  }
-
-  // ── 3. Delete: shared resource removed from an agent that previously had it ──
+  // ── 2. Delete: shared resource removed from an agent that previously had it ──
   // Only consider agents that have at least one resource in this kind's directory
   // (to avoid false positives from newly enabled agents with empty dirs)
   for (const name of sharedNames) {
@@ -311,58 +285,9 @@ export function distributeShared(cfg: WangchuanConfig): void {
   // ── Skills: collect pending distributions (no file writes) ──────
   pendingItems.push(...detectResourceDistributions('skill', shared.skills.sources, profiles));
 
-  // ── Distribute MCP configs: automatic (unchanged) ──────────────
-  const mergedMcp: Record<string, unknown> = {};
-  const mcpMtimes: Record<string, number> = {};
-  for (const source of shared.mcp.sources) {
-    const p = profiles[source.agent];
-    if (!p.enabled) continue;
-    const srcPath = path.join(expandHome(p.workspacePath), source.src);
-    if (!fs.existsSync(srcPath)) continue;
-    try {
-      const mtime = fs.statSync(srcPath).mtimeMs;
-      const json = JSON.parse(fs.readFileSync(srcPath, 'utf-8')) as Record<string, unknown>;
-      const mcpField = json[source.field];
-      if (mcpField && typeof mcpField === 'object') {
-        for (const [key, val] of Object.entries(mcpField as Record<string, unknown>)) {
-          if (!(key in mergedMcp) || mtime > (mcpMtimes[key] ?? 0)) {
-            mergedMcp[key] = val;
-            mcpMtimes[key] = mtime;
-          }
-        }
-      }
-    } catch { /* ignore parse failures */ }
-  }
-  if (Object.keys(mergedMcp).length > 0) {
-    for (const source of shared.mcp.sources) {
-      const p = profiles[source.agent];
-      if (!p.enabled) continue;
-      const srcPath = path.join(expandHome(p.workspacePath), source.src);
-      try {
-        let json: Record<string, unknown> = {};
-        if (fs.existsSync(srcPath)) {
-          json = JSON.parse(fs.readFileSync(srcPath, 'utf-8')) as Record<string, unknown>;
-        }
-        const currentMcp = (json[source.field] ?? {}) as Record<string, unknown>;
-        let changed = false;
-        for (const [key, val] of Object.entries(mergedMcp)) {
-          if (!(key in currentMcp)) {
-            currentMcp[key] = val;
-            changed = true;
-          } else if (JSON.stringify(currentMcp[key]) !== JSON.stringify(val)) {
-            currentMcp[key] = val;
-            changed = true;
-          }
-        }
-        if (changed) {
-          json[source.field] = currentMcp;
-          fs.mkdirSync(path.dirname(srcPath), { recursive: true });
-          fs.writeFileSync(srcPath, JSON.stringify(json, null, 2), 'utf-8');
-          logger.debug(`  ${t('sync.distributeMcp', { agent: source.agent })}`);
-        }
-      } catch { /* ignore */ }
-    }
-  }
+  // ── MCP: agent-specific by default, no auto-merge ──────────────
+  // MCP configs are still pushed to shared/mcp/ for cloud backup,
+  // but local distribution is handled manually by the user.
 
   // ── Custom agents: collect pending distributions (no file writes) ──
   if (shared.agents && shared.agents.sources.length > 0) {
@@ -385,7 +310,11 @@ export function distributeShared(cfg: WangchuanConfig): void {
  * - User declines → resource stays agent-specific (not registered in shared)
  * - Delete action → resource removed from selected agents; if all agents remove it, unregistered
  */
-export async function processPendingDistributions(cfg: WangchuanConfig, yes?: boolean): Promise<void> {
+export async function processPendingDistributions(cfg: WangchuanConfig): Promise<void> {
+  // Distributions require interactive user confirmation — never auto-confirm.
+  // If stdin is not a TTY, skip and leave pending items for next interactive session.
+  if (!process.stdin.isTTY) return;
+
   const pending = loadPendingDistributions();
   if (pending.length === 0) return;
 
@@ -418,12 +347,8 @@ export async function processPendingDistributions(cfg: WangchuanConfig, yes?: bo
       source: first.sourceAgent,
     }));
 
-    // --yes: auto-confirm all
     let selectedAgents: string[];
-    if (yes) {
-      logger.info(t('sync.distAll') + ` (${allTargets.join(', ')})`);
-      selectedAgents = [...allTargets];
-    } else {
+    {
       logger.info(t('sync.distPrompt'));
 
       const choices: string[] = [];
