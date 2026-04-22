@@ -71,3 +71,23 @@ Get workspace paths:
 SRC=$(jq -r '.profiles.default.<source>.workspacePath' ~/.wangchuan/config.json | sed "s|^~|$HOME|")
 DST=$(jq -r '.profiles.default.<target>.workspacePath' ~/.wangchuan/config.json | sed "s|^~|$HOME|")
 ```
+
+## Files deleted from cloud
+
+When another machine deletes files from the cloud repo, `wangchuan sync` (or watch daemon) detects them as "local-only" — present locally but missing from cloud. These files are **automatically blocked from being pushed back** to cloud.
+
+On the next interactive sync, the user is prompted:
+```
+⚠ These files exist locally but were deleted from cloud:
+  agents/claude/skills/xxx/SKILL.md
+  ...
+[0] Delete all from local (match cloud)
+[1] Keep locally, don't push to cloud (default)
+[2] Push back to cloud (undo deletion)
+```
+
+- **Option 0**: Deletes files from local workspace. Cloud and local match.
+- **Option 1** (default for `-y`): Files stay local but are never pushed. Useful if you want to keep a local copy.
+- **Option 2**: Clears the block — next sync will push them back to cloud, effectively undoing the other machine's deletion.
+
+The blocked file list is stored at `~/.wangchuan/local-only.json` and persists across sessions until the user decides.

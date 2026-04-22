@@ -18,6 +18,7 @@ import path from 'path';
 import { syncEngine, buildFileEntries, loadPendingDistributions, clearPendingDistributions } from '../src/core/sync.js';
 import { cryptoEngine } from '../src/core/crypto.js';
 import { setRegistryPath, resetRegistryPath, registerShared } from '../src/core/shared-registry.js';
+import { clearLocalOnlyFiles } from '../src/core/sync-stage.js';
 import type { WangchuanConfig, PendingDistribution } from '../src/types.js';
 
 // ── Test utilities ──────────────────────────────────────────────────
@@ -181,10 +182,13 @@ before(() => {
   prepareEmptyMcpFiles();
   // Use test-specific shared registry
   setRegistryPath(path.join(TMP, 'shared-registry.json'));
+  // Clear local-only state from previous test runs
+  clearLocalOnlyFiles();
 });
 
 after(() => {
   resetRegistryPath();
+  clearLocalOnlyFiles();
   fs.rmSync(TMP, { recursive: true, force: true });
 });
 

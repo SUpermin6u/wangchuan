@@ -218,6 +218,15 @@ const M: Msgs = {
   'sync.skipNotInRepo':    ['Skipping (not in repo): {file}', '跳过（仓库中不存在）: {file}'],
   'sync.skippedKeepLocal': ['Skipped (keep local): {file}', '跳过（保留本地）: {file}'],
 
+  // ── local-only file handling (delete propagation) ──────────────
+  'sync.localOnlyWarning':   ['These files exist locally but were deleted from cloud:', '以下文件在本地存在但已从云端删除：'],
+  'sync.localOnlyPrompt':    ['Choose action for locally-deleted files:', '请选择如何处理这些文件：'],
+  'sync.localOnlyDeleteAll': ['Delete all from local (match cloud)', '从本地删除（与云端一致）'],
+  'sync.localOnlyKeep':      ['Keep locally, don\'t push to cloud', '保留本地，不推送到云端'],
+  'sync.localOnlyPushBack':  ['Push back to cloud (undo deletion)', '推送回云端（撤销删除）'],
+  'sync.localOnlyKept':      ['{count} files kept locally (blocked from push)', '{count} 个文件已保留本地（不会推送）'],
+  'sync.localOnlyDeleted':   ['{count} files deleted from local', '{count} 个文件已从本地删除'],
+
   // ── sync command ──────────────────────────────────────────────
   'sync.banner':              ['Wangchuan · Sync', '忘川 · 双向同步'],
   'sync.filterAgent':         ['Filter agent: {agent}', '过滤智能体: {agent}'],

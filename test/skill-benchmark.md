@@ -1,4 +1,4 @@
-# Wangchuan Skill Benchmark v1.7.0
+# Wangchuan Skill Benchmark v1.8.0
 
 Test cases for verifying an AI agent with the wangchuan skill loaded.
 
@@ -412,12 +412,25 @@ Test cases for verifying an AI agent with the wangchuan skill loaded.
 
 ---
 
+## Handle cloud-deleted files (TC-54)
+
+### TC-54: Handle files deleted from cloud
+| Field | Value |
+|-------|-------|
+| **Instruction** | "另一台机器删除了xxx技能，但我这里还有" / "cloud deleted a skill but it's still local" |
+| **Ref** | `references/sync-conflict.md` |
+| **Behavior** | 1. Explain: cloud deletion detected, file blocked from push<br>2. `wangchuan sync -y` will keep files locally and not push them<br>3. For interactive resolution: `wangchuan sync` (without -y) → shows prompt with 3 options<br>4. User chooses: delete local / keep local / push back<br>5. Ensure watch |
+| **Constraint** | Files deleted from cloud must NEVER be auto-pushed back. User must explicitly choose option 2 to restore. Default (-y) is option 1 (keep local, block push). |
+| **Anti-pattern** | Auto-pushing locally-existing files back to cloud after another machine deleted them; not warning user about the conflict |
+
+---
+
 ## Non-TTY Constraints
 
 | Command | Required |
 |---------|----------|
 | `wangchuan init` | `--repo <url>` |
 | `wangchuan restore` | `--repo <url>` and `--key <key>` |
-| `wangchuan sync` | `-y` |
+| `wangchuan sync` | `-y` (defaults to "keep local, don't push" for cloud-deleted files) |
 | `wangchuan env create` | Auto-forks (OK) |
 | `wangchuan watch` | `nohup ... &` (background) |

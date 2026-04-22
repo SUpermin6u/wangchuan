@@ -18,6 +18,7 @@ import { t }            from '../i18n.js';
 import { expandHome, buildFileEntries } from './sync.js';
 import { logProgress }  from './sync-stage.js';
 import { verifyIntegrity, readSyncMeta, verifyKeyFingerprint } from './sync-stage.js';
+import { saveLocalOnlyFiles } from './sync-stage.js';
 import { AGENT_NAMES }  from '../types.js';
 import type {
   WangchuanConfig,
@@ -366,6 +367,11 @@ export async function restoreFromRepo(
     if (ageDays >= 3) {
       logger.warn(t('sync.meta.staleDays', { days: ageDays }));
     }
+  }
+
+  // Persist local-only files to block them from being pushed back to cloud
+  if (result.localOnly.length > 0) {
+    saveLocalOnlyFiles(result.localOnly);
   }
 
   return result;
