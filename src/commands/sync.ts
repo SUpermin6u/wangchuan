@@ -173,7 +173,7 @@ async function runSync(
     throw new Error(t('sync.fetchFailedDetail', { error: (err as Error).message }));
   }
 
-  // ── 2. Pull if remote has new commits ───────────────────────
+  // ── 2. Pull: git pull if remote ahead, then always restore repo → local ──
   let pulled = false;
   let pullResult: RestoreResult | undefined;
   if (remoteAhead > 0) {
@@ -185,24 +185,26 @@ async function runSync(
       spinner.fail(t('sync.pullFailed'));
       throw new Error(t('sync.pullFailedDetail', { error: (err as Error).message }));
     }
+  }
 
-    try {
-      pullResult = await syncEngine.restoreFromRepo(cfg, agent, filter);
-      pulled = true;
-      if (pullResult.synced.length > 0) {
-        logger.ok(t('sync.pullSummary', {
-          count: pullResult.synced.length,
-          encrypted: pullResult.decrypted.length,
-        }));
-      }
-      if (pullResult.skippedAgents.length > 0) {
-        logger.info(t('sync.skippedAgents', {
-          agents: pullResult.skippedAgents.join(', '),
-        }));
-      }
-    } catch (err) {
-      throw new Error(t('sync.restoreFailed', { error: (err as Error).message }));
+  // Always restore repo → local workspace (ensures local matches repo,
+  // even if remoteAhead was 0 but local workspace is out of sync)
+  try {
+    pullResult = await syncEngine.restoreFromRepo(cfg, agent, filter);
+    pulled = pullResult.synced.length > 0;
+    if (pullResult.synced.length > 0) {
+      logger.ok(t('sync.pullSummary', {
+        count: pullResult.synced.length,
+        encrypted: pullResult.decrypted.length,
+      }));
     }
+    if (pullResult.skippedAgents.length > 0) {
+      logger.info(t('sync.skippedAgents', {
+        agents: pullResult.skippedAgents.join(', '),
+      }));
+    }
+  } catch (err) {
+    throw new Error(t('sync.restoreFailed', { error: (err as Error).message }));
   }
 
   // ── 3. Push local changes ──────────────────────────────────
