@@ -198,7 +198,7 @@ export interface RestoreResult {
   readonly skipped: string[];
   readonly decrypted: string[];
   readonly conflicts: string[];
-  /** Files present locally but absent from repo (may need to be pushed) */
+  /** Files deleted from local to match cloud (cloud is single source of truth) */
   readonly localOnly: string[];
   /** Agents skipped because their workspace directory doesn't exist */
   readonly skippedAgents: string[];

@@ -344,28 +344,7 @@ export function clearStageProgress(): void {
   if (fs.existsSync(STAGE_PROGRESS_PATH)) fs.unlinkSync(STAGE_PROGRESS_PATH);
 }
 
-// ── Local-only file persistence (delete propagation) ──────────────
-
-const LOCAL_ONLY_PATH = path.join(os.homedir(), '.wangchuan', 'local-only.json');
-
-/** Save local-only files list (files present locally but deleted from cloud) */
-export function saveLocalOnlyFiles(files: readonly string[]): void {
-  fs.mkdirSync(path.dirname(LOCAL_ONLY_PATH), { recursive: true });
-  fs.writeFileSync(LOCAL_ONLY_PATH, JSON.stringify(files, null, 2), 'utf-8');
-}
-
-/** Load local-only files list */
-export function loadLocalOnlyFiles(): string[] {
-  try {
-    if (!fs.existsSync(LOCAL_ONLY_PATH)) return [];
-    return JSON.parse(fs.readFileSync(LOCAL_ONLY_PATH, 'utf-8')) as string[];
-  } catch { return []; }
-}
-
-/** Clear local-only files list */
-export function clearLocalOnlyFiles(): void {
-  try { if (fs.existsSync(LOCAL_ONLY_PATH)) fs.unlinkSync(LOCAL_ONLY_PATH); } catch { /* */ }
-}
+// ── (local-only persistence removed — cloud is single source of truth) ──
 
 /** Write config snapshot to repo for cross-machine restore (workspacePath, enabled, lang) */
 export function writeConfigSnapshot(repoPath: string, cfg: WangchuanConfig): void {
@@ -465,16 +444,7 @@ export async function stageToRepo(
     logger.info(t('sync.resuming', { count: previousProgress.size }));
   }
 
-  // Load local-only files to block them from being pushed back to cloud
-  const localOnlySet = new Set(loadLocalOnlyFiles());
-
   for (const entry of entries) {
-    // Skip files that were deleted from cloud (local-only, blocked from push)
-    if (localOnlySet.has(entry.repoRel)) {
-      logger.debug(`Skipping local-only file (deleted from cloud): ${entry.repoRel}`);
-      continue;
-    }
-
     // Skip files already staged in a previous interrupted push
     if (previousProgress.has(entry.repoRel)) {
       (result.synced as string[]).push(entry.repoRel);

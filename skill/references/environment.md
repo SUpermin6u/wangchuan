@@ -142,7 +142,7 @@ wangchuan status -v   # look for "localOnly" files — these are from the old en
 ```
 Warn user: "These files exist locally but not in the new environment. Do NOT push them unless you intentionally want to bring them into this env."
 
-**Note**: Since v1.8.0, files deleted from cloud are automatically blocked from being pushed back. The `localOnly` detection now saves these to `~/.wangchuan/local-only.json`, and `wangchuan sync` will prompt the user to decide.
+**Note**: Since v1.9.0, pull automatically deletes local files that were removed from cloud (cloud is source of truth). All changes are preserved in git history for rollback.
 
 **Step 4: Restart watch daemon** (watch only pulls from current env's branch):
 ```bash

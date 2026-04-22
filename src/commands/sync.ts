@@ -25,7 +25,6 @@ import { t }               from '../i18n.js';
 import type { SyncOptions, RestoreResult, StageResult, CommitResult, FilterOptions } from '../types.js';
 import chalk from 'chalk';
 import ora   from 'ora';
-import { clearLocalOnlyFiles, loadLocalOnlyFiles } from '../core/sync-stage.js';
 
 const WANGCHUAN_DIR  = path.join(os.homedir(), '.wangchuan');
 const SNAPSHOTS_DIR  = path.join(WANGCHUAN_DIR, 'snapshots');
@@ -205,52 +204,6 @@ async function runSync(
       }
     } catch (err) {
       throw new Error(t('sync.restoreFailed', { error: (err as Error).message }));
-    }
-  }
-
-  // ── Handle local-only files (deleted from cloud but present locally) ──
-  if (pullResult && pullResult.localOnly.length > 0) {
-    console.log();
-    logger.warn(t('sync.localOnlyWarning'));
-    for (const f of pullResult.localOnly) logger.warn(`  ${f}`);
-    console.log();
-
-    const isTTY = process.stdin.isTTY === true;
-    if (isTTY && !yes) {
-      logger.info(`  [0] ${t('sync.localOnlyDeleteAll')}`);
-      logger.info(`  [1] ${t('sync.localOnlyKeep')}`);
-      logger.info(`  [2] ${t('sync.localOnlyPushBack')}`);
-
-      const rl = await import('readline');
-      const iface = rl.createInterface({ input: process.stdin, output: process.stdout });
-      const answer = await new Promise<string>(resolve => {
-        iface.question(t('sync.localOnlyPrompt') + ' [0/1/2] ', (ans: string) => { iface.close(); resolve(ans.trim()); });
-      });
-
-      if (answer === '0') {
-        // Delete local files to match cloud
-        const entries = syncEngine.buildFileEntries(cfg, undefined, agent, filter);
-        let deleted = 0;
-        const localOnlySet = new Set(pullResult.localOnly);
-        for (const entry of entries) {
-          if (localOnlySet.has(entry.repoRel) && fs.existsSync(entry.srcAbs)) {
-            fs.unlinkSync(entry.srcAbs);
-            deleted++;
-          }
-        }
-        clearLocalOnlyFiles();
-        logger.ok(t('sync.localOnlyDeleted', { count: deleted }));
-      } else if (answer === '2') {
-        // Allow push back to cloud
-        clearLocalOnlyFiles();
-        logger.info(t('sync.localOnlyPushBack'));
-      } else {
-        // Default: keep locally, block from push (already saved by restoreFromRepo)
-        logger.ok(t('sync.localOnlyKept', { count: pullResult.localOnly.length }));
-      }
-    } else {
-      // Non-interactive or -y: default to keep locally, block from push
-      logger.ok(t('sync.localOnlyKept', { count: pullResult.localOnly.length }));
     }
   }
 

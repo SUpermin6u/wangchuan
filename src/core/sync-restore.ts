@@ -16,15 +16,16 @@ import { threeWayMerge } from './merge.js';
 import { gitEngine }    from './git.js';
 import { t }            from '../i18n.js';
 import { expandHome, buildFileEntries } from './sync.js';
+import { walkDir }      from '../utils/fs.js';
 import { logProgress }  from './sync-stage.js';
 import { verifyIntegrity, readSyncMeta, verifyKeyFingerprint } from './sync-stage.js';
-import { saveLocalOnlyFiles } from './sync-stage.js';
 import { AGENT_NAMES }  from '../types.js';
 import type {
   WangchuanConfig,
   FileEntry,
   RestoreResult,
   AgentName,
+  AgentProfile,
   FilterOptions,
 } from '../types.js';
 
@@ -147,17 +148,6 @@ export async function restoreFromRepo(
   for (const entry of entries) {
     const srcRepo = path.join(repoPath, entry.repoRel);
     if (!fs.existsSync(srcRepo)) {
-      if (entry.jsonExtract) {
-        try {
-          const fullJson = JSON.parse(fs.readFileSync(entry.srcAbs, 'utf-8')) as Record<string, unknown>;
-          const extracted = jsonField.extractFields(fullJson, entry.jsonExtract.fields);
-          if (Object.keys(extracted).length > 0) {
-            (result.localOnly as string[]).push(entry.repoRel);
-          }
-        } catch { /* ignore JSON parse failures */ }
-      } else if (fs.existsSync(entry.srcAbs)) {
-        (result.localOnly as string[]).push(entry.repoRel);
-      }
       logger.debug(t('sync.skipNotInRepo', { file: entry.repoRel }));
       (result.skipped as string[]).push(entry.repoRel);
       continue;
@@ -369,10 +359,164 @@ export async function restoreFromRepo(
     }
   }
 
-  // Persist local-only files to block them from being pushed back to cloud
-  if (result.localOnly.length > 0) {
-    saveLocalOnlyFiles(result.localOnly);
+  // ── Delete local files that exist in workspace but not in repo ────
+  const deletedLocal = deleteLocalStaleFiles(cfg, repoPath, entries, agent, filter);
+  (result.localOnly as string[]).push(...deletedLocal);
+  if (deletedLocal.length > 0) {
+    logger.info(t('sync.deletedLocal', { count: deletedLocal.length }));
   }
 
+  // Clean up legacy local-only.json if it exists
+  const legacyLocalOnlyPath = path.join(os.homedir(), '.wangchuan', 'local-only.json');
+  try { if (fs.existsSync(legacyLocalOnlyPath)) fs.unlinkSync(legacyLocalOnlyPath); } catch { /* */ }
+
   return result;
+}
+
+// ── Delete local files not present in repo (cloud-is-truth) ────────
+
+/**
+ * Walk each agent's syncDirs in the LOCAL workspace and delete files
+ * that are not present in the repo entries. This makes local match cloud.
+ * Only operates on directories managed by wangchuan (syncDirs).
+ * Returns list of deleted file descriptions for logging.
+ */
+function deleteLocalStaleFiles(
+  cfg: WangchuanConfig,
+  repoPath: string,
+  entries: readonly FileEntry[],
+  agent?: AgentName | string,
+  filter?: FilterOptions,
+): string[] {
+  // When filtering is active, skip deletion to prevent data loss
+  if (filter) return [];
+
+  // Build the set of all srcAbs paths that SHOULD exist (from repo entries)
+  const repoSrcAbsSet = new Set<string>();
+  for (const entry of entries) {
+    // Only add entries that actually exist in the repo
+    const srcRepo = path.join(repoPath, entry.repoRel);
+    if (fs.existsSync(srcRepo)) {
+      repoSrcAbsSet.add(entry.srcAbs);
+    }
+  }
+
+  const deleted: string[] = [];
+  const profiles = cfg.profiles.default;
+
+  // Shared skills/agents are distributed to ALL agents' dirs on pull,
+  // so we must also whitelist those distributed target paths.
+  if (!agent && cfg.shared) {
+    for (const entry of entries) {
+      const srcRepo = path.join(repoPath, entry.repoRel);
+      if (!fs.existsSync(srcRepo)) continue;
+
+      if (entry.agentName === 'shared' && entry.repoRel.startsWith('shared/skills/')) {
+        const relInSkills = entry.repoRel.slice('shared/skills/'.length);
+        for (const source of cfg.shared.skills.sources) {
+          const p = profiles[source.agent] as AgentProfile;
+          if (!p.enabled) continue;
+          repoSrcAbsSet.add(path.join(expandHome(p.workspacePath), source.dir, relInSkills));
+        }
+      }
+      if (entry.agentName === 'shared' && entry.repoRel.startsWith('shared/agents/') && cfg.shared.agents) {
+        const relInAgents = entry.repoRel.slice('shared/agents/'.length);
+        for (const source of cfg.shared.agents.sources) {
+          const p = profiles[source.agent] as AgentProfile;
+          if (!p.enabled) continue;
+          repoSrcAbsSet.add(path.join(expandHome(p.workspacePath), source.dir, relInAgents));
+        }
+      }
+    }
+  }
+
+  // Collect all (agentName, syncDir, workspacePath) tuples to scan
+  const dirsToScan: Array<{ agentName: string; dirSrc: string; wsPath: string }> = [];
+
+  for (const name of AGENT_NAMES) {
+    const p = profiles[name] as AgentProfile;
+    if (!p.enabled || (agent && agent !== name)) continue;
+    const wsPath = expandHome(p.workspacePath);
+    for (const dir of (p.syncDirs ?? [])) {
+      dirsToScan.push({ agentName: name, dirSrc: dir.src, wsPath });
+    }
+  }
+
+  if (cfg.customAgents) {
+    for (const [name, profile] of Object.entries(cfg.customAgents)) {
+      if (agent && agent !== name) continue;
+      const wsPath = expandHome(profile.workspacePath);
+      for (const dir of (profile.syncDirs ?? [])) {
+        dirsToScan.push({ agentName: name, dirSrc: dir.src, wsPath });
+      }
+    }
+  }
+
+  // Also scan shared skill/agent dirs (distributed to all agents on pull)
+  if (!agent && cfg.shared) {
+    for (const source of cfg.shared.skills.sources) {
+      const p = profiles[source.agent] as AgentProfile;
+      if (!p.enabled) continue;
+      const wsPath = expandHome(p.workspacePath);
+      dirsToScan.push({ agentName: source.agent, dirSrc: source.dir, wsPath });
+    }
+    if (cfg.shared.agents) {
+      for (const source of cfg.shared.agents.sources) {
+        const p = profiles[source.agent] as AgentProfile;
+        if (!p.enabled) continue;
+        const wsPath = expandHome(p.workspacePath);
+        dirsToScan.push({ agentName: source.agent, dirSrc: source.dir, wsPath });
+      }
+    }
+  }
+
+  for (const { agentName, dirSrc, wsPath } of dirsToScan) {
+    const localDirAbs = path.join(wsPath, dirSrc);
+    if (!fs.existsSync(localDirAbs)) continue;
+
+    for (const relFile of walkDir(localDirAbs)) {
+      const localFileAbs = path.join(localDirAbs, relFile);
+      if (!repoSrcAbsSet.has(localFileAbs)) {
+        try {
+          fs.unlinkSync(localFileAbs);
+          deleted.push(`${agentName}/${dirSrc}/${relFile}`);
+          logger.debug(`Deleted local stale file: ${localFileAbs}`);
+        } catch { /* ignore delete errors */ }
+      }
+    }
+
+    // Clean up empty directories after deletion
+    cleanEmptyDirs(localDirAbs);
+  }
+
+  return deleted;
+}
+
+/**
+ * Recursively remove empty directories under a root dir (bottom-up).
+ * Stops at the root itself (does not delete it).
+ */
+function cleanEmptyDirs(rootDir: string): void {
+  if (!fs.existsSync(rootDir)) return;
+
+  function sweep(dir: string): void {
+    let entries: fs.Dirent[];
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        sweep(path.join(dir, entry.name));
+      }
+    }
+    // After sweeping children, check if dir is now empty
+    if (dir !== rootDir) {
+      try {
+        const remaining = fs.readdirSync(dir);
+        if (remaining.length === 0) {
+          fs.rmdirSync(dir);
+        }
+      } catch { /* */ }
+    }
+  }
+
+  sweep(rootDir);
 }

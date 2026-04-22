@@ -18,7 +18,6 @@ import path from 'path';
 import { syncEngine, buildFileEntries, loadPendingDistributions, clearPendingDistributions } from '../src/core/sync.js';
 import { cryptoEngine } from '../src/core/crypto.js';
 import { setRegistryPath, resetRegistryPath, registerShared } from '../src/core/shared-registry.js';
-import { clearLocalOnlyFiles } from '../src/core/sync-stage.js';
 import type { WangchuanConfig, PendingDistribution } from '../src/types.js';
 
 // ── Test utilities ──────────────────────────────────────────────────
@@ -182,13 +181,10 @@ before(() => {
   prepareEmptyMcpFiles();
   // Use test-specific shared registry
   setRegistryPath(path.join(TMP, 'shared-registry.json'));
-  // Clear local-only state from previous test runs
-  clearLocalOnlyFiles();
 });
 
 after(() => {
   resetRegistryPath();
-  clearLocalOnlyFiles();
   fs.rmSync(TMP, { recursive: true, force: true });
 });
 
@@ -683,58 +679,62 @@ describe('delete propagation', () => {
   });
 });
 
-// ── localOnly detection tests ───────────────────────────────────────
+// ── pull deletes local files absent from cloud ─────────────────────
 
-describe('pull detects local-only files', () => {
-  it('files present locally but absent from repo are marked localOnly', async () => {
-    // Clear repo
+describe('pull deletes local syncDir files absent from cloud', () => {
+  it('files in syncDirs that are not in repo get deleted from local', async () => {
+    // Clean repo
     fs.rmSync(REPO, { recursive: true, force: true });
     fs.mkdirSync(REPO, { recursive: true });
 
-    // Local files exist
-    writeFile(path.join(WS_OC, 'MEMORY.md'), '# 本地记忆');
-    writeFile(path.join(WS_OC, 'SOUL.md'), '# 灵魂');
-    writeFile(path.join(WS_CL, 'CLAUDE.md'), '# 指令');
+    // Create a skill in claude's skills/ dir (a syncDir) that is NOT in repo
+    writeFile(path.join(WS_CL, 'skills', 'orphan-skill', 'SKILL.md'), '# orphan');
+    writeFile(path.join(WS_CL, 'CLAUDE.md'), '# C');
     writeFile(path.join(WS_CL, '.claude.json'), '{"mcpServers":{}}');
-    writeFile(path.join(WS_GE, 'settings.json'), '{"security":{},"model":{}}');
+    writeFile(path.join(WS_OC, 'MEMORY.md'), '# M');
+    writeFile(path.join(WS_OC, 'SOUL.md'), '# S');
+    writeFile(path.join(WS_GE, 'settings.json'), '{}');
 
-    const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, agents: { sources: [] }, syncFiles: [] } });
+    const cfg = mkCfg({
+      shared: { skills: { sources: [] }, mcp: { sources: [] }, agents: { sources: [] }, syncFiles: [] },
+      profiles: {
+        default: {
+          ...mkCfg().profiles.default,
+          claude: {
+            enabled: true,
+            workspacePath: WS_CL,
+            syncFiles: [{ src: 'CLAUDE.md', encrypt: false }],
+            syncDirs: [{ src: 'skills/', encrypt: false }],
+            jsonFields: [{ src: '.claude.json', fields: ['mcpServers'], repoName: 'mcpServers.json', encrypt: true }],
+          },
+        },
+      } as WangchuanConfig['profiles'],
+    });
     const result = await syncEngine.restoreFromRepo(cfg);
 
-    // Should detect local-only files
-    assert.ok(result.localOnly.length >= 2, `should have localOnly files, actual: ${result.localOnly.length}`);
-    assert.ok(
-      result.localOnly.some(f => f.includes('MEMORY.md')),
-      'MEMORY.md should be marked as localOnly',
-    );
+    // The orphan skill should have been deleted
+    assert.ok(!fs.existsSync(path.join(WS_CL, 'skills', 'orphan-skill', 'SKILL.md')),
+      'orphan skill file should be deleted from local');
+    assert.ok(result.localOnly.length >= 1,
+      `should report deleted files in localOnly, actual: ${result.localOnly.length}`);
   });
 
-  it('jsonFields localOnly no false positive — empty extracted fields not marked', async () => {
+  it('syncFiles not in repo are NOT deleted (only syncDirs)', async () => {
     fs.rmSync(REPO, { recursive: true, force: true });
     fs.mkdirSync(REPO, { recursive: true });
 
-    // .claude.json exists but mcpServers field is empty
-    writeFile(path.join(WS_CL, '.claude.json'), JSON.stringify({
-      tipsHistory: { x: 1 },
-      numStartups: 5,
-    }, null, 2));
-    writeFile(path.join(WS_CL, 'CLAUDE.md'), '# C');
+    // CLAUDE.md is a syncFile, not in a syncDir — should NOT be deleted
+    writeFile(path.join(WS_CL, 'CLAUDE.md'), '# should survive');
+    writeFile(path.join(WS_CL, '.claude.json'), '{}');
     writeFile(path.join(WS_GE, 'settings.json'), '{}');
     writeFile(path.join(WS_OC, 'MEMORY.md'), '# M');
     writeFile(path.join(WS_OC, 'SOUL.md'), '# S');
-    // Reset new agents' MCP files to empty (no mcpServers field)
-    writeFile(CB_MCP, '{}');
-    writeFile(path.join(WS_WB, 'mcp.json'), '{}');
-    writeFile(path.join(WS_CU, 'mcp.json'), '{}');
 
     const cfg = mkCfg({ shared: { skills: { sources: [] }, mcp: { sources: [] }, agents: { sources: [] }, syncFiles: [] } });
     const result = await syncEngine.restoreFromRepo(cfg);
 
-    // .claude.json has no mcpServers field, should not be marked as localOnly
-    assert.ok(
-      !result.localOnly.some(f => f.includes('mcpServers')),
-      'empty mcpServers field should not be marked as localOnly',
-    );
+    assert.ok(fs.existsSync(path.join(WS_CL, 'CLAUDE.md')),
+      'syncFile CLAUDE.md should NOT be deleted');
   });
 });
 

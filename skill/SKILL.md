@@ -1,6 +1,6 @@
 ---
 name: wangchuan
-version: 1.8.0
+version: 1.9.0
 description: >-
   Encrypt and sync AI agent configs, memories, skills, and MCP servers across environments via a private Git repo.
   Supports Claude, OpenClaw, Gemini, CodeBuddy, WorkBuddy, Cursor, and Codex.
@@ -93,7 +93,7 @@ This ensures cloud memories are always pulled in the background. Watch is pull-o
 | **Deleted** an MCP server | Ask user which agents → jq del → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | Created/modified **memory** | Ask user → broadcast/copy if yes → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | **Deleted** memory | Ask user which agents → rm → tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
-| **Files deleted from cloud** detected on pull | Files are **blocked from push**. Interactive sync prompts: delete local / keep local (default for `-y`) / push back to cloud. Blocked list stored at `~/.wangchuan/local-only.json` |
+| **Files deleted from cloud** detected on pull | Automatically deleted from local workspace (cloud is source of truth). All changes preserved in git history for rollback. |
 | Updated other config | Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." → if user confirms: `wangchuan sync -y` |
 | **Any skill invocation completes** | **Ensure watch daemon is running** (see above) |
 
