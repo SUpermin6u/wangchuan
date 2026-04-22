@@ -1,0 +1,142 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║           WANGCHUAN AUTO-SHARING AUDIT — EXECUTIVE SUMMARY                     ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+PRINCIPLE:
+"A resource is agent-specific by default. It becomes shared ONLY when the user 
+explicitly asks to share it. The system should NEVER auto-detect resources as 
+'new shared' or auto-distribute them WITHOUT USER CONFIRMATION."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔴 CRITICAL FINDINGS: 4 VIOLATIONS
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ Issue #1: migrateExistingToRegistry() — SILENT AUTO-REGISTRATION            ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ File: src/core/shared-registry.ts:117-151                                   ║
+║ What: Auto-registers ALL existing shared/ resources WITHOUT ASKING          ║
+║ Called: Every sync → stageToRepo() → migrateExistingToRegistry()            ║
+║ User asked? ❌ NO — SILENT WRITE TO REGISTRY                               ║
+║ Problem: Resources in shared/ assumed to be intentionally shared            ║
+║          but may be leftovers from migrations or old workflows              ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ Issue #2: buildSharedEntries() + buildFileEntries() — AUTO-LOOP             ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ File: src/core/sync.ts:265-373 + 395-427                                    ║
+║ What: buildSharedEntries() calls migrateExistingToRegistry() internally     ║
+║       Creates hidden auto-registration loop during file entry building      ║
+║ Called: Every sync, status check, doctor check, watch mode                  ║
+║ User asked? ❌ NO — AUTOMATIC ON EVERY CALL                                ║
+║ Problem: Combined with Issue #1, causes chain reaction of auto-sharing      ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ Issue #3: MCP AUTO-MERGE — SILENT CONFIG OVERWRITES                         ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ File: src/core/sync-shared.ts:314-365                                       ║
+║ What: Merges ALL agents' MCP servers and distributes to ALL agents          ║
+║       Overwrites older configs with newer ones (by mtime)                   ║
+║ Called: Every sync → distributeShared()                                     ║
+║ User asked? ❌ NO — SILENT WRITES, ONLY DEBUG LOG                           ║
+║ Problem: Agent B's MCP config silently replaced with Agent A's              ║
+║          Users unaware their configs changed                                ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ Issue #4: detectResourceDistributions() — NOISY AUTO-DETECTION              ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ File: src/core/sync-shared.ts:223-246                                       ║
+║ What: Auto-detects single-agent resources as "new to share"                 ║
+║       Creates pending prompt for every sync                                 ║
+║ Called: Every sync → distributeShared()                                     ║
+║ User asked? 🟡 PARTIAL — User prompted later BUT no memory of rejections   ║
+║ Problem: Same prompt fires repeatedly; no "never-share" registry            ║
+║          Leads to cognitive overload and accidental sharing                 ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPACT MATRIX
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Who is affected?                                                            │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 🔴 Multi-agent users        → HIGH IMPACT (auto-sharing breaks isolation)   │
+│ 🟡 Single-agent users       → LOW IMPACT (no cross-agent distribution)      │
+│ 🔴 Teams using wangchuan    → CRITICAL (auto-sharing exposes private data)  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ROOT CAUSE: Layered auto-detection system that assumes OPT-OUT (auto-share 
+by default) instead of OPT-IN (agent-specific by default).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RECOMMENDED FIXES (PRIORITY ORDER)
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ FIX #1 (CRITICAL): Remove auto-migration on sync                            ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ File: src/core/sync-stage.ts:418                                            ║
+║ Action: Remove call to migrateExistingToRegistry() from stageToRepo()       ║
+║ Impact: Stops silent registration of existing shared/ resources             ║
+║ Note: User should explicitly run: wangchuan import (new command)            ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ FIX #2 (CRITICAL): Add "never-share" registry                               ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ Files: src/core/shared-registry.ts, src/core/sync-shared.ts                 ║
+║ Action: Create declined-registry.json for resources user rejected           ║
+║         When user declines a resource, add to never-share list              ║
+║         In detectResourceDistributions(), skip declined resources           ║
+║ Impact: Stops repeated prompts for rejected resources                       ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ FIX #3 (CRITICAL): Stop MCP auto-merge from writing                         ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ File: src/core/sync-shared.ts:314-365                                       ║
+║ Action: Option A - Create pending distribution for MCP like skills          ║
+║         OR Option B - Skip MCP distribution entirely (lower risk)           ║
+║ Impact: No silent overwrites of agent MCP configs                           ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ FIX #4 (MAJOR): Decouple buildSharedEntries() from auto-migration           ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ File: src/core/sync.ts:275-279                                              ║
+║ Action: Remove migration call from buildSharedEntries()                     ║
+║ Impact: Breaks auto-registration loop                                       ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ FIX #5 (MAJOR): Add declined-skipping in detectResourceDistributions       ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ File: src/core/sync-shared.ts:223-246                                       ║
+║ Action: Skip resources in declined-registry during detection                ║
+║ Impact: Prevents repeated prompts for rejected resources                    ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+╔─────────────────────────────────────────────────────────────────────────────╗
+║ FIX #6 (NICE-TO-HAVE): Add `wangchuan import` command                       ║
+├─────────────────────────────────────────────────────────────────────────────┤
+║ New File: src/commands/import.ts                                            ║
+║ Purpose: Explicitly import and register resources from shared/              ║
+║          Show preview, ask for confirmation                                 ║
+╚─────────────────────────────────────────────────────────────────────────────╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMPLIANCE STATUS
+
+Current:  ❌ VIOLATED — Principle breached in 4 places
+Target:   ✅ COMPLIANT — All fixes implemented
+Timeline: Address Fixes #1-3 before next release (BLOCKING)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FULL REPORT: /projects/wangchuan/AUDIT_AUTO_SHARING.md
+
