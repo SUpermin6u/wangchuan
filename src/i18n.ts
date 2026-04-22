@@ -267,6 +267,7 @@ const M: Msgs = {
   'watch.conflictsSaved':      ['{count} conflict(s) saved — will prompt on next interactive sync', '{count} 个冲突已记录 — 下次交互式同步时提示处理'],
 
   'sync.decryptFailed': ['Decrypt failed (skipped): {path} — {error}', '解密失败（已跳过）: {path} — {error}'],
+  'sync.restoreSkipError': ['Skipping {file}: {error}', '跳过 {file}: {error}'],
 
   // ── sync-meta ─────────────────────────────────────────────────
   'sync.meta.lastSync':   ['Last synced: {time} from {hostname} ({env})', '上次同步: {time}，来自 {hostname}（{env}）'],

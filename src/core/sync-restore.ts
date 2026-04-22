@@ -98,6 +98,49 @@ export function rotateBackups(): void {
 // ── Main pull function ─────────────────────────────────────────────
 
 /**
+ * Check if a workspace path exists and is a directory (not a regular file).
+ * Returns false with a warning if the path is a file or does not exist.
+ */
+function isValidWorkspaceDir(wsPath: string, agentName: string): boolean {
+  try {
+    const stat = fs.statSync(wsPath);
+    if (!stat.isDirectory()) {
+      logger.warn(t('sync.restoreSkipError', { file: agentName, error: `${wsPath} is not a directory` }));
+      return false;
+    }
+    return true;
+  } catch {
+    // Path doesn't exist — skip silently (agent not installed)
+    return false;
+  }
+}
+
+/**
+ * Ensure the parent directory of destPath can be created.
+ * Checks that no ancestor path component is a regular file blocking mkdirSync.
+ * Returns true if parent dir was created successfully, false otherwise.
+ */
+function ensureParentDir(destPath: string, label: string): boolean {
+  const parentDir = path.dirname(destPath);
+  // Walk up to find the first existing ancestor
+  let check = parentDir;
+  while (check !== path.dirname(check)) {
+    try {
+      const stat = fs.statSync(check);
+      if (!stat.isDirectory()) {
+        logger.warn(t('sync.restoreSkipError', { file: label, error: `${check} is not a directory` }));
+        return false;
+      }
+      break; // Found an existing directory ancestor — safe to proceed
+    } catch {
+      check = path.dirname(check);
+    }
+  }
+  fs.mkdirSync(parentDir, { recursive: true });
+  return true;
+}
+
+/**
  * Pull: restore files from local repo to workspace.
  */
 export async function restoreFromRepo(
@@ -146,6 +189,7 @@ export async function restoreFromRepo(
   let batchDecision: 'overwrite_all' | 'skip_all' | undefined;
 
   for (const entry of entries) {
+    try {
     const srcRepo = path.join(repoPath, entry.repoRel);
     if (!fs.existsSync(srcRepo)) {
       logger.debug(t('sync.skipNotInRepo', { file: entry.repoRel }));
@@ -204,11 +248,17 @@ export async function restoreFromRepo(
       const shared = cfg.shared;
       if (shared) {
         for (const source of shared.skills.sources) {
-          const p = cfg.profiles.default[source.agent];
-          if (!p.enabled) continue;
-          const dest = path.join(expandHome(p.workspacePath), source.dir, relInSkills);
-          fs.mkdirSync(path.dirname(dest), { recursive: true });
-          fs.copyFileSync(srcRepo, dest);
+          try {
+            const p = cfg.profiles.default[source.agent];
+            if (!p.enabled) continue;
+            const wsPath = expandHome(p.workspacePath);
+            if (!isValidWorkspaceDir(wsPath, source.agent)) continue;
+            const dest = path.join(wsPath, source.dir, relInSkills);
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+            fs.copyFileSync(srcRepo, dest);
+          } catch (innerErr) {
+            logger.warn(t('sync.restoreSkipError', { file: `${source.agent}/${relInSkills}`, error: (innerErr as Error).message }));
+          }
         }
       }
       (result.synced as string[]).push(entry.repoRel);
@@ -223,11 +273,17 @@ export async function restoreFromRepo(
       const shared = cfg.shared;
       if (shared?.agents) {
         for (const source of shared.agents.sources) {
-          const p = cfg.profiles.default[source.agent];
-          if (!p.enabled) continue;
-          const dest = path.join(expandHome(p.workspacePath), source.dir, relInAgents);
-          fs.mkdirSync(path.dirname(dest), { recursive: true });
-          fs.copyFileSync(srcRepo, dest);
+          try {
+            const p = cfg.profiles.default[source.agent];
+            if (!p.enabled) continue;
+            const wsPath = expandHome(p.workspacePath);
+            if (!isValidWorkspaceDir(wsPath, source.agent)) continue;
+            const dest = path.join(wsPath, source.dir, relInAgents);
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+            fs.copyFileSync(srcRepo, dest);
+          } catch (innerErr) {
+            logger.warn(t('sync.restoreSkipError', { file: `${source.agent}/${relInAgents}`, error: (innerErr as Error).message }));
+          }
         }
       }
       (result.synced as string[]).push(entry.repoRel);
@@ -326,7 +382,8 @@ export async function restoreFromRepo(
     }
 
     // ── Write file ───────────────────────────────────────────
-    fs.mkdirSync(path.dirname(entry.srcAbs), { recursive: true });
+    // Verify parent directory path is valid (not blocked by a regular file)
+    if (!ensureParentDir(entry.srcAbs, entry.repoRel)) continue;
     if (entry.encrypt) {
       try {
         cryptoEngine.decryptFile(srcRepo, entry.srcAbs, keyPath);
@@ -342,6 +399,11 @@ export async function restoreFromRepo(
     (result.synced as string[]).push(entry.repoRel);
     restoreIdx++;
     logProgress(restoreIdx, restoreTotal, entry.encrypt ? 'decrypted' : 'copy', entry.repoRel);
+
+    } catch (entryErr) {
+      logger.warn(t('sync.restoreSkipError', { file: entry.repoRel, error: (entryErr as Error).message }));
+      (result.skipped as string[]).push(entry.repoRel);
+    }
   }
 
   // Log sync-meta freshness info
