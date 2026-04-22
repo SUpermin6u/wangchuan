@@ -535,9 +535,11 @@ export async function stageToRepo(
   }
 
   // ── Detect stale files in repo (full push only, skip when filtering or explicitly disabled) ──
+  // Use ALL entries (not just those with existing srcAbs) to protect repo files
+  // that couldn't be restored locally (e.g. agent workspace path invalid).
+  // Cloud is source of truth — only delete files not in ANY entry.
   if (!agent && !filter && !skipStaleDetection) {
-    const syncedEntries = entries.filter(e => fs.existsSync(e.srcAbs));
-    const stale = detectStaleFiles(repoPath, syncedEntries);
+    const stale = detectStaleFiles(repoPath, entries);
     if (stale.length > 0) {
       const isTTY = process.stdin.isTTY === true;
       if (isTTY || yes) {
