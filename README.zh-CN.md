@@ -33,7 +33,7 @@ Agent: (创建技能, 询问分发到哪些 Agent,
 
 用户: "切换到 work 环境"
 Agent: (询问是否先推送未同步变更, 切换分支, 拉取 work 环境数据,
-        检查冲突, 重启后台守护)
+        检查冲突)
 ```
 
 **Agent 负责一切。** 你只需要对话。技能文件（`skill/SKILL.md`）教会 Agent 如何管理你的记忆 —— 不需要手动敲 CLI。
@@ -56,11 +56,11 @@ skill/
 
 ### 技能基准测试
 
-每次技能变更都经过 **53 个测试用例**（`test/skill-benchmark.md`）验证：
+每次技能变更都经过 **52 个测试用例**（`test/skill-benchmark.md`）验证：
 
 - 29 条用户指令（初始化、4 种资源的增删改查、推送/拉取、回退、环境管理）
-- 4 个环境隔离场景（跨环境拉取、工作空间泄漏、恢复时环境选择、watch 重启）
-- 全局规则（watch 自动启动、环境感知同步、非 TTY 约束）
+- 4 个环境隔离场景（跨环境拉取、工作空间泄漏、恢复时环境选择）
+- 全局规则（环境感知推送/拉取、非 TTY 约束）
 
 ### 安装技能
 
@@ -95,9 +95,9 @@ wangchuan restore --repo git@github.com:you/brain.git --key wangchuan_<hex>
 |------|------|------|----------|
 | `init` | — | 全新初始化 — 自动检测智能体，支持一键创建仓库（GitHub CLI），执行首次同步 | `--repo`、`--force` |
 | `restore` | — | 恢复云端记忆 — 导入密钥，先拉取云端数据，再推送本地新增内容 | `--repo`、`--key` |
-| `sync` | `s` | 智能双向同步 — 日常唯一命令 | `-a, --agent`、`-n, --dry-run`、`-o, --only`、`-x, --exclude` |
+| `pull` | — | 拉取云端数据到本地 | `-a, --agent`、`-o, --only`、`-x, --exclude` |
+| `push` | `s` | 推送本地变更到云端 | `-a, --agent`、`-n, --dry-run`、`-y`、`-o, --only`、`-x, --exclude` |
 | `status` | `st` | 一屏总览 + 健康评分 | `-v, --verbose` |
-| `watch` | — | 仅拉取的后台守护进程，持续同步云端变更 | `-i, --interval <分钟>` |
 | `doctor` | — | 诊断 + 自动修复所有问题 | `--key-export`、`--key-rotate`、`--setup` |
 | `memory` | — | 浏览/复制智能体记忆 | `list`、`show`、`copy`、`broadcast` |
 | `env` | — | 多环境管理 | `list`、`create`、`switch`、`current`、`delete` |
@@ -138,18 +138,12 @@ wangchuan restore --repo git@github.com:you/brain.git --key wangchuan_<hex>
 - 自动冲突解决，支持 `.md`、`.txt`、`.json`、`.yaml`、`.yml`
 - 不重叠编辑 → 静默合并
 - 重叠冲突 → 写入冲突标记供用户解决
-- Watch 守护记录无法自动解决的冲突到 `pending-conflicts.json`，下次交互时提示
+- 无法自动解决的冲突记录到 `pending-conflicts.json`，下次交互时提示
 
 ### 多环境管理
 - 创建隔离环境：`wangchuan env create work`
 - 即时切换：`wangchuan env switch work`
 - Git 分支级隔离；共享本地工作空间，自动检测泄漏
-
-### Watch 守护进程（仅拉取）
-- `wangchuan watch` 持续在后台拉取云端变更
-- **不会推送** — 用户需手动 `wangchuan sync` 推送
-- 技能每次交互后自动启动
-- 环境切换时自动重启
 
 ### 快照回滚
 - 每次同步前自动创建快照（安全网）

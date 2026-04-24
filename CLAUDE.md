@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run build        # tsc → dist/ (postbuild auto chmod +x)
-npm run dev          # Run directly via tsx, no build needed: npm run dev -- sync --agent claude
+npm run dev          # Run directly via tsx, no build needed: npm run dev -- push --agent claude
 npm run test         # Run all tests (crypto + json-field + sync)
 npm run typecheck    # tsc --noEmit type checking
 ```
@@ -39,7 +39,7 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Core Engines (`src/core/`)
 
-- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven built-in agents + any `customAgents` from config + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `pruneRepoStaleFiles` cleans stale files from repo after push (skipped when `--only`/`--exclude` filter is active to prevent data loss). `stageToRepo` compares plaintext before re-encrypting to eliminate spurious diffs from random IV. `stageToRepo` / `restoreFromRepo` / `diff` for three-way operations. Sync lock uses `{ flag: 'wx' }` for atomic exclusive creation.
+- **sync.ts** — Sync engine. `buildFileEntries()` is the single source of truth for file entries, iterating over all seven built-in agents + any `customAgents` from config + shared tier. Supports three entry types: `syncFiles` (whole file), `syncDirs` (directory recursion), `jsonFields` (JSON field-level extraction). `pruneRepoStaleFiles` cleans stale files from repo after push (skipped when `--only`/`--exclude` filter is active to prevent data loss). `stageToRepo` compares plaintext before re-encrypting to eliminate spurious diffs from random IV. `stageToRepo` / `restoreFromRepo` / `diff` for push/pull/diff operations. Sync lock uses `{ flag: 'wx' }` for atomic exclusive creation.
 - **json-field.ts** — JSON field-level extraction and merge. `extractFields` picks specified fields from a large JSON; `mergeFields` merges fields back without destroying other content. Used for `.claude.json` to sync only `mcpServers` while ignoring tipsHistory/projects etc.
 - **crypto.ts** — AES-256-GCM encryption. Ciphertext format: `[IV 12B][AuthTag 16B][CipherText] → Base64 → .enc`. Key stored at `~/.wangchuan/master.key` (0o600 permissions). `loadKey()` caches in memory to eliminate redundant disk reads; `clearKeyCache()` resets cache for key rotation.
 - **git.ts** — simple-git wrapper. `cloneOrFetch` is idempotent; `commitAndPush` returns `{committed: false}` when nothing changed; `rollback` runs `git reset --soft HEAD~1` on failure.
@@ -53,15 +53,15 @@ Config version `version: 2`; older versions auto-migrate via `migrate.ts`.
 
 ### Commands (`src/commands/`)
 
-Ten user-facing commands: `init`, `restore`, `sync`, `status`, `watch`, `doctor`, `memory`, `env`, `snapshot`, `lang`.
+Ten user-facing commands: `init`, `restore`, `pull`, `push`, `status`, `doctor`, `memory`, `env`, `snapshot`, `lang`.
 
 | Command | Aliases | Purpose | Key flags |
 |---------|---------|---------|-----------|
 | `init` | — | Brand new setup: auto-detects installed agents, auto-creates repo (GitHub CLI), runs first sync. Works with any Git hosting (GitHub/GitLab/Gitee/Bitbucket/Gitea) | `--repo`, `--force` |
 | `restore` | — | Restore from cloud on a new machine: imports key, pulls cloud data first (source of truth), then pushes local additions without deleting cloud data | `--repo`, `--key` |
-| `sync` | `s` | Smart bidirectional sync (THE daily command) | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
+| `pull` | — | Pull cloud data to local | `-a, --agent`, `-o, --only`, `-x, --exclude` |
+| `push` | `s` | Push local changes to cloud | `-a, --agent`, `-n, --dry-run`, `-y`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
-| `watch` | — | Pull-only background daemon for continuous cloud sync | `-i, --interval <min>` |
 | `doctor` | — | Diagnose + auto-fix all issues | `--key-rotate`, `--key-export`, `--setup` |
 | `memory` | — | Browse/copy memories between agents; `show` supports fuzzy/substring file matching | `list\|show\|copy\|broadcast` |
 | `env` | — | Multi-environment management | `list\|create\|switch\|current\|delete` |
@@ -145,7 +145,7 @@ grep -c "\.command(" bin/wangchuan.ts
 
 **Every change to code or skill files (`skill/SKILL.md`, `skill/references/*.md`) MUST pass the Skill Benchmark before commit.**
 
-The benchmark file is at `test/skill-benchmark.md`. It contains 54 test cases (TC-01 through TC-54) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
+The benchmark file is at `test/skill-benchmark.md`. It contains 52 test cases (TC-01 through TC-54, with TC-17 and TC-18 removed) that define the expected behavior when an AI agent loads the wangchuan skill and receives user instructions.
 
 ### What the benchmark tests
 

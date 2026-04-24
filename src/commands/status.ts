@@ -6,7 +6,7 @@
  *   - Health score bar
  *   - "3 files changed since last sync"
  *   - Last sync timestamp
- *   - "Run `wangchuan sync` to update" hint
+ *   - "Run `wangchuan pull` to update" hint
  *
  * --verbose / -v: full detail:
  *   - All managed files with local/repo status (from list.ts logic)
@@ -26,7 +26,6 @@ import { syncEngine }      from '../core/sync.js';
 import { cryptoEngine }    from '../core/crypto.js';
 import { syncLock }        from '../core/sync-lock.js';
 import { readSyncHistory } from '../core/sync-history.js';
-import { isWatchRunning, getWatchPid } from './watch.js';
 import { validator }       from '../utils/validator.js';
 import { diffText }        from '../utils/linediff.js';
 import { logger }          from '../utils/logger.js';
@@ -185,9 +184,6 @@ async function renderCompact(cfg: WangchuanConfig, repoPath: string, agent?: Age
   // Multi-machine info
   await renderMultiMachineInfo(repoPath);
 
-  // Watch daemon status
-  renderWatchStatus();
-
   // Agent discovery hints
   renderDiscoveryHints(cfg);
 
@@ -323,9 +319,6 @@ async function renderVerbose(cfg: WangchuanConfig, repoPath: string, agent?: Age
 
   // ── Multi-machine info ────────────────────────────────────
   await renderMultiMachineInfo(repoPath);
-
-  // ── Watch daemon status ───────────────────────────────────
-  renderWatchStatus();
 
   // ── Agent discovery hints ──────────────────────────────────
   renderDiscoveryHints(cfg);
@@ -523,13 +516,3 @@ async function renderMultiMachineInfo(repoPath: string): Promise<void> {
   }
 }
 
-/** Show watch daemon status */
-function renderWatchStatus(): void {
-  const pid = getWatchPid();
-  console.log();
-  if (pid !== null) {
-    console.log(`  ${chalk.green('✔')} ${t('status.watchRunning', { pid })}`);
-  } else {
-    console.log(`  ${chalk.red('✖')} ${t('status.watchNotRunning')}`);
-  }
-}

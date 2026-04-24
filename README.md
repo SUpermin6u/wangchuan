@@ -33,7 +33,7 @@ Agent: (creates skill, asks which agents to distribute to,
 
 You: "Switch to work environment"
 Agent: (asks about unsynced changes, switches branch, pulls work env data,
-        checks for conflicts, restarts background daemon)
+        checks for conflicts)
 ```
 
 **The agent does everything.** You just talk to it. The skill file (`skill/SKILL.md`) teaches the agent exactly how to manage your memories — no manual CLI needed.
@@ -56,11 +56,11 @@ The main SKILL.md is kept under 120 lines. When the agent encounters a specific 
 
 ### Skill Benchmark
 
-Every skill change is validated against **53 test cases** (`test/skill-benchmark.md`) covering:
+Every skill change is validated against **52 test cases** (`test/skill-benchmark.md`) covering:
 
 - 29 user instructions (init, CRUD for 4 resource types, push/pull, rollback, env management)
-- 4 environment isolation scenarios (cross-env pull, workspace leakage, env selection on restore, watch restart)
-- Global rules (watch daemon auto-start, env-aware sync, non-TTY constraints)
+- 4 environment isolation scenarios (cross-env pull, workspace leakage, env selection on restore)
+- Global rules (env-aware push/pull, non-TTY constraints)
 
 ### Install the Skill
 
@@ -95,9 +95,9 @@ wangchuan restore --repo git@github.com:you/brain.git --key wangchuan_<hex>
 |---------|---------|-------------|-----------|
 | `init` | — | Brand new setup — auto-detects agents, auto-creates repo (GitHub CLI), runs first sync | `--repo`, `--force` |
 | `restore` | — | Restore from cloud — imports key, pulls cloud data first, then pushes local additions | `--repo`, `--key` |
-| `sync` | `s` | Smart bidirectional sync — THE daily command | `-a, --agent`, `-n, --dry-run`, `-o, --only`, `-x, --exclude` |
+| `pull` | — | Pull cloud data to local | `-a, --agent`, `-o, --only`, `-x, --exclude` |
+| `push` | `s` | Push local changes to cloud | `-a, --agent`, `-n, --dry-run`, `-y`, `-o, --only`, `-x, --exclude` |
 | `status` | `st` | One-screen summary + health score | `-v, --verbose` |
-| `watch` | — | Pull-only background daemon for continuous cloud sync | `-i, --interval <min>` |
 | `doctor` | — | Diagnose + auto-fix everything | `--key-export`, `--key-rotate`, `--setup` |
 | `memory` | — | Browse/copy memories between agents | `list`, `show`, `copy`, `broadcast` |
 | `env` | — | Multi-environment management | `list`, `create`, `switch`, `current`, `delete` |
@@ -138,18 +138,12 @@ Agent paths are customizable in `~/.wangchuan/config.json`.
 - Automatic conflict resolution for `.md`, `.txt`, `.json`, `.yaml`, `.yml` files
 - Non-overlapping edits → auto-merged silently
 - Overlapping conflicts → conflict markers written for user resolution
-- Watch daemon records unresolvable conflicts to `pending-conflicts.json` for next interactive session
+- Unresolvable conflicts recorded to `pending-conflicts.json` for next interactive session
 
 ### Multi-Environment
 - Create isolated environments: `wangchuan env create work`
 - Switch instantly: `wangchuan env switch work`
 - Git-branch-level isolation; shared local workspace with leakage detection
-
-### Watch Daemon (Pull-Only)
-- `wangchuan watch` continuously pulls cloud changes in the background
-- Does **not** push — users must `wangchuan sync` to push manually
-- Auto-started by the skill after every interaction
-- Restarts automatically on environment switch
 
 ### Snapshot Rollback
 - Auto-snapshots before every sync (safety net)

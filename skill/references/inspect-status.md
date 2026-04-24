@@ -81,10 +81,10 @@ All of compact, plus:
 
 | Symptom | Meaning | Fix |
 |---------|---------|-----|
-| Freshness low | Haven't synced recently | `wangchuan sync -y` |
-| Coverage low | Local files missing | `wangchuan sync -y` (pull restores) |
+| Freshness low | Haven't synced recently | `wangchuan push -y` |
+| Coverage low | Local files missing | `wangchuan pull` (pull restores) |
 | Integrity low | Checksums mismatch | `wangchuan doctor` |
 | Encryption low | Sensitive files unencrypted | Review config profiles |
-| Conflict warning | Local+remote both changed | `wangchuan sync -y` → resolve markers |
+| Conflict warning | Local+remote both changed | `wangchuan push -y` → resolve markers |
 | Stale sync lock | Previous sync crashed | `wangchuan doctor` |
-| Pending distributions | Unprocessed sharing | `wangchuan sync -y` |
+| Pending distributions | Unprocessed sharing | `wangchuan push -y` |

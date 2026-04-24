@@ -33,7 +33,7 @@ Skills and custom agents use the **same** flow — both are directories tracked 
 - **Newly created** → NOT shared (skip to Step 2b).
 - **Existing** → check `~/.wangchuan/shared-registry.json` for the name with `kind:'skill'` or `kind:'agent'`.
 
-**Step 2a: Already-shared** — distribute + ask user to sync:
+**Step 2a: Already-shared** — distribute + ask user to push:
 ```bash
 # Example: shared skill "foo" modified in claude, also used by cursor and codebuddy
 cp -r ~/.claude/skills/foo/ ~/.cursor/skills/foo/
@@ -42,7 +42,7 @@ cp -r ~/.claude/skills/foo/ ~/.codebuddy/skills/foo/
 cp -r ~/.claude/agents/my-reviewer/ ~/.cursor/agents/my-reviewer/
 cp -r ~/.claude/agents/my-reviewer/ ~/.codebuddy/agents/my-reviewer/
 ```
-Tell user: "Changes saved locally and distributed to all agents. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
+Tell user: "Changes saved locally and distributed to all agents. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`
 
 **Step 2b: New / agent-local** — resource stays in the current agent by default. Only distribute if user **explicitly asks** to share:
 ```bash
@@ -58,7 +58,7 @@ If user asks to share, present options:
 - **Specific agents** — copy only to selected
 - **No distribution** (default) — keep in current agent only
 
-After copying, tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
+After copying, tell user: "Changes saved locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`
 
 ---
 
@@ -92,15 +92,15 @@ Options: **All agents** / **[individual agents]** / **Cancel**
 
 **Step 3: Execute.**
 
-**All agents**: `rm -rf` from every agent → unregister from shared-registry.json. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`.
+**All agents**: `rm -rf` from every agent → unregister from shared-registry.json. Tell user: "Changes saved locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`.
 ```bash
 rm -rf ~/.claude/skills/xxx/ ~/.cursor/skills/xxx/ ~/.codebuddy/skills/xxx/  # etc.
 jq '.entries |= map(select(.name != "xxx" or .kind != "skill"))' ~/.wangchuan/shared-registry.json > /tmp/wc-sr.json && mv /tmp/wc-sr.json ~/.wangchuan/shared-registry.json
-# Only sync when user confirms:
-wangchuan sync -y
+# Only push when user confirms:
+wangchuan push -y
 ```
 
-**Specific agents**: `rm -rf` from selected → unregister (demote). Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`. Remaining agents keep local copies.
+**Specific agents**: `rm -rf` from selected → unregister (demote). Tell user: "Changes saved locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`. Remaining agents keep local copies.
 
 **Cancel**: no action.
 
@@ -117,7 +117,7 @@ MCP servers are JSON fields (`mcpServers`). Each agent's MCP config is **indepen
    - OpenClaw: `~/.openclaw/workspace/config/mcporter.json` → `mcpServers`
 2. Resource stays in the current agent by default. Only copy to other agents if the user **explicitly asks**.
    - If user asks to share: ask which agents → jq write to selected
-3. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
+3. Tell user: "Changes saved locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`
 
 Example — manually copy a server to another agent:
 ```bash
@@ -129,7 +129,7 @@ jq --argjson srv "$SERVER_JSON" '.mcpServers["my-db"] = $srv' ~/.codebuddy/mcp.j
 1. List which agents have it: `jq -e '.mcpServers["xxx"]' <file>` per agent
 2. Ask user: All / Specific / Cancel
 3. Remove via `jq 'del(.mcpServers["xxx"])'` from selected agents
-4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
+4. Tell user: "Changes saved locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`
 
 **Note**: `jq del()` is the only way to remove an MCP server from an agent's config. There is no auto-propagation of deletions across agents.
 
@@ -145,12 +145,12 @@ Memory files are **per-agent** — no automatic cross-agent distribution.
    - **All**: `wangchuan memory broadcast <agent>`
    - **Specific**: `wangchuan memory copy <source> <target>`
    - **No**: keep local
-3. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
+3. Tell user: "Changes saved locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`
 
 **Deleting:**
 1. `wangchuan memory list` to see who has what
 2. Ask user: All / Specific / Cancel
 3. `rm -f` selected agents' memory files
-4. Tell user: "Changes saved locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
+4. Tell user: "Changes saved locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`
 
 **Note**: Memory filenames differ per agent — Claude uses `CLAUDE.md`, OpenClaw/CodeBuddy/WorkBuddy/Codex use `MEMORY.md`.

@@ -10,14 +10,13 @@ Environments map to git branches: `default` → `main`, `<name>` → `env/<name>
 
 | Operation | Environment behavior |
 |-----------|---------------------|
-| `sync` (push/pull) | Always targets current env's branch. Cannot push to or pull from another env. |
-| `watch` | Pulls from current env only. After `env switch`, **must restart watch**. |
-| Skill/agent/MCP CRUD | Changes apply to local workspace, pushed to current env's branch on sync. |
-| `memory copy/broadcast` | Operates on local workspace files (shared). Pushed to current env on sync. |
+| `push` / `pull` | Always targets current env's branch. Cannot push to or pull from another env. |
+| Skill/agent/MCP CRUD | Changes apply to local workspace, pushed to current env's branch on push. |
+| `memory copy/broadcast` | Operates on local workspace files (shared). Pushed to current env on push. |
 | After `env switch` | Old env's local files may linger. Check `wangchuan status -v` for `localOnly` files before pushing — do NOT blindly push stale files to the new env. |
 | Pull from another env | Must `env switch <target>` first. No `--from-env` flag exists. |
 
-## Listing environments (指令 26)
+## Listing environments
 
 When user says "查看忘川环境列表" / "list environments":
 
@@ -45,7 +44,7 @@ git log origin/main --oneline -20 --format="%s" | grep -oP '\[([^\]]+)\]$' | sor
 
 For detailed health of a specific environment, switch to it and run `wangchuan status -v` (see inspect-status.md).
 
-## Current environment (指令 27)
+## Current environment
 
 When user says "看下忘川当前环境" / "which environment am I in":
 
@@ -56,7 +55,7 @@ wangchuan status -v
 
 Report: environment name, active machines count, health score, unsynced files, anomalies.
 
-## Creating a new environment (指令 28)
+## Creating a new environment
 
 When user says "新建忘川 xxx 环境" / "create xxx environment":
 
@@ -65,7 +64,7 @@ When user says "新建忘川 xxx 环境" / "create xxx environment":
 wangchuan env list
 ```
 If the name already exists, inform the user and ask: "Environment 'xxx' already exists. Would you like to: (1) Import current env's memories into it, or (2) Just switch to it?"
-- Import: `wangchuan env switch <name>` → then ask user if they want to sync: `wangchuan sync -y`
+- Import: `wangchuan env switch <name>` → then ask user if they want to push: `wangchuan push -y`
 - Switch only: `wangchuan env switch <name>`
 
 **Step 2: Ask about data initialization.**
@@ -92,7 +91,7 @@ wangchuan env switch <name>
 
 `env create` in non-TTY mode auto-forks with memories (no interactive prompt needed). To create an empty environment, there is no flag — the fork behavior is the default. If user explicitly wants empty, agent would need to create the branch manually.
 
-## Deleting an environment (指令 29)
+## Deleting an environment
 
 When user says "删除忘川 xxx 环境" / "delete xxx environment":
 
@@ -118,14 +117,14 @@ When user says "切换到 xxx 环境" / "switch to work environment":
 ```bash
 wangchuan status
 ```
-- **Few changes (≤3 files)**: warn briefly, ask user: "Push changes before switching?" If yes: `wangchuan sync -y`
+- **Few changes (≤3 files)**: warn briefly, ask user: "Push changes before switching?" If yes: `wangchuan push -y`
 - **Many changes or conflicts**: `wangchuan status -v` → show diff → ask "Push current changes first, or discard and switch?"
 
 **Step 2: Switch.**
 ```bash
 wangchuan env switch <name>
 ```
-Auto-switches branch, updates config, runs sync to pull target env's data.
+Auto-switches branch, updates config, runs pull to get target env's data.
 
 **Step 3: Post-switch checks.**
 
@@ -144,13 +143,7 @@ Warn user: "These files exist locally but not in the new environment. Do NOT pus
 
 **Note**: Since v1.9.0, pull automatically deletes local files that were removed from cloud (cloud is source of truth). All changes are preserved in git history for rollback.
 
-**Step 4: Restart watch daemon** (watch only pulls from current env's branch):
-```bash
-pkill -f 'wangchuan.*watch' 2>/dev/null; nohup wangchuan watch >/dev/null 2>&1 &
-```
-Watch mode **only pulls** cloud changes — it does NOT push local changes. Users must run `wangchuan sync` manually to push. If watch encounters a conflict it cannot auto-merge, it records it to `~/.wangchuan/pending-conflicts.json` — the next `wangchuan sync` will display these conflicts for user resolution.
-
-**Step 5: If user asked "pull memory from env X" without switching:**
+**Step 4: If user asked "pull memory from env X" without switching:**
 Explain that cross-env pull is not supported — must switch first:
 ```bash
 wangchuan env switch <target-env>   # switch → auto-pulls target env's data
@@ -192,7 +185,7 @@ Confirm with user before deleting.
 When user says "回退记忆" / "rollback" / "restore a previous version":
 
 **Step 1: Identify target.** Ask user's intent:
-- **Undo last sync** → find auto-snapshot
+- **Undo last push** → find auto-snapshot
 - **Specific time** → `wangchuan snapshot list`
 - **Recover deleted file** → `cd ~/.wangchuan/repo && git log --oneline --name-status -20`
 - **Revert specific change** → `git log` + `git show <hash> --stat`
@@ -213,20 +206,20 @@ cd ~/.wangchuan/repo && git show <hash>:<file-path>
 
 **Step 3: Execute.**
 
-Snapshot restore (restores locally, ask user to sync):
+Snapshot restore (restores locally, ask user to push):
 ```bash
 wangchuan snapshot restore <name>
 ```
-Tell user: "Snapshot restored locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
+Tell user: "Snapshot restored locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`
 
-Single file from git (needs sync after):
+Single file from git (needs push after):
 ```bash
 cd ~/.wangchuan/repo && git checkout <hash> -- <file-path>
 ```
-Tell user: "File restored locally. Run `wangchuan sync` to push to cloud." If user confirms: `wangchuan sync -y`
+Tell user: "File restored locally. Run `wangchuan push` to push to cloud." If user confirms: `wangchuan push -y`
 
-Undo last sync:
+Undo last push:
 ```bash
-wangchuan snapshot list  # find pre-sync auto-snapshot (second most recent)
-wangchuan snapshot restore <pre-sync-snapshot>
+wangchuan snapshot list  # find pre-push auto-snapshot (second most recent)
+wangchuan snapshot restore <pre-push-snapshot>
 ```

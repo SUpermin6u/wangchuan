@@ -26,44 +26,41 @@ npm update -g wangchuan
 wangchuan --version
 ```
 
-**Step 3: Pull cloud first, then sync local changes when ready.**
+**Step 3: Pull cloud first, then push local changes when ready.**
 
-After upgrade, the new version may include new/changed agent sync profiles (new syncDirs, syncFiles, jsonFields). The built-in `reconcileProfiles` mechanism automatically detects these changes when `sync` runs — it compares the built-in agent definitions against `config.json`, adds any missing entries, and saves the updated config. No manual config editing needed.
+After upgrade, the new version may include new/changed agent sync profiles (new syncDirs, syncFiles, jsonFields). The built-in `reconcileProfiles` mechanism automatically detects these changes when `push` runs — it compares the built-in agent definitions against `config.json`, adds any missing entries, and saves the updated config. No manual config editing needed.
 
-Tell the user: "Upgrade complete. Run `wangchuan sync` to pull cloud data and push any newly-discovered local files." When the user confirms:
+Tell the user: "Upgrade complete. Run `wangchuan pull` to get cloud data, then `wangchuan push` to push any newly-discovered local files." When the user confirms:
 
 ```bash
-# Pull cloud data and push local changes
-wangchuan sync -y
+# Pull cloud data
+wangchuan pull
+# Push local changes
+wangchuan push -y
 ```
 
-This single command:
+This flow:
 1. Auto-runs `reconcileProfiles` → detects new sync entries → updates `config.json`
 2. **Pulls latest from cloud first** (current env branch) — ensures no cloud data is lost
 3. Then pushes any newly-synced local files to cloud
 
-If the first sync shows "no changes" but you expect new files to be discovered, run sync again — the first run updates config.json, the second picks up newly-discovered files:
+If the first push shows "no changes" but you expect new files to be discovered, run push again — the first run updates config.json, the second picks up newly-discovered files:
 ```bash
-wangchuan sync -y   # second sync if needed
+wangchuan push -y   # second push if needed
 ```
 
-**Note**: Sync is NOT automatic after upgrade. The user must explicitly request it.
+**Note**: Push is NOT automatic after upgrade. The user must explicitly request it.
 
 **Step 4: Report results.**
 Tell the user:
 - New version number
-- Any new sync entries added (visible in sync output as newly-discovered files)
+- Any new sync entries added (visible in push output as newly-discovered files)
 - Files synced (pulled/pushed)
 - Current environment name
 
-**Step 5: Ensure watch daemon running.**
-```bash
-pgrep -f 'wangchuan.*watch' >/dev/null 2>&1 || nohup wangchuan watch >/dev/null 2>&1 &
-```
-
 **Complete upgrade flow:**
 ```
-npm update -g wangchuan → wangchuan --version → ask user to sync → wangchuan sync -y (if confirmed) → report → ensure watch
+npm update -g wangchuan → wangchuan --version → ask user to pull/push → wangchuan pull + wangchuan push -y (if confirmed) → report
 ```
 
 ## Initialization (when `~/.wangchuan/config.json` does not exist)
@@ -76,7 +73,7 @@ npm update -g wangchuan → wangchuan --version → ask user to sync → wangchu
 2. Run: `wangchuan init --repo <url>`
 3. Auto: generates key → clones → detects agents → extracts shared resources → pulls cloud data
 4. **Remind user to back up key**: `wangchuan doctor --key-export`
-5. After init, tell user: "Initialization complete. Run `wangchuan sync` when ready to push local data to cloud."
+5. After init, tell user: "Initialization complete. Run `wangchuan push` when ready to push local data to cloud."
 
 ## Restore (New Machine)
 
@@ -125,11 +122,6 @@ If only `default` exists → no need to ask, already synced.
 wangchuan status -v
 ```
 
-**Step 6: Ensure watch daemon.**
-```bash
-pgrep -f 'wangchuan.*watch' >/dev/null 2>&1 || nohup wangchuan watch >/dev/null 2>&1 &
-```
-
 ## Key management
 
 ```bash
@@ -147,7 +139,7 @@ wangchuan doctor --setup
 
 ## Key mismatch handling
 
-If `Key mismatch!` appears during sync:
+If `Key mismatch!` appears during push/pull:
 1. `wangchuan doctor --key-export` on the machine that last pushed
 2. Copy key hex to current machine
 3. `wangchuan init --key <hex>` or write to `~/.wangchuan/master.key`
@@ -161,8 +153,8 @@ cp -r wangchuan/ ~/.claude/skills/wangchuan/
 cp -r wangchuan/ ~/.openclaw/workspace/skills/wangchuan/
 # Codex
 cp -r wangchuan/ ~/.codex/skills/wangchuan/
-# Or let sync distribute automatically:
-wangchuan sync
+# Or let push distribute automatically:
+wangchuan push -y
 ```
 
 ## Setting up Git repo

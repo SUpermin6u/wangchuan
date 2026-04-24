@@ -2,13 +2,11 @@
 # wangchuan-skill.sh — OpenClaw Skill script / OpenClaw Skill 脚本
 #
 # Usage (invoked by OpenClaw / Claude) / 用法（由 OpenClaw / Claude 调用）：
-#   wangchuan-skill.sh pull   [--agent openclaw|claude|gemini]
-#   wangchuan-skill.sh push   [--agent <name>] [--message "<msg>"]
-#   wangchuan-skill.sh status [--agent <name>]
-#   wangchuan-skill.sh diff   [--agent <name>]
-#   wangchuan-skill.sh list   [--agent <name>]
-#   wangchuan-skill.sh dump   [--agent <name>]
-#   wangchuan-skill.sh init   --repo <url>
+#   wangchuan-skill.sh pull     [--agent openclaw|claude|gemini]
+#   wangchuan-skill.sh push     [--agent <name>] [--dry-run] [--yes]
+#   wangchuan-skill.sh status   [--agent <name>] [--verbose]
+#   wangchuan-skill.sh init     --repo <url>
+#   wangchuan-skill.sh restore  --repo <url> --key <key>
 #
 # Environment variables / 环境变量：
 #   WANGCHUAN_DIR        Override wangchuan install path (default ~/wangchuan) / 可覆盖安装路径（默认 ~/wangchuan）
@@ -41,15 +39,15 @@ CMD="${1:-status}"
 shift || true   # Remove first arg, pass remaining / 移除第一个参数，剩余透传
 
 case "$CMD" in
-  pull|push|status|diff|list|dump|lang|sync|watch)
+  pull|push|status|diff|list|dump|lang)
     node "$BIN" "$CMD" "$@"
     ;;
-  init)
-    node "$BIN" init "$@"
+  init|restore)
+    node "$BIN" "$CMD" "$@"
     ;;
   *)
     echo "✖ Unknown command / 未知命令: $CMD" >&2
-    echo "  Available / 可用: pull | push | status | diff | list | dump | lang | sync | watch | init" >&2
+    echo "  Available / 可用: pull | push | status | diff | list | dump | lang | init" >&2
     exit 1
     ;;
 esac

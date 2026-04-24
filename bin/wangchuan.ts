@@ -8,11 +8,11 @@
  * Commands:
  *   init     — One-time setup (interactive if no --repo)
  *   restore  — Restore from cloud (import key + clone + pull)
- *   sync     — Smart bidirectional sync (the ONE daily command)
+ *   pull     — Pull remote changes to local workspace
+ *   push     — Push local changes to remote
  *   status   — Show sync state at a glance (--verbose for full detail)
  *   doctor   — Diagnose + auto-fix issues (always runs --fix)
  *   env      — Multi-environment management
- *   watch    — Background daemon for continuous sync
  *   memory   — Browse/copy memories across agents
  *   snapshot — Manage sync snapshots (save/list/restore/delete)
  *   lang     — Switch display language
@@ -22,11 +22,11 @@ import { Command } from 'commander';
 import { cmdInit }     from '../src/commands/init.js';
 import { cmdRestore }  from '../src/commands/restore.js';
 import { cmdStatus }   from '../src/commands/status.js';
-import { cmdSync }     from '../src/commands/sync.js';
+import { cmdPull }     from '../src/commands/pull.js';
+import { cmdPush }     from '../src/commands/push.js';
 import { cmdEnv }      from '../src/commands/env.js';
 import { cmdDoctor }   from '../src/commands/doctor.js';
 import { cmdLang }     from '../src/commands/lang.js';
-import { cmdWatch }    from '../src/commands/watch.js';
 import { cmdMemory }   from '../src/commands/memory.js';
 import { cmdSnapshot } from '../src/commands/snapshot.js';
 import { config }    from '../src/core/config.js';
@@ -52,7 +52,7 @@ const program = new Command();
 program
   .name('wangchuan')
   .description(t('cli.description'))
-  .version('6.0.3');
+  .version('7.0.0');
 
 // ── init ────────────────────────────────────────────────────────
 program
@@ -74,18 +74,29 @@ program
     await run(() => cmdRestore(opts));
   });
 
-// ── sync ────────────────────────────────────────────────────────
+// ── pull ────────────────────────────────────────────────────────
 program
-  .command('sync')
-  .alias('s')
-  .description(t('cli.cmd.sync'))
+  .command('pull')
+  .description(t('cli.cmd.pull'))
+  .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
+  .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
+  .option('-o, --only <patterns...>', t('cli.cmd.sync.only'))
+  .option('-x, --exclude <patterns...>', t('cli.cmd.sync.exclude'))
+  .action(async (opts: { agent?: AgentName; dryRun?: boolean; only?: string[]; exclude?: string[] }) => {
+    await run(() => cmdPull(opts));
+  });
+
+// ── push ────────────────────────────────────────────────────────
+program
+  .command('push')
+  .description(t('cli.cmd.push'))
   .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
   .option('-n, --dry-run', t('cli.cmd.dryRun'), false)
   .option('-o, --only <patterns...>', t('cli.cmd.sync.only'))
   .option('-x, --exclude <patterns...>', t('cli.cmd.sync.exclude'))
   .option('-y, --yes', t('cli.cmd.sync.yes'), false)
   .action(async (opts: { agent?: AgentName; dryRun?: boolean; only?: string[]; exclude?: string[]; yes?: boolean }) => {
-    await run(() => cmdSync(opts));
+    await run(() => cmdPush(opts));
   });
 
 // ── status ──────────────────────────────────────────────────────
@@ -117,16 +128,6 @@ program
   .option('--from <branch>', t('cli.cmd.env.from'))
   .action(async (action: string, name: string | undefined, opts: { from?: string }) => {
     await run(() => cmdEnv({ action, name, from: opts.from }));
-  });
-
-// ── watch ───────────────────────────────────────────────────────
-program
-  .command('watch')
-  .description(t('cli.cmd.watch'))
-  .option('-i, --interval <minutes>', t('cli.cmd.watch.interval'), parseFloat)
-  .option('-a, --agent <name>', t('cli.cmd.agent'), parseAgent)
-  .action(async (opts: { interval?: number; agent?: AgentName }) => {
-    await run(() => cmdWatch(opts));
   });
 
 // ── memory ──────────────────────────────────────────────────────

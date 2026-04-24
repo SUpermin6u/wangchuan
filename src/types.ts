@@ -231,16 +231,15 @@ export interface FilterOptions {
   readonly exclude?: readonly string[] | undefined;
 }
 
-export interface StatusOptions {
+export interface PullOptions extends FilterOptions {
   readonly agent?: AgentName | string;
+  readonly dryRun?: boolean;
 }
 
-export interface SyncOptions extends FilterOptions {
+export interface PushOptions extends FilterOptions {
   readonly agent?: AgentName | string;
   readonly dryRun?: boolean;
   readonly yes?: boolean;
-  /** Skip shared distribution (used by watch daemon) */
-  readonly skipShared?: boolean;
   /** Skip stale file detection (used by restore to avoid deleting cloud data) */
   readonly skipStaleDetection?: boolean;
 }
@@ -248,11 +247,6 @@ export interface SyncOptions extends FilterOptions {
 export interface RestoreOptions {
   readonly repo?: string;
   readonly key?: string;
-}
-
-export interface WatchOptions {
-  readonly agent?: AgentName | string;
-  readonly interval?: number;
 }
 
 export interface EnvOptions {

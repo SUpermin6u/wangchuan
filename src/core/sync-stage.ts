@@ -421,7 +421,6 @@ export async function stageToRepo(
   }
 
   // Distribute shared resources to all agents before full push
-  // Skip in watch mode — shared changes are deferred for interactive confirmation
   if (!agent && !skipShared) {
     distributeShared(cfg);
   }

@@ -58,15 +58,13 @@ const M: Msgs = {
   'cli.invalidAgent':    ['--agent must be a built-in agent (openclaw | claude | gemini | codebuddy | workbuddy | cursor | codex) or a custom agent defined in config.json, got: {val}', '--agent 必须是内置代理 (openclaw | claude | gemini | codebuddy | workbuddy | cursor | codex) 或 config.json 中定义的自定义代理名称，收到: {val}'],
   'cli.cmd.init':        ['Initialize Wangchuan, configure repo and generate key', '初始化忘川，配置仓库并生成密钥'],
   'cli.cmd.init.repo':   ['Git repo URL (SSH or HTTPS)', 'Git 仓库地址'],
-  'cli.cmd.init.key':    ['Import existing master key (hex string)', '导入已有的主密钥（十六进制字符串）'],
   'cli.cmd.init.force':  ['Force re-init (overwrite existing config)', '强制重新初始化'],
   'cli.cmd.agent':       ['Filter by agent (openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex)', '只操作指定智能体 (openclaw|claude|gemini|codebuddy|workbuddy|cursor|codex)'],
   'cli.cmd.status':      ['Show sync state at a glance (--verbose for full detail)', '一览同步状态（--verbose 查看完整详情）'],
   'cli.cmd.status.verbose': ['Show full detail: file list, diff, history, health breakdown', '显示完整详情：文件清单、差异、历史、健康评分'],
   'cli.cmd.lang':        ['Set display language (zh|en)', '设置显示语言 (zh|en)'],
-  'cli.cmd.sync':        ['Smart bidirectional sync (pull if needed, then push)', '智能双向同步（有更新先拉取，再推送）'],
-  'cli.cmd.watch':       ['Watch for file changes and auto-sync', '监听文件变更并自动同步'],
-  'cli.cmd.watch.interval': ['Poll interval in minutes (default: 5)', '轮询间隔，单位分钟（默认: 5）'],
+  'cli.cmd.pull':        ['Pull remote changes to local', '从云端拉取变更到本地'],
+  'cli.cmd.push':        ['Push local changes to cloud', '将本地变更推送到云端'],
 
   // ── lang command ────────────────────────────────────────────
   'lang.current':  ['Current language: {lang}', '当前语言: {lang}'],
@@ -76,8 +74,6 @@ const M: Msgs = {
   // ── init ────────────────────────────────────────────────────
   'init.banner':          ['Wangchuan Init', '忘川初始化'],
   'init.invalidGitUrl':   ['Invalid Git URL: {repo}', '无效的 Git 地址: {repo}'],
-  'init.alreadyInit':     ['Already initialized (repo: {repo})', '忘川已初始化 (repo: {repo})'],
-  'init.useForce':        ['Use --force to re-initialize', '如需重新初始化，请使用 --force 参数'],
   'init.writingConfig':   ['Writing config …', '写入配置 …'],
   'init.configSaved':     ['Config saved: {path}', '配置已写入: {path}'],
   'init.invalidKey':      ['Invalid key format, expected 64 hex chars (256-bit)', '密钥格式无效，需要 64 位十六进制字符'],
@@ -92,12 +88,8 @@ const M: Msgs = {
   'init.complete':        ['Wangchuan initialized!', '忘川初始化完成！'],
   'init.detectedAgents':  ['Auto-detected agents: {agents}', '自动检测到的 Agent: {agents}'],
   'init.noAgentsDetected': ['No agents detected — enable agents manually via config.json', '未检测到已安装的 Agent，请手动在 config.json 中启用'],
-  'init.autoSync':        ['Running first sync...', '正在执行首次同步...'],
-  'init.autoSyncDone':    ['First sync completed', '首次同步完成'],
-  'init.autoSyncFailed':  ['First sync failed (you can retry with wangchuan sync): {error}', '首次同步失败（可稍后执行 wangchuan sync 重试）: {error}'],
-  'init.syncHint':        ['Run `wangchuan sync` when ready to push local data to cloud', '准备好后运行 `wangchuan sync` 将本地数据推送到云端'],
-  'init.nextPull':        ['Next: wangchuan sync  (sync memories across environments)', '下一步: wangchuan sync  (同步记忆到各环境)'],
-  'init.nextPush':        ['              wangchuan status  (check sync state)', '              wangchuan status  (查看同步状态)'],
+  'init.autoSyncFailed':  ['First push failed (you can retry with wangchuan push): {error}', '首次推送失败（可稍后执行 wangchuan push 重试）: {error}'],
+  'init.syncHint':        ['Run `wangchuan push` when ready to push local data to cloud', '准备好后运行 `wangchuan push` 将本地数据推送到云端'],
 
   // ── push (used by sync) ──────────────────────────────────────
   'push.unchangedSummary':     ['({count} unchanged, skipped)', '（{count} 个未变更，已跳过）'],
@@ -111,8 +103,6 @@ const M: Msgs = {
   'status.agent':          ['Agent:  ', '过滤智能体：'],
   'status.recentCommits':  ['Recent commits:', '最近提交：'],
   'status.cannotReadLog':  ['Cannot read git log (repo may not be cloned)', '无法读取 git 日志'],
-  'status.uncommitted':    ['Uncommitted changes:', '本地仓库（未提交变更）：'],
-  'status.inSync':         ['Local repo in sync with remote', '本地仓库与远端保持一致'],
   'status.noSync':         ['Workspace matches repo, no sync needed', '工作区与仓库一致，无需同步'],
   'status.workspaceDiff':  ['Workspace diff:', '工作区差异：'],
   'status.newTag':         ['(new, will sync on push)', '(本地新增)'],
@@ -124,13 +114,11 @@ const M: Msgs = {
   'status.diffFailed':     ['Diff analysis failed: {error}', '差异分析失败: {error}'],
   'status.healthLabel':    ['Health: ', '健康度：'],
   'status.lastSync':       ['Last sync:', '上次同步：'],
-  'status.syncHint':       ['Run `wangchuan sync` to synchronize', '执行 `wangchuan sync` 同步'],
+  'status.syncHint':       ['Run `wangchuan pull` to update from cloud', '执行 `wangchuan pull` 从云端更新'],
   'status.verboseHint':    ['Run `wangchuan status -v` for full detail', '执行 `wangchuan status -v` 查看完整详情'],
   'status.historyLabel':   ['Recent sync history:', '最近同步历史：'],
   'status.lockActive':     ['Sync in progress (PID: {pid}, started: {startedAt})', '同步进行中 (PID: {pid}, 开始于: {startedAt})'],
   'status.lockStale':      ['Stale sync lock detected (PID {pid} is dead). Run `wangchuan doctor` to clean up', '检测到过期同步锁 (PID {pid} 已终止)，执行 `wangchuan doctor` 清理'],
-  'status.inventory':      ['Config inventory ({count} items):', '配置文件清单（{count} 项）：'],
-  'status.fieldLabel':     ['[field]', '[字段]'],
 
   // ── diff (used by status) ────────────────────────────────────
   'diff.newFile':        ['(new, not in repo)', '(新增，仓库中不存在)'],
@@ -140,7 +128,6 @@ const M: Msgs = {
   'diff.filesDiffer':    ['{count} files differ', '{count} 个文件有差异'],
 
   // ── list ────────────────────────────────────────────────────
-  'list.banner':       ['Wangchuan · List', '忘川 · 配置清单'],
   'list.tierShared':   ['Shared (cross-agent)', '共享（跨 Agent）'],
   'list.localLabel':   ['local', '本地'],
   'list.repoLabel':    ['repo', '仓库'],
@@ -173,32 +160,13 @@ const M: Msgs = {
   'migrate.profilesReconciled': ['Agent profiles updated to match latest definitions', '智能体配置已更新至最新定义'],
 
   // ── sync (debug) ────────────────────────────────────────────
-  'sync.distributeSkill':  ['distribute skill: {file} → {agent}', '分发 skill: {file} → {agent}'],
-  'sync.distributeAgent':  ['distribute agent: {file} → {agent}', '分发 agent: {file} → {agent}'],
-  'sync.distributeMcp':    ['distribute MCP servers → {agent}', '分发 MCP servers → {agent}'],
   'sync.pruneStale':       ['repo prune stale: {file}', 'repo 清理过期文件: {file}'],
   'sync.pruneCandidate':   ['  will delete: {file}', '  待删除: {file}'],
   'sync.pendingDeletions': ['{count} files were removed locally and pending deletion from cloud:', '有 {count} 个文件在本地已删除，等待确认是否从云端删除：'],
-  'sync.pendingConflicts':         ['{count} conflict(s) detected by watch daemon — please review:', '监听守护进程检测到 {count} 个冲突 — 请检查：'],
-  'sync.pendingConflictDetectedAt':['detected at {time}', '发现于 {time}'],
-  'sync.pendingConflictLocal':     ['Local', '本地'],
-  'sync.pendingConflictRemote':    ['Remote', '云端'],
   'sync.confirmDelete':    ['Delete these files from cloud? [Y/n] ', '确认从云端删除这些文件？[Y/n] '],
   'sync.deletionConfirmed':['Deleted {count} stale files from cloud', '已从云端删除 {count} 个过期文件'],
   'sync.deletionSkipped':  ['Deletion skipped, files kept in cloud', '跳过删除，文件保留在云端'],
   'sync.deletionDeferred': ['{count} pending deletions saved — confirm next time you run sync interactively', '{count} 个待删除文件已记录，下次交互式运行 sync 时确认'],
-  'sync.skillDeletedFrom':    ['Skill "{file}" was deleted from: {agents}', '技能 "{file}" 已从以下 agent 中删除: {agents}'],
-  'sync.skillStillIn':        ['Still present in: {agents}', '仍存在于: {agents}'],
-  'sync.skillDeleteChoices':  ['Also delete from these agents?', '是否也从这些 agent 中删除？'],
-  'sync.skillDeleteAll':      ['delete from all agents', '从全部 agent 中删除'],
-  'sync.skillDeleteNone':     ['keep in all agents', '在所有 agent 中保留'],
-  'sync.skillDeletePrompt':   ['Enter numbers (comma-separated), or "0" for all: ', '输入编号（逗号分隔），或输入 "0" 选择全部: '],
-  'sync.skillDeletedFromAgent': ['Deleted {file} from {agent}', '已从 {agent} 删除 {file}'],
-  'sync.skillDeleteKept':     ['Skill kept in all agents', '技能在所有 agent 中保留'],
-  'sync.agentDeletedFrom':    ['Agent definition "{file}" was deleted from: {agents}', 'Agent 定义 "{file}" 已从以下 agent 中删除: {agents}'],
-  'sync.agentStillIn':        ['Still present in: {agents}', '仍存在于: {agents}'],
-  'sync.agentDeletedFromAgent': ['Deleted {file} from {agent}', '已从 {agent} 删除 {file}'],
-  'sync.agentDeleteKept':     ['Agent definition kept in all agents', 'Agent 定义在所有 agent 中保留'],
   // ── Unified pending distribution prompts ──────────────────────
   'sync.pendingDistributions':  ['{count} cross-agent changes detected:', '检测到 {count} 个跨 agent 变更：'],
   'sync.distItem':              ['[{kind}] [{action}] "{file}" from {source}', '[{kind}] [{action}] "{file}" 来自 {source}'],
@@ -210,7 +178,7 @@ const M: Msgs = {
   'sync.distSkipped':           ['Skipped (not distributed)', '已跳过（未分发）'],
   'sync.distRegistered':        ['Registered "{name}" as shared resource', '已注册 "{name}" 为共享资源'],
   'sync.distDeleteApplied':     ['Deleted "{name}" from {count} agent(s)', '已从 {count} 个 agent 中删除 "{name}"'],
-  'sync.pendingNotice':         ['⚠ {count} pending action(s) require your attention. Run `wangchuan sync` to review.', '⚠ 有 {count} 项待处理操作需要确认。执行 `wangchuan sync` 查看详情。'],
+  'sync.pendingNotice':         ['⚠ {count} pending action(s) require your attention. Run `wangchuan push` to review.', '⚠ 有 {count} 项待处理操作需要确认。执行 `wangchuan push` 查看详情。'],
   'sync.skipNotFound':     ['Skipping (not found): {path}', '跳过（不存在）: {path}'],
   'sync.skipJsonParse':    ['Skipping JSON field extraction (parse error): {path} — {error}', '跳过 JSON 字段提取（解析失败）: {path} — {error}'],
   'sync.sensitiveData':    ['Possible plaintext sensitive data detected: {path}', '检测到疑似明文敏感信息: {path}'],
@@ -221,8 +189,9 @@ const M: Msgs = {
   // ── local deletion on pull (cloud is single source of truth) ───────
   'sync.deletedLocal':       ['Deleted {count} files from local (removed from cloud)', '已从本地删除 {count} 个文件（云端已删除）'],
 
-  // ── sync command ──────────────────────────────────────────────
-  'sync.banner':              ['Wangchuan · Sync', '忘川 · 双向同步'],
+  // ── sync/pull/push command ──────────────────────────────────────────────
+  'pull.banner':              ['Wangchuan · Pull', '忘川 · 拉取同步'],
+  'push.banner':              ['Wangchuan · Push', '忘川 · 推送同步'],
   'sync.filterAgent':         ['Filter agent: {agent}', '过滤智能体: {agent}'],
   'sync.fetching':            ['Fetching remote …', '检查远端更新 …'],
   'sync.remoteAhead':         ['Remote is {count} commits ahead', '远端领先 {count} 个提交'],
@@ -251,21 +220,6 @@ const M: Msgs = {
   'sync.summaryPush':         ['Pushed {count} files, commit: {sha}', '推送 {count} 个文件，commit: {sha}'],
   'sync.alreadyInSync':       ['Everything is up to date', '本地与远端已同步，无需操作'],
 
-  // ── watch command ─────────────────────────────────────────────
-  'watch.banner':          ['Wangchuan · Watch', '忘川 · 监听模式'],
-  'watch.filterAgent':     ['Filter agent: {agent}', '过滤智能体: {agent}'],
-  'watch.interval':        ['Poll interval: {minutes} minutes', '轮询间隔: {minutes} 分钟'],
-  'watch.triggerSync':     ['[{time}] Pull triggered: {reason}', '[{time}] 触发拉取: {reason}'],
-  'watch.syncError':       ['Pull error: {error}', '拉取出错: {error}'],
-  'watch.reasonPoll':      ['periodic remote check', '定时远端检查'],
-  'watch.shutdown':        ['Shutting down watch daemon …', '正在停止监听 …'],
-  'watch.started':         ['Watch daemon started (pull-only mode)', '监听守护进程已启动（仅拉取模式）'],
-  'watch.stopHint':        ['Press Ctrl+C to stop', '按 Ctrl+C 停止'],
-  'watch.alreadyRunning':  ['Watch daemon already running (PID {pid})', '监听守护进程已在运行 (PID {pid})'],
-  'watch.conflictAutoMerged':  ['Auto-merged conflict (no markers): {file}', '自动合并冲突（无冲突标记）: {file}'],
-  'watch.conflictNeedsManual': ['Conflict needs manual resolution: {file}', '冲突需手动解决: {file}'],
-  'watch.conflictsSaved':      ['{count} conflict(s) saved — will prompt on next interactive sync', '{count} 个冲突已记录 — 下次交互式同步时提示处理'],
-
   'sync.decryptFailed': ['Decrypt failed (skipped): {path} — {error}', '解密失败（已跳过）: {path} — {error}'],
   'sync.restoreSkipError': ['Skipping {file}: {error}', '跳过 {file}: {error}'],
 
@@ -278,7 +232,6 @@ const M: Msgs = {
   'dryRun.wouldSync':     ['Would sync {count} files ({encrypted} encrypted)', '将同步 {count} 个文件（{encrypted} 个加密）'],
   'dryRun.wouldPrune':    ['Would prune {count} stale files', '将清理 {count} 个过期文件'],
   'dryRun.wouldCommit':   ['Would commit and push to {repo}', '将提交并推送到 {repo}'],
-  'dryRun.nothingToSync': ['Nothing to sync', '没有需要同步的内容'],
   'cli.cmd.dryRun':       ['Preview changes without committing or pushing', '预览变更，不实际提交或推送'],
   'cli.cmd.sync.only':    ['Only sync files matching these patterns', '仅同步匹配指定模式的文件'],
   'cli.cmd.sync.exclude': ['Exclude files matching these patterns', '排除匹配指定模式的文件'],
@@ -323,11 +276,10 @@ const M: Msgs = {
   'env.cannotDeleteDefault':  ['Cannot delete the default environment', '无法删除 default 环境'],
   'env.created':              ['Environment created: {name}', '环境已创建: {name}'],
   'env.switched':             ['Switched to environment: {name}', '已切换到环境: {name}'],
-  'env.switch.syncing':       ['Syncing memories for the new environment …', '正在同步新环境的记忆 …'],
   'env.deleted':              ['Environment deleted: {name}', '环境已删除: {name}'],
   'env.create.creating':      ['Creating environment {name} …', '正在创建环境 {name} …'],
   'env.switch.switching':     ['Switching to environment {name} …', '正在切换到环境 {name} …'],
-  'env.switch.syncHint':      ['Run `wangchuan sync` to push changes to this environment', '运行 `wangchuan sync` 将变更推送到此环境'],
+  'env.switch.syncHint':      ['Run `wangchuan push` to push changes to this environment', '运行 `wangchuan push` 将变更推送到此环境'],
   'env.delete.deleting':      ['Deleting environment {name} …', '正在删除环境 {name} …'],
   'env.unknownAction':        ['Unknown action: {action}. Use list|create|switch|current|delete', '未知操作: {action}，请使用 list|create|switch|current|delete'],
 
@@ -339,7 +291,7 @@ const M: Msgs = {
   'key.rotate.noFiles':       ['No encrypted files found in repo', '仓库中没有加密文件'],
   'key.rotate.failed':        ['Key rotation failed: {error}', '密钥轮换失败: {error}'],
   'key.rotate.rolledBack':    ['Old key restored after failed rotation', '轮换失败，已恢复旧密钥'],
-  'doctor.keyRotateHint':     ['Run `wangchuan sync` to push re-encrypted files to cloud', '运行 `wangchuan sync` 将重新加密的文件推送到云端'],
+  'doctor.keyRotateHint':     ['Run `wangchuan push` to push re-encrypted files to cloud', '运行 `wangchuan push` 将重新加密的文件推送到云端'],
   'key.export.hex':           ['Master key (hex): {hex}', '主密钥（hex）: {hex}'],
   'key.export.warning':       ['Keep this key safe — anyone with it can decrypt your data', '请妥善保管此密钥，持有者可解密所有数据'],
   'key.export.fileHint':       ['Save to file for transfer: wangchuan doctor --key-export > ~/wangchuan-key.txt', '保存到文件以便迁移: wangchuan doctor --key-export > ~/wangchuan-key.txt'],
@@ -354,7 +306,6 @@ const M: Msgs = {
   // ── key fingerprint validation ──────────────────────────────────
   'keyFingerprint.notFound':  ['No key fingerprint in repo (first push or legacy), skipping validation', '仓库中无密钥指纹（首次推送或旧版本），跳过校验'],
   'keyFingerprint.verified':  ['Key fingerprint verified ✓', '密钥指纹校验通过 ✓'],
-  'keyFingerprint.mismatch':  ['⛔ Key mismatch! Your local master.key does NOT match the key used to encrypt the repo.\n   This likely means you copied the wrong key or are using a different key from another machine.\n   To fix: run `wangchuan doctor --key-export` on the machine that last pushed, and import that key here.\n   Sync aborted to prevent data corruption.', '⛔ 密钥不匹配！本地 master.key 与仓库加密密钥不一致。\n   可能原因：复制了错误的密钥，或使用了另一台机器的密钥。\n   修复方法：在上次推送的机器上执行 `wangchuan doctor --key-export`，将密钥导入到本机。\n   同步已中止，以防止数据损坏。'],
   'keyFingerprint.mismatchWithHint': [
     'Key mismatch: your local key does not match the repo fingerprint.\n\n  This means another machine pushed with a different key.\n  How to fix:\n  - Export the correct key: run `wangchuan doctor --key-export` on the machine that last pushed\n  - Then import here:       wangchuan init --key <hex>',
     '密钥不匹配: 本地密钥与仓库指纹不一致。\n\n  这表示另一台机器使用了不同的密钥推送。\n  修复方法:\n  - 在最后推送的机器上导出密钥: wangchuan doctor --key-export\n  - 然后在此导入:              wangchuan init --key <hex>'
@@ -384,7 +335,6 @@ const M: Msgs = {
 
   // ── doctor command ─────────────────────────────────────────────
   'cli.cmd.doctor':            ['Diagnose and auto-fix issues (always fixes automatically)', '诊断并自动修复问题（自动修复，无需额外参数）'],
-  'cli.cmd.doctor.fix':        ['Auto-fix common issues', '自动修复常见问题'],
   'cli.cmd.doctor.keyRotate':  ['Rotate the master encryption key', '轮换主加密密钥'],
   'cli.cmd.doctor.keyExport':  ['Print master key hex for migration', '输出主密钥（用于迁移）'],
   'cli.cmd.doctor.setup':      ['Show one-liner init command for a new machine', '生成新机器初始化命令'],
@@ -429,15 +379,12 @@ const M: Msgs = {
   'doctor.filesHealthy':       ['All managed files are healthy', '所有受管文件状态正常'],
 
   // ── filter (--only / --exclude) ─────────────────────────────────
-  'cli.cmd.only':              ['Only sync files matching patterns (comma-separated)', '仅同步匹配的文件（逗号分隔）'],
-  'cli.cmd.exclude':           ['Exclude files matching patterns (comma-separated)', '排除匹配的文件（逗号分隔）'],
   'filter.only':               ['Filter --only: {patterns}', '过滤 --only: {patterns}'],
   'filter.exclude':            ['Filter --exclude: {patterns}', '过滤 --exclude: {patterns}'],
 
   // ── three-way merge ────────────────────────────────────────────────
   'merge.autoResolved':        ['Auto-merged (no conflicts): {file}', '自动合并（无冲突）: {file}'],
   'merge.conflictsFound':      ['Merge conflicts in {file} — edit to resolve markers', '合并冲突: {file} — 请编辑解决冲突标记'],
-  'merge.conflictMarkers':     ['Conflict markers inserted', '已插入冲突标记'],
 
   // ── setup (used by doctor) ──────────────────────────────────────
   'setup.repoLabel':           ['Repo:  ', '仓库：'],
@@ -448,18 +395,14 @@ const M: Msgs = {
 
   // ── snapshot command ──────────────────────────────────────────────
   'cli.cmd.snapshot':          ['Manage sync snapshots (save|list|restore|delete)', '管理同步快照 (save|list|restore|delete)'],
-  'cli.cmd.snapshot.limit':    ['Max snapshots to keep (default: 10)', '保留的最大快照数（默认: 10）'],
   'snapshot.banner':           ['Wangchuan · Snapshot', '忘川 · 快照管理'],
   'snapshot.saved':            ['Snapshot saved: {name} ({count} files)', '快照已保存: {name}（{count} 个文件）'],
   'snapshot.restored':         ['Snapshot restored: {name}', '快照已恢复: {name}'],
-  'snapshot.pushing':          ['Pushing restored snapshot to cloud …', '正在将恢复的快照推送到云端 …'],
-  'snapshot.pushedToCloud':    ['Restored snapshot pushed to cloud — other machines will pull this version', '已推送到云端 — 其他机器下次同步将拉取此版本'],
-  'snapshot.restoreHint':      ['Run `wangchuan sync` to push restored state to cloud', '运行 `wangchuan sync` 将恢复的状态推送到云端'],
+  'snapshot.restoreHint':      ['Run `wangchuan push` to push restored state to cloud', '运行 `wangchuan push` 将恢复的状态推送到云端'],
   'snapshot.deleted':          ['Snapshot deleted: {name}', '快照已删除: {name}'],
   'snapshot.notFound':         ['Snapshot not found: {name}', '快照不存在: {name}'],
   'snapshot.listHeader':       ['Snapshots:', '快照列表：'],
   'snapshot.listEmpty':        ['No snapshots found', '暂无快照'],
-  'snapshot.listEntry':        ['{name}  {time}  {count} files  {size}', '{name}  {time}  {count} 个文件  {size}'],
   'snapshot.pruned':           ['Auto-pruned {count} old snapshots (max: {max})', '自动清理 {count} 个旧快照（上限: {max}）'],
   'snapshot.unknownAction':    ['Unknown action: {action}. Use save|list|restore|delete', '未知操作: {action}，请使用 save|list|restore|delete'],
   'snapshot.nameRequired':     ['Snapshot name is required for restore/delete', 'restore/delete 操作需要指定快照名称'],
@@ -505,20 +448,16 @@ const M: Msgs = {
   'init.wizard.invalidChoice': ['Invalid choice', '无效的选择'],
 
   // ── init interactive ──────────────────────────────────────────
-  'init.promptRepo':         ['Enter git repo URL (SSH or HTTPS):', '请输入 Git 仓库地址（SSH 或 HTTPS）:'],
-  'init.promptRepoOrCreate': ['Enter git repo URL, or type \'create\' to create one via GitHub CLI:', '请输入 Git 仓库地址，或输入 \'create\' 通过 GitHub CLI 创建:'],
   'init.repoRequired':       ['--repo is required (or run interactively in a terminal)', '需要 --repo 参数（或在终端中交互运行）'],
   'init.ghCreating':         ['Creating private repo via GitHub CLI …', '正在通过 GitHub CLI 创建私有仓库 …'],
   'init.ghCreated':          ['Repo created: {url}', '仓库已创建: {url}'],
   'init.ghParseFailed':      ['Failed to parse repo URL from gh output: {output}', '无法从 gh 输出中解析仓库地址: {output}'],
-  'init.ghNotAvailable':     ['GitHub CLI (gh) is not installed or not authenticated', 'GitHub CLI (gh) 未安装或未登录'],
   'init.ghCreateFailed':     ['Failed to create GitHub repo: {error}', '创建 GitHub 仓库失败: {error}'],
 
   // ── memory command ──────────────────────────────────────────────
   'cli.cmd.memory':            ['Browse and copy memory files across agents (list|show|copy|broadcast)', '浏览和跨智能体复制记忆文件 (list|show|copy|broadcast)'],
   'cli.cmd.memory.file':       ['Filter by file name pattern (substring match)', '按文件名模式过滤（子串匹配）'],
   'memory.banner':             ['Wangchuan · Memory', '忘川 · 记忆浏览'],
-  'memory.list.header':        ['Memory files:', '记忆文件：'],
   'memory.list.empty':         ['No memory files found', '未找到记忆文件'],
   'memory.list.agentHeader':   ['Agent: {agent}', '智能体: {agent}'],
   'memory.show.notFound':      ['File not found: {agent}/{file}', '文件不存在: {agent}/{file}'],
@@ -542,10 +481,7 @@ const M: Msgs = {
   'env.create.clearing':       ['Clearing files for empty environment …', '正在清空文件以创建空白环境 …'],
 
   // ── status enhancements ────────────────────────────────────────
-  'status.lastSyncFrom':       ['Last synced from: {hostname} at {time}', '上次同步来自: {hostname}，时间: {time}'],
   'status.activeMachines':     ['Active machines: {count} ({hosts})', '活跃机器: {count} 台 ({hosts})'],
-  'status.watchRunning':       ['Watch daemon: running (PID {pid})', '监听守护进程: 运行中 (PID {pid})'],
-  'status.watchNotRunning':    ['Watch daemon: not running — run `wangchuan watch` to start', '监听守护进程: 未运行 — 执行 `wangchuan watch` 启动'],
   'sync.skippedAgents':        ['Skipped agents (not installed): {agents}. Install them and run `wangchuan doctor` to enable.', '跳过的智能体（未安装）: {agents}。安装后执行 `wangchuan doctor` 启用。'],
 
   // ── restore command ──────────────────────────────────────────────
@@ -558,7 +494,6 @@ const M: Msgs = {
   'restore.cloudRestored':    ['Cloud data restored to local', '云端数据已恢复到本地'],
   'restore.configRestored':   ['Restored workspace paths from cloud config snapshot', '已从云端配置快照恢复工作区路径'],
   'restore.complete':         ['Restore complete! All cloud data has been pulled to local.', '恢复完成！所有云端数据已拉取到本地。'],
-  'restore.syncingLocal':     ['Syncing local additions to cloud …', '正在将本地新增同步到云端 …'],
 };
 
 /**
