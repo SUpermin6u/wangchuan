@@ -1,0 +1,26 @@
+# Wangchuan — Git ignore rules
+
+# Keys (never commit)
+*.key
+master.key
+
+# Local environment
+.env
+.env.local
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.plain
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

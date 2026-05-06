@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "repo": "git@github.com:YOUR_USER/wangchuan-sync.git",
+  "keyPath": "~/.wangchuan/master.key",
+  "repoPath": "~/.wangchuan/repo",
+  "agents": {
+    "claude": {
+      "enabled": true,
+      "root": "~/.claude",
+      "skills": "~/.claude/skills",
+      "memory": "~/.claude/CLAUDE.md"
+    },
+    "cursor": {
+      "enabled": true,
+      "root": "~/.cursor",
+      "skills": "~/.cursor/skills",
+      "memory_dir": "~/.cursor/rules",
+      "memory_pattern": "*.mdc"
+    },
+    "openclaw": {
+      "enabled": true,
+      "root": "~/.openclaw",
+      "skills": "~/.openclaw/workspace/skills",
+      "memory_files": [
+        "~/.openclaw/workspace/MEMORY.md",
+        "~/.openclaw/workspace/USER.md",
+        "~/.openclaw/workspace/IDENTITY.md"
+      ]
+    }
+  }
+}
