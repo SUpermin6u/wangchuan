@@ -8,12 +8,14 @@
       "enabled": true,
       "root": "~/.claude",
       "skills": "~/.claude/skills",
+      "agents": "~/.claude/agents",
       "memory": "~/.claude/CLAUDE.md"
     },
     "cursor": {
       "enabled": true,
       "root": "~/.cursor",
       "skills": "~/.cursor/skills",
+      "agents": "~/.cursor/agents",
       "memory_dir": "~/.cursor/rules",
       "memory_pattern": "*.mdc"
     },
@@ -21,6 +23,7 @@
       "enabled": true,
       "root": "~/.openclaw",
       "skills": "~/.openclaw/workspace/skills",
+      "agents_pattern": "~/.openclaw/workspace-{name}",
       "memory_files": [
         "~/.openclaw/workspace/MEMORY.md",
         "~/.openclaw/workspace/USER.md",

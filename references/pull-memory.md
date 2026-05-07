@@ -94,6 +94,36 @@ Determine action by content diff (not timestamp):
   ```
 - Repo has a skill not present locally → copy to local agent skills dir
 
+Also sync shared agent definitions:
+
+For Claude/Cursor:
+```bash
+# For each shared agent definition in repo
+for agent_dir in ~/.wangchuan/repo/shared/agents/*/; do
+  agent_name=$(basename "$agent_dir")
+  diff "$agent_dir/$agent_name.md" <agent_agents_dir>/"$agent_name.md" 2>/dev/null
+done
+```
+
+For OpenClaw:
+```bash
+# Compare workspace SOUL.md against repo
+for agent_dir in ~/.wangchuan/repo/shared/agents/*/; do
+  agent_name=$(basename "$agent_dir")
+  diff "$agent_dir/SOUL.md" ~/.openclaw/workspace-"$agent_name"/SOUL.md 2>/dev/null
+done
+```
+
+Same logic as shared skills:
+- Repo differs from local AND local matches last-known repo version → update local silently
+- Repo differs from local AND local has its own edits → warn user
+- Repo has an agent definition not present locally → deploy to local (create workspace for OpenClaw)
+
+Where `<agent_agents_dir>` is:
+- Claude: `~/.claude/agents/`
+- Cursor: `~/.cursor/agents/`
+- OpenClaw: `~/.openclaw/workspace-<name>/` (per agent definition)
+
 ### Step 6: Cleanup
 
 ```bash

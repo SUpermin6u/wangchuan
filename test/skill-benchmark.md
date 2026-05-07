@@ -606,3 +606,143 @@ Each TC specifies:
 **Anti-patterns:**
 - Try to push without config
 - Auto-initialize without asking
+
+---
+
+## TC-26: Add agent definition — sync to all
+
+**Instruction:** "Add a code-reviewer agent to all my environments"
+
+**Trigger:** Yes → `references/agent-crud.md` → **Add Agent**
+
+**Expected behavior:**
+1. Confirm agent definition content (user provides or agent creates .md with frontmatter)
+2. Validate frontmatter has `name` and `description` (for Claude/Cursor format)
+3. User selects "All"
+4. Copy to `shared/agents/<name>/` in repo (stores both formats)
+5. Copy to all local agent locations:
+   - `~/.claude/agents/<name>.md`
+   - `~/.cursor/agents/<name>.md`
+   - `~/.openclaw/workspace-<name>/` (with SOUL.md + IDENTITY.md)
+6. git add + commit + push
+
+**Critical constraints:**
+- MUST validate content (name + description required)
+- "All" → goes to shared/agents/ (not per-agent)
+- Must deploy to local agent locations too (not just repo)
+- Must git push after
+- Claude/Cursor: single .md file with YAML frontmatter
+- OpenClaw: workspace directory with SOUL.md + IDENTITY.md (cross-platform conversion)
+
+**Anti-patterns:**
+- Skip frontmatter validation
+- Put in shared/ but forget local copies
+- Forget to git push
+- Create agent without name/description frontmatter
+
+---
+
+## TC-27: Add agent definition — single agent only
+
+**Instruction:** "Create a data-analyst agent, only for OpenClaw"
+
+**Trigger:** Yes → `references/agent-crud.md` → **Add Agent**
+
+**Expected behavior:**
+1. Create agent definition (SOUL.md + IDENTITY.md for OpenClaw format)
+2. User indicates "only OpenClaw"
+3. Create workspace directory `~/.openclaw/workspace-data-analyst/`
+4. Write SOUL.md (system prompt) and IDENTITY.md (name + description)
+5. Store in `~/.wangchuan/repo/agents/openclaw/agents/data-analyst/`
+6. NOT in shared/agents/
+7. git push
+
+**Critical constraints:**
+- Goes to agents/openclaw/agents/ NOT shared/
+- Only creates OpenClaw workspace
+- Correct OpenClaw path: `~/.openclaw/workspace-<name>/` (workspace directory, not single file)
+- Must contain at minimum SOUL.md
+
+**Anti-patterns:**
+- Put in shared/ even though user said only OpenClaw
+- Copy to other agents
+- Use wrong path for OpenClaw (single .md file instead of workspace dir)
+- Write to ~/.openclaw/agency-agents/ (that's Wink-specific, not official OpenClaw)
+
+---
+
+## TC-28: Modify shared agent definition
+
+**Instruction:** "Update the tech-scout agent, add LSP tool to its tools list"
+
+**Trigger:** Yes → `references/agent-crud.md` → **Modify Agent**
+
+**Expected behavior:**
+1. Find agent file (in shared/agents/)
+2. Detect it's a shared agent
+3. Apply modification (add LSP to tools field in Claude/Cursor format; update SOUL.md for OpenClaw)
+4. AUTO-sync to all agents (no need to ask — it's already shared)
+5. Update `shared/agents/<name>/` in repo
+6. Copy updated file to all local agent locations
+7. git push
+
+**Critical constraints:**
+- Shared agent modification = automatic sync to all agents
+- Must NOT ask "sync to other agents?" for shared agents
+- Must update both repo and all local copies
+- Cross-platform conversion: changes to .md frontmatter must reflect in OpenClaw's SOUL.md/IDENTITY.md
+
+**Anti-patterns:**
+- Ask about sync target for an already-shared agent
+- Only update one agent's local copy
+- Forget to update repo shared/agents/
+
+---
+
+## TC-29: Delete agent definition — from all
+
+**Instruction:** "Delete the code-reviewer agent"
+
+**Trigger:** Yes → `references/agent-crud.md` → **Delete Agent**
+
+**Expected behavior:**
+1. Find agent in shared/agents/
+2. Inform user: "This is a shared agent, used by Claude, Cursor, OpenClaw"
+3. Ask: "Remove from which agents?"
+4. User selects "All"
+5. Remove from all local dirs + repo shared/agents/
+6. git push
+7. Confirm deletion
+
+**Critical constraints:**
+- Must inform about shared status BEFORE asking for scope
+- Must ask confirmation (which agents to remove from)
+- Must remove from BOTH local dirs and repo
+
+**Anti-patterns:**
+- Delete without informing it's shared
+- Delete without asking scope
+- Only remove from repo but leave local copies
+
+---
+
+## TC-30: View/list agent definitions
+
+**Instruction:** "List my agents"
+
+**Trigger:** Yes → `references/agent-crud.md` → **View Agent**
+
+**Expected behavior:**
+1. Scan all locations: shared/agents/, agents/*/agents/, local dirs
+2. Output a table: name | type (shared/agent-specific) | agents using it
+3. Include model and description from frontmatter
+
+**Critical constraints:**
+- Must search all locations (shared + per-agent + local)
+- Must show which agents have each definition
+- Table format for multiple results
+
+**Anti-patterns:**
+- Only check one location
+- Show raw file content without metadata summary
+- Confuse "agent" (the environment like Claude/Cursor) with "agent definition" (sub-agent .md file)

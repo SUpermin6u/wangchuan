@@ -92,6 +92,50 @@ cp ~/.wangchuan/repo/agents/<name>/skills/* <agent_skills_dir>/ 2>/dev/null
 cp ~/.wangchuan/repo/shared/skills/* <agent_skills_dir>/ 2>/dev/null
 ```
 
+#### d. Restore agent-specific agent definitions
+
+For Claude/Cursor:
+```bash
+cp ~/.wangchuan/repo/agents/<name>/agents/*/*.md <agent_agents_dir>/ 2>/dev/null
+```
+
+For OpenClaw: recreate workspace directories from repo:
+```bash
+# For each agent def dir in repo
+for agent_dir in ~/.wangchuan/repo/agents/openclaw/agents/*/; do
+  agent_name=$(basename "$agent_dir")
+  mkdir -p ~/.openclaw/workspace-"$agent_name"
+  cp "$agent_dir"/*.md ~/.openclaw/workspace-"$agent_name"/ 2>/dev/null
+done
+```
+
+Where `<agent_agents_dir>` is:
+- Claude: `~/.claude/agents/`
+- Cursor: `~/.cursor/agents/`
+- OpenClaw: `~/.openclaw/workspace-<name>/` (per agent definition)
+
+#### e. Restore shared agent definitions
+
+For Claude/Cursor:
+```bash
+# Copy the .md file from each shared agent dir
+for agent_dir in ~/.wangchuan/repo/shared/agents/*/; do
+  agent_name=$(basename "$agent_dir")
+  cp "$agent_dir/$agent_name.md" <agent_agents_dir>/ 2>/dev/null
+done
+```
+
+For OpenClaw: recreate workspace directories from repo:
+```bash
+for agent_dir in ~/.wangchuan/repo/shared/agents/*/; do
+  agent_name=$(basename "$agent_dir")
+  mkdir -p ~/.openclaw/workspace-"$agent_name"
+  # Use SOUL.md/IDENTITY.md if present, otherwise convert from .md
+  cp "$agent_dir"/SOUL.md ~/.openclaw/workspace-"$agent_name"/ 2>/dev/null
+  cp "$agent_dir"/IDENTITY.md ~/.openclaw/workspace-"$agent_name"/ 2>/dev/null
+done
+```
+
 ### Step 8: Write config.json
 
 Write `~/.wangchuan/config.json` with repo URL, key path, and detected agent paths (same format as init.md Step 8).
@@ -107,5 +151,6 @@ Tell user:
 1. Restore complete
 2. Restored agents: [list]
 3. Skills restored: shared=[count], per-agent=[count]
-4. Memory files restored: [list]
-5. Key fingerprint matches: `openssl dgst -sha256 ~/.wangchuan/master.key | awk '{print $2}' | cut -c1-16`
+4. Agent definitions restored: shared=[count], per-agent=[count]
+5. Memory files restored: [list]
+6. Key fingerprint matches: `openssl dgst -sha256 ~/.wangchuan/master.key | awk '{print $2}' | cut -c1-16`

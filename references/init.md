@@ -68,7 +68,7 @@ git clone <USER_PROVIDED_REPO_URL> ~/.wangchuan/repo
 
 If the repo is empty, initialize structure:
 ```bash
-mkdir -p ~/.wangchuan/repo/{shared/skills,agents/claude/memory,agents/claude/skills,agents/cursor/memory,agents/cursor/skills,agents/openclaw/memory,agents/openclaw/skills}
+mkdir -p ~/.wangchuan/repo/{shared/skills,shared/agents,agents/claude/memory,agents/claude/skills,agents/claude/agents,agents/cursor/memory,agents/cursor/skills,agents/cursor/agents,agents/openclaw/memory,agents/openclaw/skills,agents/openclaw/agents}
 echo "# Wangchuan Sync Repo" > ~/.wangchuan/repo/README.md
 ```
 
@@ -98,12 +98,14 @@ Based on detected agents, write `~/.wangchuan/config.json`:
       "enabled": true,
       "root": "~/.claude",
       "skills": "~/.claude/skills",
+      "agents": "~/.claude/agents",
       "memory": "~/.claude/CLAUDE.md"
     },
     "cursor": {
       "enabled": "<true if detected>",
       "root": "~/.cursor",
       "skills": "~/.cursor/skills",
+      "agents": "~/.cursor/agents",
       "memory_dir": "~/.cursor/rules",
       "memory_pattern": "*.mdc"
     },
@@ -111,6 +113,7 @@ Based on detected agents, write `~/.wangchuan/config.json`:
       "enabled": "<true if detected>",
       "root": "~/.openclaw",
       "skills": "~/.openclaw/workspace/skills",
+      "agents_pattern": "~/.openclaw/workspace-{name}",
       "memory_files": [
         "~/.openclaw/workspace/MEMORY.md",
         "~/.openclaw/workspace/USER.md",
@@ -144,6 +147,31 @@ Skills that are themselves git repos will be treated as submodules otherwise, ca
 # After all copies are done, remove any nested .git dirs in the repo
 find ~/.wangchuan/repo/shared/skills -maxdepth 2 -name ".git" -type d -exec rm -rf {} + 2>/dev/null
 find ~/.wangchuan/repo/agents -path "*/skills/*/.git" -type d -exec rm -rf {} + 2>/dev/null
+```
+
+### Step 9b: Scan and sync agent definitions
+
+For each enabled agent, scan its agents directory:
+
+```bash
+ls ~/.claude/agents/ 2>/dev/null
+ls ~/.cursor/agents/ 2>/dev/null
+# OpenClaw: list workspace-* directories (each is a specialist agent)
+ls -d ~/.openclaw/workspace-*/ 2>/dev/null
+```
+
+Compare agent definition files across agents:
+- If the same agent definition (same name) exists in 2+ agents → copy to `shared/agents/<name>/`
+- Agent-unique definitions → copy to `agents/{name}/agents/<name>/`
+
+For cross-platform storage in repo, store both formats in each agent dir:
+- `<name>.md` — Claude/Cursor format (YAML frontmatter + body)
+- `SOUL.md` + `IDENTITY.md` — OpenClaw format
+
+Strip embedded `.git` directories:
+```bash
+find ~/.wangchuan/repo/shared/agents -maxdepth 2 -name ".git" -type d -exec rm -rf {} + 2>/dev/null
+find ~/.wangchuan/repo/agents -path "*/agents/*/.git" -type d -exec rm -rf {} + 2>/dev/null
 ```
 
 ### Step 10: Encrypt and push memories

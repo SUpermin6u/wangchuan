@@ -1,12 +1,12 @@
 ---
 name: wangchuan
-version: 1.0.0
-description: "Encrypt and sync AI agent memories, skills, and configs across machines via a private Git repo. Use this skill whenever the user mentions: syncing memories or skills between agents/machines, initializing or restoring wangchuan, pushing or pulling memories, adding/modifying/deleting/viewing skills across agents, sharing skills between Claude/Cursor/OpenClaw, cross-machine agent setup, backup/restore agent settings. Trigger even if the user doesn't say 'wangchuan' explicitly — any mention of syncing agent data, sharing skills between AI tools, or encrypted memory backup should activate this skill."
+version: 1.1.0
+description: "Encrypt and sync AI agent memories, skills, sub-agent definitions, and configs across machines via a private Git repo. Use this skill whenever the user mentions: syncing memories, skills, or sub-agents between agents/machines, initializing or restoring wangchuan, pushing or pulling memories, adding/modifying/deleting/viewing skills or sub-agent definitions across agents, sharing skills or agents between Claude/Cursor/OpenClaw, cross-machine agent setup, backup/restore agent settings. Trigger even if the user doesn't say 'wangchuan' explicitly — any mention of syncing agent data, sharing skills/agents between AI tools, or encrypted memory backup should activate this skill."
 ---
 
 # Wangchuan — Agent Memory & Skill Sync
 
-Sync AI agent memories, skills, and configs across environments via an encrypted private Git repo.
+Sync AI agent memories, skills, sub-agent definitions, and configs across environments via an encrypted private Git repo.
 
 **Supported agents:** Claude (`~/.claude/`), Cursor (`~/.cursor/`), OpenClaw (`~/.openclaw/workspace/`)
 
@@ -33,6 +33,10 @@ Read the matched reference file and follow its procedure step by step.
 | Modify skill / update skill | `references/skill-crud.md` → **Modify Skill** |
 | Delete skill / remove skill | `references/skill-crud.md` → **Delete Skill** |
 | View skill / show skill / inspect skill | `references/skill-crud.md` → **View Skill** |
+| Add agent / create agent / new agent / share agent | `references/agent-crud.md` → **Add Agent** |
+| Modify agent / update agent / edit agent | `references/agent-crud.md` → **Modify Agent** |
+| Delete agent / remove agent | `references/agent-crud.md` → **Delete Agent** |
+| View agent / show agent / inspect agent / list agents | `references/agent-crud.md` → **View Agent** |
 | Push memory / sync memory to cloud | `references/push-memory.md` |
 | Pull memory / sync cloud memory | `references/pull-memory.md` |
 
@@ -98,9 +102,9 @@ test -d ~/.openclaw && echo "openclaw"
   "keyPath": "~/.wangchuan/master.key",
   "repoPath": "~/.wangchuan/repo",
   "agents": {
-    "claude": { "enabled": true, "root": "~/.claude", "skills": "~/.claude/skills", "memory": "~/.claude/CLAUDE.md" },
-    "cursor": { "enabled": true, "root": "~/.cursor", "skills": "~/.cursor/skills", "memory_dir": "~/.cursor/rules", "memory_pattern": "*.mdc" },
-    "openclaw": { "enabled": false, "root": "~/.openclaw", "skills": "~/.openclaw/workspace/skills", "memory_files": ["~/.openclaw/workspace/MEMORY.md", "~/.openclaw/workspace/USER.md", "~/.openclaw/workspace/IDENTITY.md"] }
+    "claude": { "enabled": true, "root": "~/.claude", "skills": "~/.claude/skills", "agents": "~/.claude/agents", "memory": "~/.claude/CLAUDE.md" },
+    "cursor": { "enabled": true, "root": "~/.cursor", "skills": "~/.cursor/skills", "agents": "~/.cursor/agents", "memory_dir": "~/.cursor/rules", "memory_pattern": "*.mdc" },
+    "openclaw": { "enabled": false, "root": "~/.openclaw", "skills": "~/.openclaw/workspace/skills", "agents_pattern": "~/.openclaw/workspace-{name}", "memory_files": ["~/.openclaw/workspace/MEMORY.md", "~/.openclaw/workspace/USER.md", "~/.openclaw/workspace/IDENTITY.md"] }
   }
 }
 ```
@@ -115,10 +119,13 @@ test -d ~/.openclaw && echo "openclaw"
 
 ```
 ~/.wangchuan/repo/
-├── shared/skills/       # Skills shared across ALL agents
+├── shared/
+│   ├── skills/          # Skills shared across ALL agents
+│   └── agents/          # Agent definitions shared across ALL agents
 └── agents/<name>/
     ├── memory/          # Encrypted .enc files (one per memory file)
-    └── skills/          # Agent-specific skills (plaintext)
+    ├── skills/          # Agent-specific skills (plaintext)
+    └── agents/          # Agent-specific sub-agent definitions (plaintext)
 ```
 
 For agents with multiple memory files (e.g., OpenClaw has MEMORY.md, USER.md, IDENTITY.md), each file gets its own .enc in the memory/ dir.

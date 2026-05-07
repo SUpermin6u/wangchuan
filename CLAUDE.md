@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Wangchuan (忘川)** — AI memory sync system. A skill-first architecture that encrypts and syncs AI agent memories and skills across environments via a private Git repo. The AI agent itself executes operations guided by markdown skill files — no CLI tool needed.
+**Wangchuan (忘川)** — AI memory sync system. A skill-first architecture that encrypts and syncs AI agent memories, skills, and sub-agent definitions across environments via a private Git repo. The AI agent itself executes operations guided by markdown skill files — no CLI tool needed.
 
 Supported agents: **Claude** (`~/.claude/`), **Cursor** (`~/.cursor/`), **OpenClaw** (`~/.openclaw/`)
 
@@ -19,13 +19,14 @@ wangchuan/                      ← this entire dir is the skill
 │   ├── init.md                 # Initialize wangchuan
 │   ├── restore.md              # Restore on new machine
 │   ├── skill-crud.md           # Skill add/modify/delete/view + sharing
+│   ├── agent-crud.md           # Sub-agent add/modify/delete/view + sharing
 │   ├── push-memory.md          # Push memory to cloud
 │   └── pull-memory.md          # Pull memory from cloud
 ├── scripts/
 │   ├── encrypt.sh              # openssl AES-256-CBC encrypt
 │   └── decrypt.sh              # openssl AES-256-CBC decrypt
 ├── config.example.json         # Configuration template
-├── test/skill-benchmark.md     # 25 test cases for skill verification
+├── test/skill-benchmark.md     # Test cases for skill verification
 ├── CLAUDE.md                   # This file
 └── README.md
 ```
@@ -38,10 +39,13 @@ wangchuan/                      ← this entire dir is the skill
 ├── master.key              # Encryption key (chmod 600)
 ├── scripts/                # Copied encrypt/decrypt helpers
 └── repo/                   # Git clone of sync repo
-    ├── shared/skills/      # Skills shared across all agents (plaintext)
+    ├── shared/
+    │   ├── skills/         # Skills shared across all agents (plaintext)
+    │   └── agents/         # Agent definitions shared across all agents (plaintext)
     └── agents/<name>/
         ├── memory/         # Per-agent encrypted memory (.enc)
-        └── skills/         # Per-agent specific skills (plaintext)
+        ├── skills/         # Per-agent specific skills (plaintext)
+        └── agents/         # Per-agent specific sub-agent definitions (plaintext)
 ```
 
 ## How It Works
@@ -62,6 +66,8 @@ wangchuan/                      ← this entire dir is the skill
 
 - **Shared skill**: A skill in `repo/shared/skills/` distributed to all agents
 - **Agent-specific skill**: A skill in `repo/agents/<name>/skills/` for one agent only
+- **Shared agent definition**: A sub-agent definition in `repo/shared/agents/` distributed to all agents
+- **Agent-specific agent definition**: A sub-agent definition in `repo/agents/<name>/agents/` for one agent only
 - **Memory**: Agent's persistent context file (e.g. CLAUDE.md), always encrypted in repo
 - **Master key**: AES-256 key at `~/.wangchuan/master.key`, required for decrypt on new machines
 
