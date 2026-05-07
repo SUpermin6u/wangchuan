@@ -47,6 +47,9 @@ cp -r wangchuan/ ~/.openclaw/workspace/skills/wangchuan/
 | 查看 xxx 子 Agent / 列出所有子 Agent | 显示状态或列出所有子 Agent 定义 |
 | 推送记忆 | 加密并推送记忆到云端 |
 | 拉取记忆 | 从云端拉取并解密记忆 |
+| 推送 MCP | 加密并推送 MCP 服务配置到云端 |
+| 拉取 MCP | 从云端拉取并解密 MCP 配置，同步到所有智能体 |
+| 查看 MCP | 对比各智能体和云端的 MCP 配置 |
 
 ## 工作原理
 
@@ -63,10 +66,12 @@ cp -r wangchuan/ ~/.openclaw/workspace/skills/wangchuan/
 远端 git 仓库/
 ├── shared/
 │   ├── skills/              # 所有智能体共享的技能（明文）
-│   └── agents/<name>/      # 所有智能体共享的子 Agent 定义
-│       ├── <name>.md       #   Claude/Cursor 格式
-│       ├── SOUL.md         #   OpenClaw 格式
-│       └── IDENTITY.md     #   OpenClaw 格式
+│   ├── agents/<name>/      # 所有智能体共享的子 Agent 定义
+│   │   ├── <name>.md       #   Claude/Cursor 格式
+│   │   ├── SOUL.md         #   OpenClaw 格式
+│   │   └── IDENTITY.md     #   OpenClaw 格式
+│   └── mcp/                 # 加密的 MCP 服务配置
+│       └── mcpServers.json.enc
 └── agents/<agent>/
     ├── memory/              # 加密的 .enc 文件
     ├── skills/              # 智能体专属技能（明文）
@@ -105,6 +110,7 @@ cp -r wangchuan/ ~/.openclaw/workspace/skills/wangchuan/
 ## 安全
 
 - 记忆文件在离开本机前始终加密（AES-256-CBC）
+- MCP 配置始终加密（包含敏感 token）
 - 技能和子 Agent 定义以明文存储（不含敏感信息）
 - 密钥位于 `~/.wangchuan/master.key`（权限 600，永不提交）
 - **master.key 丢失 = 无法解密历史记忆，请做好备份！**

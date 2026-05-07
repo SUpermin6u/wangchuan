@@ -9,6 +9,7 @@
       "root": "~/.claude",
       "skills": "~/.claude/skills",
       "agents": "~/.claude/agents",
+      "mcp": "~/.claude-internal/.claude.json",
       "memory": "~/.claude/CLAUDE.md"
     },
     "cursor": {
@@ -16,6 +17,7 @@
       "root": "~/.cursor",
       "skills": "~/.cursor/skills",
       "agents": "~/.cursor/agents",
+      "mcp": "~/.cursor/mcp.json",
       "memory_dir": "~/.cursor/rules",
       "memory_pattern": "*.mdc"
     },
@@ -24,6 +26,7 @@
       "root": "~/.openclaw",
       "skills": "~/.openclaw/workspace/skills",
       "agents_pattern": "~/.openclaw/workspace-{name}",
+      "mcp": "~/.openclaw/workspace/config/mcporter.json",
       "memory_files": [
         "~/.openclaw/workspace/MEMORY.md",
         "~/.openclaw/workspace/USER.md",

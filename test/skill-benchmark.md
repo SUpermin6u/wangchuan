@@ -746,3 +746,83 @@ Each TC specifies:
 - Only check one location
 - Show raw file content without metadata summary
 - Confuse "agent" (the environment like Claude/Cursor) with "agent definition" (sub-agent .md file)
+
+---
+
+## TC-31: Push MCP — first push (no cloud data)
+
+**Instruction:** "Push mcp config"
+
+**Trigger:** Yes → `references/mcp-sync.md` → **Push MCP**
+
+**Expected behavior:**
+1. Read current agent's MCP config file
+2. Extract `mcpServers` field, normalize (add explicit `type` field)
+3. git pull --rebase
+4. No .enc file in repo → skip comparison
+5. Encrypt normalized JSON → write to `shared/mcp/mcpServers.json.enc`
+6. git add + commit + push
+7. Ask if user wants to sync to other local agents
+8. Cleanup temp files
+
+**Critical constraints:**
+- Must encrypt before writing to repo (MCP configs contain tokens)
+- Must normalize JSON (add `type` field to all entries)
+- Must cleanup /tmp files
+- Claude's .claude.json: only extract `mcpServers` key, never overwrite entire file
+
+**Anti-patterns:**
+- Store MCP config in plaintext in repo
+- Overwrite Claude's entire .claude.json (destroying other keys)
+- Skip normalization
+
+---
+
+## TC-32: Pull MCP — cloud has new server, local doesn't
+
+**Instruction:** "Pull mcp" (cloud has servers not in local)
+
+**Trigger:** Yes → `references/mcp-sync.md` → **Pull MCP**
+
+**Expected behavior:**
+1. git pull --rebase
+2. Decrypt `shared/mcp/mcpServers.json.enc`
+3. Compare with local — cloud has extra servers
+4. Add new servers to local config automatically
+5. Write merged config to all detected agents (format-appropriate)
+6. Report: "Added from cloud: [server-names]"
+
+**Critical constraints:**
+- Must add cloud-only servers without removing local ones
+- Must write to all detected agents (Claude merge, Cursor/OpenClaw overwrite)
+- Must cleanup temp files
+
+**Anti-patterns:**
+- Overwrite local with cloud (losing local-only servers silently)
+- Only update one agent, forget others
+- Leave decrypted config in /tmp
+
+---
+
+## TC-33: Pull MCP — local has servers not in cloud
+
+**Instruction:** "Pull mcp" (local has servers cloud doesn't)
+
+**Trigger:** Yes → `references/mcp-sync.md` → **Pull MCP**
+
+**Expected behavior:**
+1. Decrypt cloud config
+2. Compare — local has extra servers not in cloud
+3. Ask user: "Local-only MCP servers: [list]. Keep local / Remove / Push to cloud?"
+4. Apply user's choice
+5. Write result to all agents
+
+**Critical constraints:**
+- Must NOT silently remove local-only servers
+- Must ask user for resolution
+- "Push to cloud" option triggers re-encryption and push
+
+**Anti-patterns:**
+- Silently drop local-only servers
+- Auto-push without asking
+- Skip asking when there are differences

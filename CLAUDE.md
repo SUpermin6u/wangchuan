@@ -20,6 +20,7 @@ wangchuan/                      ← this entire dir is the skill
 │   ├── restore.md              # Restore on new machine
 │   ├── skill-crud.md           # Skill add/modify/delete/view + sharing
 │   ├── agent-crud.md           # Sub-agent add/modify/delete/view + sharing
+│   ├── mcp-sync.md             # MCP config push/pull/view (encrypted)
 │   ├── push-memory.md          # Push memory to cloud
 │   └── pull-memory.md          # Pull memory from cloud
 ├── scripts/
@@ -41,7 +42,8 @@ wangchuan/                      ← this entire dir is the skill
 └── repo/                   # Git clone of sync repo
     ├── shared/
     │   ├── skills/         # Skills shared across all agents (plaintext)
-    │   └── agents/         # Agent definitions shared across all agents (plaintext)
+    │   ├── agents/         # Agent definitions shared across all agents (plaintext)
+    │   └── mcp/            # Encrypted MCP config (shared across all agents)
     └── agents/<name>/
         ├── memory/         # Per-agent encrypted memory (.enc)
         ├── skills/         # Per-agent specific skills (plaintext)

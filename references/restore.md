@@ -140,6 +140,27 @@ done
 
 Write `~/.wangchuan/config.json` with repo URL, key path, and detected agent paths (same format as init.md Step 8).
 
+### Step 8b: Restore MCP config
+
+If encrypted MCP config exists in repo, decrypt and write to all detected agents:
+
+```bash
+if [ -f ~/.wangchuan/repo/shared/mcp/mcpServers.json.enc ]; then
+  ~/.wangchuan/scripts/decrypt.sh ~/.wangchuan/master.key \
+    ~/.wangchuan/repo/shared/mcp/mcpServers.json.enc \
+    /tmp/wc_mcp_restore.json
+fi
+```
+
+For each detected agent, write MCP config:
+- **Claude**: merge `mcpServers` into `~/.claude-internal/.claude.json` (preserve other keys)
+- **Cursor**: write as `~/.cursor/mcp.json`
+- **OpenClaw**: write as `~/.openclaw/workspace/config/mcporter.json`
+
+```bash
+rm -f /tmp/wc_mcp_restore.json
+```
+
 ### Step 9: Check for local-only additions
 
 If the local agent has skills not present in the repo, report:

@@ -47,6 +47,9 @@ Then say "initialize wangchuan" to your agent.
 | view agent xxx / list agents | Show status or list all sub-agent definitions |
 | push memory | Encrypt + push memories to cloud |
 | pull memory | Pull + decrypt memories from cloud |
+| push mcp | Encrypt + push MCP server config to cloud |
+| pull mcp | Pull + decrypt MCP config, sync to all agents |
+| view mcp | Compare MCP configs across agents and cloud |
 
 ## How It Works
 
@@ -63,10 +66,12 @@ Sub-agent definitions and skills are stored as plaintext (not encrypted).
 remote git repo/
 ├── shared/
 │   ├── skills/              # Skills used by ALL agents (plaintext)
-│   └── agents/<name>/      # Sub-agent defs shared across ALL agents
-│       ├── <name>.md       #   Claude/Cursor format
-│       ├── SOUL.md         #   OpenClaw format
-│       └── IDENTITY.md     #   OpenClaw format
+│   ├── agents/<name>/      # Sub-agent defs shared across ALL agents
+│   │   ├── <name>.md       #   Claude/Cursor format
+│   │   ├── SOUL.md         #   OpenClaw format
+│   │   └── IDENTITY.md     #   OpenClaw format
+│   └── mcp/                 # Encrypted MCP server config
+│       └── mcpServers.json.enc
 └── agents/<agent>/
     ├── memory/              # Encrypted .enc files
     ├── skills/              # Agent-specific skills (plaintext)
@@ -105,6 +110,7 @@ Works with **any Git hosting** that supports SSH or HTTPS:
 ## Security
 
 - Memory files always encrypted (AES-256-CBC) before leaving your machine
+- MCP configs always encrypted (contain sensitive tokens)
 - Skills and sub-agent definitions stored as plaintext (not sensitive)
 - Key at `~/.wangchuan/master.key` (mode 600, never committed)
 - **Losing master.key = losing all encrypted memories — back it up!**

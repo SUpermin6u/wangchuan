@@ -68,7 +68,7 @@ git clone <USER_PROVIDED_REPO_URL> ~/.wangchuan/repo
 
 If the repo is empty, initialize structure:
 ```bash
-mkdir -p ~/.wangchuan/repo/{shared/skills,shared/agents,agents/claude/memory,agents/claude/skills,agents/claude/agents,agents/cursor/memory,agents/cursor/skills,agents/cursor/agents,agents/openclaw/memory,agents/openclaw/skills,agents/openclaw/agents}
+mkdir -p ~/.wangchuan/repo/{shared/skills,shared/agents,shared/mcp,agents/claude/memory,agents/claude/skills,agents/claude/agents,agents/cursor/memory,agents/cursor/skills,agents/cursor/agents,agents/openclaw/memory,agents/openclaw/skills,agents/openclaw/agents}
 echo "# Wangchuan Sync Repo" > ~/.wangchuan/repo/README.md
 ```
 
@@ -99,6 +99,7 @@ Based on detected agents, write `~/.wangchuan/config.json`:
       "root": "~/.claude",
       "skills": "~/.claude/skills",
       "agents": "~/.claude/agents",
+      "mcp": "~/.claude-internal/.claude.json",
       "memory": "~/.claude/CLAUDE.md"
     },
     "cursor": {
@@ -106,6 +107,7 @@ Based on detected agents, write `~/.wangchuan/config.json`:
       "root": "~/.cursor",
       "skills": "~/.cursor/skills",
       "agents": "~/.cursor/agents",
+      "mcp": "~/.cursor/mcp.json",
       "memory_dir": "~/.cursor/rules",
       "memory_pattern": "*.mdc"
     },
@@ -114,6 +116,7 @@ Based on detected agents, write `~/.wangchuan/config.json`:
       "root": "~/.openclaw",
       "skills": "~/.openclaw/workspace/skills",
       "agents_pattern": "~/.openclaw/workspace-{name}",
+      "mcp": "~/.openclaw/workspace/config/mcporter.json",
       "memory_files": [
         "~/.openclaw/workspace/MEMORY.md",
         "~/.openclaw/workspace/USER.md",
@@ -172,6 +175,33 @@ Strip embedded `.git` directories:
 ```bash
 find ~/.wangchuan/repo/shared/agents -maxdepth 2 -name ".git" -type d -exec rm -rf {} + 2>/dev/null
 find ~/.wangchuan/repo/agents -path "*/agents/*/.git" -type d -exec rm -rf {} + 2>/dev/null
+```
+
+### Step 9c: Encrypt and sync MCP config
+
+Read MCP config from the current agent, normalize, and encrypt:
+
+```bash
+# Extract mcpServers from current agent's MCP config file
+python3 -c "
+import json
+with open('<CURRENT_AGENT_MCP_PATH>', 'r') as f:
+    data = json.load(f)
+servers = data.get('mcpServers', {})
+for name, cfg in servers.items():
+    if 'type' not in cfg:
+        cfg['type'] = 'stdio' if 'command' in cfg else 'http'
+with open('/tmp/wc_mcp_normalized.json', 'w') as f:
+    json.dump({'mcpServers': servers}, f, indent=2, ensure_ascii=False)
+"
+
+# Encrypt
+mkdir -p ~/.wangchuan/repo/shared/mcp
+~/.wangchuan/scripts/encrypt.sh ~/.wangchuan/master.key \
+  /tmp/wc_mcp_normalized.json \
+  ~/.wangchuan/repo/shared/mcp/mcpServers.json.enc
+
+rm -f /tmp/wc_mcp_normalized.json
 ```
 
 ### Step 10: Encrypt and push memories

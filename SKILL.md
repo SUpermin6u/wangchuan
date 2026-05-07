@@ -1,7 +1,7 @@
 ---
 name: wangchuan
 version: 1.1.0
-description: "Encrypt and sync AI agent memories, skills, sub-agent definitions, and configs across machines via a private Git repo. Use this skill whenever the user mentions: syncing memories, skills, or sub-agents between agents/machines, initializing or restoring wangchuan, pushing or pulling memories, adding/modifying/deleting/viewing skills or sub-agent definitions across agents, sharing skills or agents between Claude/Cursor/OpenClaw, cross-machine agent setup, backup/restore agent settings. Trigger even if the user doesn't say 'wangchuan' explicitly — any mention of syncing agent data, sharing skills/agents between AI tools, or encrypted memory backup should activate this skill."
+description: "Encrypt and sync AI agent memories, skills, sub-agent definitions, and MCP server configs across machines via a private Git repo. Use this skill whenever the user mentions: syncing memories, skills, sub-agents, or MCP configs between agents/machines, initializing or restoring wangchuan, pushing or pulling memories or MCP configs, adding/modifying/deleting/viewing skills or sub-agent definitions across agents, sharing skills or agents between Claude/Cursor/OpenClaw, cross-machine agent setup, backup/restore agent settings. Trigger even if the user doesn't say 'wangchuan' explicitly — any mention of syncing agent data, sharing skills/agents between AI tools, syncing MCP servers, or encrypted memory backup should activate this skill."
 ---
 
 # Wangchuan — Agent Memory & Skill Sync
@@ -39,6 +39,9 @@ Read the matched reference file and follow its procedure step by step.
 | View agent / show agent / inspect agent / list agents | `references/agent-crud.md` → **View Agent** |
 | Push memory / sync memory to cloud | `references/push-memory.md` |
 | Pull memory / sync cloud memory | `references/pull-memory.md` |
+| Push mcp / sync mcp to cloud / push mcp config | `references/mcp-sync.md` → **Push MCP** |
+| Pull mcp / pull mcp config / sync mcp from cloud | `references/mcp-sync.md` → **Pull MCP** |
+| View mcp / show mcp / compare mcp / mcp status | `references/mcp-sync.md` → **View MCP** |
 
 Reference files are located relative to this skill file's directory (sibling `references/` folder).
 
@@ -102,9 +105,9 @@ test -d ~/.openclaw && echo "openclaw"
   "keyPath": "~/.wangchuan/master.key",
   "repoPath": "~/.wangchuan/repo",
   "agents": {
-    "claude": { "enabled": true, "root": "~/.claude", "skills": "~/.claude/skills", "agents": "~/.claude/agents", "memory": "~/.claude/CLAUDE.md" },
-    "cursor": { "enabled": true, "root": "~/.cursor", "skills": "~/.cursor/skills", "agents": "~/.cursor/agents", "memory_dir": "~/.cursor/rules", "memory_pattern": "*.mdc" },
-    "openclaw": { "enabled": false, "root": "~/.openclaw", "skills": "~/.openclaw/workspace/skills", "agents_pattern": "~/.openclaw/workspace-{name}", "memory_files": ["~/.openclaw/workspace/MEMORY.md", "~/.openclaw/workspace/USER.md", "~/.openclaw/workspace/IDENTITY.md"] }
+    "claude": { "enabled": true, "root": "~/.claude", "skills": "~/.claude/skills", "agents": "~/.claude/agents", "mcp": "~/.claude-internal/.claude.json", "memory": "~/.claude/CLAUDE.md" },
+    "cursor": { "enabled": true, "root": "~/.cursor", "skills": "~/.cursor/skills", "agents": "~/.cursor/agents", "mcp": "~/.cursor/mcp.json", "memory_dir": "~/.cursor/rules", "memory_pattern": "*.mdc" },
+    "openclaw": { "enabled": false, "root": "~/.openclaw", "skills": "~/.openclaw/workspace/skills", "agents_pattern": "~/.openclaw/workspace-{name}", "mcp": "~/.openclaw/workspace/config/mcporter.json", "memory_files": ["~/.openclaw/workspace/MEMORY.md", "~/.openclaw/workspace/USER.md", "~/.openclaw/workspace/IDENTITY.md"] }
   }
 }
 ```
@@ -121,7 +124,8 @@ test -d ~/.openclaw && echo "openclaw"
 ~/.wangchuan/repo/
 ├── shared/
 │   ├── skills/          # Skills shared across ALL agents
-│   └── agents/          # Agent definitions shared across ALL agents
+│   ├── agents/          # Agent definitions shared across ALL agents
+│   └── mcp/             # Encrypted MCP config (shared across ALL agents)
 └── agents/<name>/
     ├── memory/          # Encrypted .enc files (one per memory file)
     ├── skills/          # Agent-specific skills (plaintext)
